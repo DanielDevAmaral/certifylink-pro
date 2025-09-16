@@ -14,7 +14,7 @@ import { Upload } from 'lucide-react';
 
 const legalDocumentSchema = z.object({
   document_name: z.string().min(1, 'Nome do documento é obrigatório'),
-  document_type: z.enum(['FISCAL', 'TRABALHISTA', 'AMBIENTAL', 'PREVIDENCIARIO']),
+  document_type: z.enum(['legal_qualification', 'fiscal_regularity', 'economic_financial', 'common_declarations']),
   document_subtype: z.string().optional(),
   validity_date: z.string().optional(),
   status: z.enum(['valid', 'expiring', 'expired', 'pending']),
@@ -31,10 +31,10 @@ interface LegalDocumentFormProps {
 }
 
 const documentSubtypes: Record<LegalDocumentType, DocumentSubtype[]> = {
-  FISCAL: ['CND_FEDERAL', 'CND_ESTADUAL', 'CND_MUNICIPAL', 'CERTIDAO_FGTS', 'SIMPLES_NACIONAL'],
-  TRABALHISTA: ['RAIS', 'CAGED', 'DIRF', 'GFIP', 'SEFIP'],
-  AMBIENTAL: ['LICENCA_AMBIENTAL', 'CERTIFICADO_REGULARIDADE', 'CADRI', 'MTR'],
-  PREVIDENCIARIO: ['CND_INSS', 'GFIP_PREVIDENCIARIA', 'DIRF_PREVIDENCIARIA', 'CAGED_PREVIDENCIARIO'],
+  legal_qualification: ['social_contract', 'partner_documents', 'powers_of_attorney'],
+  fiscal_regularity: ['cnpj', 'federal_cnd', 'fgts', 'cndt', 'state_clearance', 'municipal_clearance'],
+  economic_financial: ['balance_sheet', 'bankruptcy_certificate'],
+  common_declarations: ['requirements_compliance', 'minor_employment', 'proposal_independence', 'me_epp'],
 };
 
 export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocumentFormProps) {
@@ -48,7 +48,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
     resolver: zodResolver(legalDocumentSchema),
     defaultValues: {
       document_name: document?.document_name || '',
-      document_type: document?.document_type || 'FISCAL',
+      document_type: document?.document_type || 'legal_qualification',
       document_subtype: document?.document_subtype || '',
       validity_date: document?.validity_date || '',
       status: document?.status || 'valid',
@@ -169,10 +169,10 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="FISCAL">Fiscal</SelectItem>
-                        <SelectItem value="TRABALHISTA">Trabalhista</SelectItem>
-                        <SelectItem value="AMBIENTAL">Ambiental</SelectItem>
-                        <SelectItem value="PREVIDENCIARIO">Previdenciário</SelectItem>
+                        <SelectItem value="legal_qualification">Habilitação Jurídica</SelectItem>
+                        <SelectItem value="fiscal_regularity">Regularidade Fiscal</SelectItem>
+                        <SelectItem value="economic_financial">Econômico-Financeira</SelectItem>
+                        <SelectItem value="common_declarations">Declarações Comuns</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

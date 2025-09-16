@@ -33,34 +33,34 @@ const categories: Array<{
   description: string;
 }> = [
   {
-    key: 'FISCAL',
-    title: 'Fiscal',
+    key: 'legal_qualification',
+    title: 'Habilitação Jurídica',
+    icon: Scale,
+    description: 'Documentos societários e jurídicos'
+  },
+  {
+    key: 'fiscal_regularity', 
+    title: 'Regularidade Fiscal',
     icon: FileText,
     description: 'Certidões e comprovantes fiscais'
   },
   {
-    key: 'TRABALHISTA', 
-    title: 'Trabalhista',
-    icon: Shield,
-    description: 'Documentos trabalhistas'
-  },
-  {
-    key: 'AMBIENTAL',
-    title: 'Ambiental', 
-    icon: Scale,
-    description: 'Licenças e certificados ambientais'
-  },
-  {
-    key: 'PREVIDENCIARIO',
-    title: 'Previdenciário',
+    key: 'economic_financial',
+    title: 'Econômico-Financeira', 
     icon: DollarSign,
-    description: 'Documentos previdenciários'
+    description: 'Balanços e demonstrativos financeiros'
+  },
+  {
+    key: 'common_declarations',
+    title: 'Declarações Comuns',
+    icon: Shield,
+    description: 'Declarações padronizadas'
   }
 ];
 
 export default function Documents() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<LegalDocumentType>("FISCAL");
+  const [activeTab, setActiveTab] = useState<LegalDocumentType>("legal_qualification");
   const [selectedDocument, setSelectedDocument] = useState<LegalDocument | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -205,13 +205,27 @@ export default function Documents() {
                     )}
 
                     <div className="flex items-center gap-2 pt-2 border-t border-border">
-                      <Button size="sm" variant="outline" className="flex-1 gap-2">
-                        <Eye className="h-3 w-3" />
-                        Visualizar
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="gap-2"
+                        onClick={() => handleEdit(document)}
+                      >
+                        <Edit className="h-3 w-3" />
+                        Editar
                       </Button>
                       <Button size="sm" variant="outline" className="gap-2">
-                        <Download className="h-3 w-3" />
-                        PDF
+                        <Eye className="h-3 w-3" />
+                        Ver
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="gap-2 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(document.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Excluir
                       </Button>
                     </div>
                   </div>
@@ -229,7 +243,7 @@ export default function Documents() {
                   <p className="text-muted-foreground mb-6">
                     Adicione documentos da categoria "{category.title}" para iniciar a gestão.
                   </p>
-                  <Button className="btn-corporate gap-2">
+                  <Button className="btn-corporate gap-2" onClick={() => setShowForm(true)}>
                     <Plus className="h-4 w-4" />
                     Adicionar Documento
                   </Button>

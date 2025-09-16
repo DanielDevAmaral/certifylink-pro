@@ -3,7 +3,7 @@
 export type UserRole = 'user' | 'leader' | 'admin';
 export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending';
 export type DocumentCategory = 'certification' | 'technical_attestation' | 'legal_document';
-export type LegalDocumentType = 'FISCAL' | 'TRABALHISTA' | 'AMBIENTAL' | 'PREVIDENCIARIO';
+export type LegalDocumentType = 'legal_qualification' | 'fiscal_regularity' | 'economic_financial' | 'common_declarations';
 
 export interface User {
   id: string;
@@ -69,28 +69,25 @@ export interface TechnicalCertificate {
 }
 
 export type DocumentSubtype = 
-  // Fiscal
-  | 'CND_FEDERAL'
-  | 'CND_ESTADUAL'
-  | 'CND_MUNICIPAL'
-  | 'CERTIDAO_FGTS'
-  | 'SIMPLES_NACIONAL'
-  // Trabalhista
-  | 'RAIS'
-  | 'CAGED'
-  | 'DIRF'
-  | 'GFIP'
-  | 'SEFIP'
-  // Ambiental
-  | 'LICENCA_AMBIENTAL'
-  | 'CERTIFICADO_REGULARIDADE'
-  | 'CADRI'
-  | 'MTR'
-  // Previdenciário
-  | 'CND_INSS'
-  | 'GFIP_PREVIDENCIARIA'
-  | 'DIRF_PREVIDENCIARIA'
-  | 'CAGED_PREVIDENCIARIO';
+  // Legal Qualification
+  | 'social_contract'
+  | 'partner_documents'
+  | 'powers_of_attorney'
+  // Fiscal Regularity  
+  | 'cnpj'
+  | 'federal_cnd'
+  | 'fgts'
+  | 'cndt'
+  | 'state_clearance'
+  | 'municipal_clearance'
+  // Economic Financial
+  | 'balance_sheet'
+  | 'bankruptcy_certificate'
+  // Common Declarations
+  | 'requirements_compliance'
+  | 'minor_employment'
+  | 'proposal_independence'
+  | 'me_epp';
 
 export interface LegalDocument {
   id: string;

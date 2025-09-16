@@ -8,22 +8,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Shield, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '@/lib/validations/auth';
+import { PasswordStrength } from '@/components/ui/password-strength';
+import { FormFieldError } from '@/components/ui/form-field-error';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Auth() {
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Form states
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [signupData, setSignupData] = useState({ 
+  // Form states with validation
+  const [loginData, setLoginData] = useState<LoginFormData>({ email: '', password: '' });
+  const [signupData, setSignupData] = useState<SignupFormData>({ 
     email: '', 
     password: '', 
     confirmPassword: '', 
     fullName: '' 
   });
+  
+  // Validation errors
+  const [loginErrors, setLoginErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
+  const [signupErrors, setSignupErrors] = useState<Partial<Record<keyof SignupFormData, string>>>({});
 
   // Redirect if already logged in
   if (user) {
@@ -32,16 +40,43 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    setLoginErrors({});
 
+    // Validate form
+    const validation = loginSchema.safeParse(loginData);
+    if (!validation.success) {
+      const errors: Partial<Record<keyof LoginFormData, string>> = {};
+      validation.error.issues.forEach(issue => {
+        const field = issue.path[0] as keyof LoginFormData;
+        errors[field] = issue.message;
+      });
+      setLoginErrors(errors);
+      return;
+    }
+
+    setLoading(true);
     try {
       const { error } = await signIn(loginData.email, loginData.password);
       if (error) {
-        setError(error.message);
+        // Handle specific error types
+        const errorMessage = error.message.includes('Invalid login credentials')
+          ? 'Email ou senha incorretos'
+          : error.message.includes('Email not confirmed')
+          ? 'Confirme seu email antes de fazer login'
+          : error.message;
+        
+        toast({
+          variant: "destructive",
+          title: "Erro no login",
+          description: errorMessage,
+        });
       }
     } catch (err) {
-      setError('Erro inesperado. Tente novamente.');
+      toast({
+        variant: "destructive",
+        title: "Erro inesperado",
+        description: "Tente novamente em alguns instantes.",
+      });
     } finally {
       setLoading(false);
     }
@@ -49,32 +84,48 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignupErrors({});
+
+    // Validate form
+    const validation = signupSchema.safeParse(signupData);
+    if (!validation.success) {
+      const errors: Partial<Record<keyof SignupFormData, string>> = {};
+      validation.error.issues.forEach(issue => {
+        const field = issue.path[0] as keyof SignupFormData;
+        errors[field] = issue.message;
+      });
+      setSignupErrors(errors);
+      return;
+    }
+
     setLoading(true);
-    setError(null);
-
-    if (signupData.password !== signupData.confirmPassword) {
-      setError('As senhas não coincidem');
-      setLoading(false);
-      return;
-    }
-
-    if (signupData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
-      setLoading(false);
-      return;
-    }
-
     try {
       const { error } = await signUp(signupData.email, signupData.password, signupData.fullName);
       if (error) {
-        setError(error.message);
+        const errorMessage = error.message.includes('User already registered')
+          ? 'Este email já está cadastrado. Faça login ou use outro email.'
+          : error.message;
+        
+        toast({
+          variant: "destructive",
+          title: "Erro no cadastro",
+          description: errorMessage,
+        });
       } else {
-        setError(null);
-        // Show success message
-        alert('Cadastro realizado! Verifique seu email para confirmar a conta.');
+        toast({
+          title: "Cadastro realizado com sucesso!",
+          description: "Verifique seu email para confirmar a conta.",
+        });
+        
+        // Reset form
+        setSignupData({ email: '', password: '', confirmPassword: '', fullName: '' });
       }
     } catch (err) {
-      setError('Erro inesperado. Tente novamente.');
+      toast({
+        variant: "destructive",
+        title: "Erro inesperado",
+        description: "Tente novamente em alguns instantes.",
+      });
     } finally {
       setLoading(false);
     }
@@ -82,15 +133,22 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    setError(null);
 
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        setError(error.message);
+        toast({
+          variant: "destructive",
+          title: "Erro no login com Google",
+          description: "Não foi possível fazer login. Tente novamente.",
+        });
       }
     } catch (err) {
-      setError('Erro inesperado. Tente novamente.');
+      toast({
+        variant: "destructive",
+        title: "Erro inesperado",
+        description: "Tente novamente em alguns instantes.",
+      });
     } finally {
       setGoogleLoading(false);
     }
@@ -122,13 +180,6 @@ export default function Auth() {
               <TabsTrigger value="signup">Cadastro</TabsTrigger>
             </TabsList>
 
-            {error && (
-              <Alert className="border-destructive">
-                <AlertDescription className="text-destructive">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
 
             <TabsContent value="login">
               {/* Google Login Button */}
@@ -175,6 +226,7 @@ export default function Auth() {
                       required
                     />
                   </div>
+                  <FormFieldError error={loginErrors.email} />
                 </div>
 
                 <div className="space-y-2">
@@ -197,6 +249,7 @@ export default function Auth() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <FormFieldError error={loginErrors.password} />
                 </div>
 
                 <Button 
@@ -254,6 +307,7 @@ export default function Auth() {
                       required
                     />
                   </div>
+                  <FormFieldError error={signupErrors.fullName} />
                 </div>
 
                 <div className="space-y-2">
@@ -269,6 +323,7 @@ export default function Auth() {
                       required
                     />
                   </div>
+                  <FormFieldError error={signupErrors.email} />
                 </div>
 
                 <div className="space-y-2">
@@ -291,6 +346,8 @@ export default function Auth() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <PasswordStrength password={signupData.password} />
+                  <FormFieldError error={signupErrors.password} />
                 </div>
 
                 <div className="space-y-2">
@@ -306,6 +363,7 @@ export default function Auth() {
                       required
                     />
                   </div>
+                  <FormFieldError error={signupErrors.confirmPassword} />
                 </div>
 
                 <Button 

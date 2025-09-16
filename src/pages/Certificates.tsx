@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestationForm";
+import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
+import type { TechnicalCertificate } from "@/types";
 import { 
   Plus, 
   Search, 
@@ -14,70 +18,58 @@ import {
   DollarSign,
   Building,
   Eye,
-  Download
+  Download,
+  Edit,
+  Trash2
 } from "lucide-react";
-
-// Mock data - será substituído pela integração com Supabase
-const mockCertificates = [
-  {
-    id: "1",
-    client_issuer: "Petrobras S.A.",
-    object: "Implementação de Sistema de Gestão Integrada",
-    period_start: "2023-01-15",
-    period_end: "2023-12-20",
-    value: 2500000,
-    responsible_issuer: "José Carlos Silva - Gerente de TI",
-    validity_date: "2025-12-20",
-    status: "valid" as const,
-    user_name: "João Silva",
-    related_certifications: ["AWS Solutions Architect", "PMP"],
-    created_at: "2024-01-10"
-  },
-  {
-    id: "2",
-    client_issuer: "Banco do Brasil",
-    object: "Consultoria em Transformação Digital",
-    period_start: "2022-06-10",
-    period_end: "2023-03-15",
-    value: 1800000,
-    responsible_issuer: "Maria Fernanda Costa - Diretora de Inovação",
-    validity_date: "2024-03-15",
-    status: "expiring" as const,
-    user_name: "Maria Santos",
-    related_certifications: ["CISSP", "ITIL"],
-    created_at: "2023-11-20"
-  },
-  {
-    id: "3",
-    client_issuer: "Vale S.A.",
-    object: "Desenvolvimento de Plataforma de Monitoramento",
-    period_start: "2021-03-01",
-    period_end: "2022-08-30",
-    value: 3200000,
-    responsible_issuer: "Roberto Almeida - Coordenador de Projetos",
-    validity_date: "2023-08-30",
-    status: "expired" as const,
-    user_name: "Carlos Oliveira",
-    related_certifications: ["AWS DevOps", "Scrum Master"],
-    created_at: "2023-08-15"
-  }
-];
 
 export default function Certificates() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedAttestation, setSelectedAttestation] = useState<TechnicalCertificate | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const filteredCertificates = mockCertificates.filter(cert =>
-    cert.client_issuer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.object.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.user_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const { attestations = [], isLoading } = useTechnicalAttestations();
+  const deleteMutation = useDeleteTechnicalAttestation();
+
+  const filteredCertificates = attestations.filter(cert =>
+    cert.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.project_object?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.issuer_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatCurrency = (value: number) => {
+  const handleEdit = (attestation: TechnicalCertificate) => {
+    setSelectedAttestation(attestation);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este atestado?')) {
+      await deleteMutation.mutateAsync(id);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setSelectedAttestation(null);
+  };
+
+  const formatCurrency = (value?: number) => {
+    if (!value) return 'Não informado';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -89,10 +81,21 @@ export default function Certificates() {
           <Filter className="h-4 w-4" />
           Filtros
         </Button>
-        <Button className="btn-corporate gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Atestado
-        </Button>
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogTrigger asChild>
+            <Button className="btn-corporate gap-2">
+              <Plus className="h-4 w-4" />
+              Novo Atestado
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <TechnicalAttestationForm
+              attestation={selectedAttestation || undefined}
+              onSuccess={handleFormSuccess}
+              onCancel={() => setShowForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </PageHeader>
 
       {/* Search Bar */}
@@ -134,24 +137,24 @@ export default function Certificates() {
 
                 <div>
                   <h3 className="font-semibold text-foreground text-lg mb-2">
-                    {certificate.object}
+                    {certificate.project_object}
                   </h3>
                   
                   <div className="flex items-center gap-2 text-muted-foreground mb-3">
                     <Building className="h-4 w-4" />
-                    <span className="font-medium">{certificate.client_issuer}</span>
+                    <span className="font-medium">{certificate.client_name}</span>
                   </div>
 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Período: {certificate.period_start} a {certificate.period_end}</span>
+                      <span>Período: {certificate.project_period_start} a {certificate.project_period_end}</span>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium text-success">
-                        {formatCurrency(certificate.value)}
+                        {formatCurrency(certificate.project_value)}
                       </span>
                     </div>
                   </div>
@@ -163,16 +166,11 @@ export default function Certificates() {
                 <div>
                   <p className="text-sm font-medium text-foreground mb-1">Emissor Responsável:</p>
                   <p className="text-sm text-muted-foreground">
-                    {certificate.responsible_issuer}
+                    {certificate.issuer_name} - {certificate.issuer_position}
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Responsável Interno:</p>
-                  <p className="text-sm text-muted-foreground">{certificate.user_name}</p>
-                </div>
-
-                {certificate.related_certifications.length > 0 && (
+                {certificate.related_certifications && certificate.related_certifications.length > 0 && (
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Certificações Relacionadas:</p>
                     <div className="flex flex-wrap gap-1">
@@ -199,6 +197,15 @@ export default function Certificates() {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={() => handleEdit(certificate)}
+                  >
+                    <Edit className="h-3 w-3" />
+                    Editar
+                  </Button>
                   <Button size="sm" variant="outline" className="gap-2">
                     <Eye className="h-3 w-3" />
                     Visualizar
@@ -206,6 +213,15 @@ export default function Certificates() {
                   <Button size="sm" variant="outline" className="gap-2">
                     <Download className="h-3 w-3" />
                     Download PDF
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(certificate.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Excluir
                   </Button>
                 </div>
               </div>
@@ -224,7 +240,7 @@ export default function Certificates() {
             <p className="text-muted-foreground mb-6">
               Cadastre o primeiro atestado de capacidade técnica para comprovar experiência.
             </p>
-            <Button className="btn-corporate gap-2">
+            <Button className="btn-corporate gap-2" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4" />
               Novo Atestado
             </Button>

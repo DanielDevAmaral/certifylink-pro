@@ -6,6 +6,10 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
+import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
+import type { LegalDocument, LegalDocumentType } from "@/types";
 import { 
   Plus, 
   Search, 
@@ -17,137 +21,82 @@ import {
   FileText,
   Eye,
   Download,
-  Lock
+  Lock,
+  Edit,
+  Trash2
 } from "lucide-react";
 
-// Mock data - será substituído pela integração com Supabase
-const mockDocuments = {
-  legal_qualification: [
-    {
-      id: "1",
-      name: "Contrato Social Atualizado",
-      subtype: "social_contract",
-      validity_date: "2025-06-15",
-      status: "valid" as const,
-      is_sensitive: false,
-      created_at: "2024-01-10"
-    },
-    {
-      id: "2", 
-      name: "Documentos dos Sócios",
-      subtype: "partner_documents",
-      validity_date: null,
-      status: "valid" as const,
-      is_sensitive: true,
-      created_at: "2024-01-10"
-    }
-  ],
-  tax_regularity: [
-    {
-      id: "3",
-      name: "Certidão Negativa Federal",
-      subtype: "federal_cnd", 
-      validity_date: "2024-03-15",
-      status: "expiring" as const,
-      is_sensitive: false,
-      created_at: "2023-12-15"
-    },
-    {
-      id: "4",
-      name: "Certificado de Regularidade FGTS",
-      subtype: "fgts",
-      validity_date: "2024-12-20",
-      status: "valid" as const,
-      is_sensitive: false,
-      created_at: "2024-01-05"
-    },
-    {
-      id: "5",
-      name: "Certidão Negativa Estadual",
-      subtype: "state_clearance",
-      validity_date: "2024-02-28",
-      status: "expiring" as const,
-      is_sensitive: false,
-      created_at: "2023-11-20"
-    }
-  ],
-  economic_financial: [
-    {
-      id: "6",
-      name: "Balanço Patrimonial 2023",
-      subtype: "balance_sheet",
-      validity_date: "2024-12-31", 
-      status: "valid" as const,
-      is_sensitive: true,
-      created_at: "2024-01-15"
-    },
-    {
-      id: "7",
-      name: "Certidão de Falência e Recuperação Judicial",
-      subtype: "bankruptcy_certificate",
-      validity_date: "2024-06-30",
-      status: "valid" as const,
-      is_sensitive: false,
-      created_at: "2024-01-20"
-    }
-  ],
-  common_declarations: [
-    {
-      id: "8",
-      name: "Declaração de Cumprimento de Requisitos",
-      subtype: "requirements_compliance",
-      validity_date: null,
-      status: "valid" as const,
-      is_sensitive: false,
-      created_at: "2024-01-25"
-    },
-    {
-      id: "9",
-      name: "Declaração de Não Emprego de Menor",
-      subtype: "minor_employment",
-      validity_date: null,
-      status: "valid" as const,
-      is_sensitive: false,
-      created_at: "2024-01-25"
-    }
-  ]
-};
-
-const categories = [
+const categories: Array<{
+  key: LegalDocumentType;
+  title: string;
+  icon: any;
+  description: string;
+}> = [
   {
-    key: 'legal_qualification',
-    title: 'Habilitação Jurídica',
-    icon: Scale,
-    description: 'Documentos societários e jurídicos'
-  },
-  {
-    key: 'tax_regularity', 
-    title: 'Regularidade Fiscal',
+    key: 'FISCAL',
+    title: 'Fiscal',
     icon: FileText,
     description: 'Certidões e comprovantes fiscais'
   },
   {
-    key: 'economic_financial',
-    title: 'Econômico-Financeira', 
-    icon: DollarSign,
-    description: 'Balanços e demonstrativos financeiros'
+    key: 'TRABALHISTA', 
+    title: 'Trabalhista',
+    icon: Shield,
+    description: 'Documentos trabalhistas'
   },
   {
-    key: 'common_declarations',
-    title: 'Declarações Comuns',
-    icon: Shield,
-    description: 'Declarações padronizadas'
+    key: 'AMBIENTAL',
+    title: 'Ambiental', 
+    icon: Scale,
+    description: 'Licenças e certificados ambientais'
+  },
+  {
+    key: 'PREVIDENCIARIO',
+    title: 'Previdenciário',
+    icon: DollarSign,
+    description: 'Documentos previdenciários'
   }
 ];
 
 export default function Documents() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("legal_qualification");
+  const [activeTab, setActiveTab] = useState<LegalDocumentType>("FISCAL");
+  const [selectedDocument, setSelectedDocument] = useState<LegalDocument | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const currentDocuments = mockDocuments[activeTab as keyof typeof mockDocuments] || [];
+  const { documents = [], isLoading } = useLegalDocuments();
+  const deleteMutation = useDeleteLegalDocument();
+
+  const currentDocuments = documents.filter(doc => doc.document_type === activeTab);
   const filteredDocuments = currentDocuments.filter(doc =>
-    doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+    doc.document_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEdit = (document: LegalDocument) => {
+    setSelectedDocument(document);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este documento?')) {
+      await deleteMutation.mutateAsync(id);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setSelectedDocument(null);
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -159,10 +108,21 @@ export default function Documents() {
           <Filter className="h-4 w-4" />
           Filtros
         </Button>
-        <Button className="btn-corporate gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Documento
-        </Button>
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogTrigger asChild>
+            <Button className="btn-corporate gap-2">
+              <Plus className="h-4 w-4" />
+              Novo Documento
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <LegalDocumentForm
+              document={selectedDocument || undefined}
+              onSuccess={handleFormSuccess}
+              onCancel={() => setShowForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </PageHeader>
 
       {/* Search Bar */}
@@ -181,7 +141,7 @@ export default function Documents() {
       </Card>
 
       {/* Document Categories Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LegalDocumentType)} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto">
           {categories.map((category) => {
             const Icon = category.icon;
@@ -226,7 +186,7 @@ export default function Documents() {
                   <div className="space-y-3">
                     <div>
                       <h3 className="font-semibold text-foreground line-clamp-2">
-                        {document.name}
+                        {document.document_name}
                       </h3>
                     </div>
 

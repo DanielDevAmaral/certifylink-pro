@@ -3,7 +3,7 @@
 export type UserRole = 'user' | 'leader' | 'admin';
 export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending';
 export type DocumentCategory = 'certification' | 'technical_attestation' | 'legal_document';
-export type LegalDocumentType = 'legal_qualification' | 'fiscal_regularity' | 'economic_financial' | 'common_declarations';
+export type LegalDocumentType = 'FISCAL' | 'TRABALHISTA' | 'AMBIENTAL' | 'PREVIDENCIARIO';
 
 export interface User {
   id: string;
@@ -52,51 +52,57 @@ export interface Certification {
 export interface TechnicalCertificate {
   id: string;
   user_id: string;
-  client_issuer: string;
-  object: string;
-  period_start: string;
-  period_end: string;
-  value: number;
-  responsible_issuer: string;
-  pdf_url: string;
-  related_certifications: string[];
-  validity_date: string;
-  status: 'valid' | 'expiring' | 'expired';
+  client_name: string;
+  project_object: string;
+  project_period_start?: string;
+  project_period_end?: string;
+  project_value?: number;
+  issuer_name: string;
+  issuer_position?: string;
+  issuer_contact?: string;
+  document_url?: string;
+  related_certifications?: string[];
+  validity_date?: string;
+  status: 'valid' | 'expiring' | 'expired' | 'pending';
   created_at: string;
   updated_at: string;
 }
 
 export type DocumentSubtype = 
-  // Legal Qualification
-  | 'social_contract'
-  | 'partner_documents'
-  | 'powers_of_attorney'
-  // Tax Regularity  
-  | 'cnpj'
-  | 'federal_cnd'
-  | 'fgts'
-  | 'cndt'
-  | 'state_clearance'
-  | 'municipal_clearance'
-  // Economic Financial
-  | 'balance_sheet'
-  | 'bankruptcy_certificate'
-  // Common Declarations
-  | 'requirements_compliance'
-  | 'minor_employment'
-  | 'proposal_independence'
-  | 'me_epp';
+  // Fiscal
+  | 'CND_FEDERAL'
+  | 'CND_ESTADUAL'
+  | 'CND_MUNICIPAL'
+  | 'CERTIDAO_FGTS'
+  | 'SIMPLES_NACIONAL'
+  // Trabalhista
+  | 'RAIS'
+  | 'CAGED'
+  | 'DIRF'
+  | 'GFIP'
+  | 'SEFIP'
+  // Ambiental
+  | 'LICENCA_AMBIENTAL'
+  | 'CERTIFICADO_REGULARIDADE'
+  | 'CADRI'
+  | 'MTR'
+  // Previdenciário
+  | 'CND_INSS'
+  | 'GFIP_PREVIDENCIARIA'
+  | 'DIRF_PREVIDENCIARIA'
+  | 'CAGED_PREVIDENCIARIO';
 
 export interface LegalDocument {
   id: string;
   user_id: string;
-  category: LegalDocumentType;
-  subtype: DocumentSubtype;
-  name: string;
-  pdf_url: string;
+  document_type: LegalDocumentType;
+  document_subtype?: string;
+  document_name: string;
+  document_url: string;
   validity_date?: string;
-  is_sensitive: boolean;
+  is_sensitive?: boolean;
   status: DocumentStatus;
+  encrypted_data?: string;
   created_at: string;
   updated_at: string;
 }

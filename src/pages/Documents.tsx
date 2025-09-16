@@ -14,6 +14,8 @@ import { SkeletonList } from "@/components/common/SkeletonCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { PageLoadingSkeleton } from "@/components/common/LoadingStates";
+import { ReportGenerator } from "@/components/reports/ReportGenerator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
 import type { LegalDocument, LegalDocumentType } from "@/types";
@@ -30,7 +32,8 @@ import {
   Download,
   Lock,
   Edit,
-  Trash2
+  Trash2,
+  FileDown
 } from "lucide-react";
 
 const categories: Array<{
@@ -98,6 +101,7 @@ export default function Documents() {
   const [activeTab, setActiveTab] = useState<LegalDocumentType>("legal_qualification");
   const [selectedDocument, setSelectedDocument] = useState<LegalDocument | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showReports, setShowReports] = useState(false);
 
   const {
     searchTerm,
@@ -183,6 +187,14 @@ export default function Documents() {
           onFiltersChange={setFilters}
           onClearFilters={() => setFilters({})}
         />
+        <Button
+          variant="outline"
+          onClick={() => setShowReports(!showReports)}
+          className="gap-2"
+        >
+          <FileDown className="h-4 w-4" />
+          Relatórios
+        </Button>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button className="btn-corporate gap-2">
@@ -199,6 +211,19 @@ export default function Documents() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {/* Reports Section */}
+      <Collapsible open={showReports} onOpenChange={setShowReports}>
+        <CollapsibleContent>
+          <div className="mb-6">
+            <ReportGenerator 
+              data={filteredDocuments} 
+              type="documents"
+              title="Documentos Jurídicos e Fiscais"
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Search Bar */}
       <Card className="card-corporate mb-6">

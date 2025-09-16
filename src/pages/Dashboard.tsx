@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CertificationForm } from "@/components/forms/CertificationForm";
 import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestationForm";
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
+import { ReportGenerator } from "@/components/reports/ReportGenerator";
+import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
 import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
 import { 
   Award, 
@@ -30,6 +33,7 @@ export default function Dashboard() {
   const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
   
   const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [showReports, setShowReports] = useState(false);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
@@ -60,11 +64,28 @@ export default function Dashboard() {
           <Plus className="h-4 w-4" />
           Novo Documento
         </Button>
-        <Button variant="outline" className="gap-2">
+        <Button 
+          variant="outline" 
+          className="gap-2"
+          onClick={() => setShowReports(!showReports)}
+        >
           <Download className="h-4 w-4" />
           Exportar Relatório
         </Button>
       </PageHeader>
+
+      {/* Reports Section */}
+      <Collapsible open={showReports} onOpenChange={setShowReports}>
+        <CollapsibleContent>
+          <div className="mb-6">
+            <ReportGenerator 
+              data={[...recentActivity || [], ...expiringItems || []]} 
+              type="certifications"
+              title="Relatório Dashboard Executivo"
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -111,6 +132,11 @@ export default function Dashboard() {
             />
           </>
         )}
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="mb-8">
+        <DashboardCharts stats={stats} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

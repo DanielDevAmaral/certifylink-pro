@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { 
   LayoutDashboard, 
   Award, 
@@ -7,8 +8,7 @@ import {
   Scale, 
   Settings, 
   Users,
-  LogOut,
-  Bell
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +124,7 @@ export function Sidebar() {
                 </div>
               )}
             </div>
-            <Bell className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" />
+            <NotificationCenter />
           </div>
           
           <button 

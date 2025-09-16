@@ -396,12 +396,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_system_notification: {
+        Args: {
+          expires_hours?: number
+          notification_message: string
+          notification_title: string
+          notification_type?: string
+          related_doc_id?: string
+          related_doc_type?: Database["public"]["Enums"]["document_category"]
+          target_user_id: string
+        }
+        Returns: string
+      }
+      get_unread_notifications_count: {
+        Args: { user_uuid?: string }
+        Returns: number
+      }
       get_user_role: {
         Args: { user_uuid: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
       is_team_leader: {
         Args: { target_user_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      mark_notification_read: {
+        Args: { notification_id: string }
         Returns: boolean
       }
     }

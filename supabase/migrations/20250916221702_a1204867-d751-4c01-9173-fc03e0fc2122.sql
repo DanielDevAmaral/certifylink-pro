@@ -1,0 +1,76 @@
+-- Create test data using CORRECT enum values
+WITH test_user AS (
+  SELECT user_id FROM profiles LIMIT 1
+)
+-- Insert test certifications
+INSERT INTO certifications (
+  user_id,
+  name,
+  function,
+  validity_date,
+  status
+)
+SELECT 
+  tu.user_id,
+  'Certificação AWS Solutions Architect',
+  'Arquiteto de Soluções',
+  CURRENT_DATE + INTERVAL '15 days',
+  'expiring'
+FROM test_user tu
+WHERE NOT EXISTS (
+  SELECT 1 FROM certifications c 
+  WHERE c.user_id = tu.user_id 
+    AND c.name = 'Certificação AWS Solutions Architect'
+);
+
+WITH test_user AS (
+  SELECT user_id FROM profiles LIMIT 1
+)
+-- Insert test technical attestation
+INSERT INTO technical_attestations (
+  user_id,
+  project_object,
+  client_name,
+  issuer_name,
+  validity_date,
+  status
+)
+SELECT 
+  tu.user_id,
+  'Desenvolvimento Sistema ERP Corporativo',
+  'Empresa XYZ Ltda',
+  'João Silva - CTO',
+  CURRENT_DATE + INTERVAL '20 days',
+  'expiring'
+FROM test_user tu
+WHERE NOT EXISTS (
+  SELECT 1 FROM technical_attestations ta 
+  WHERE ta.user_id = tu.user_id 
+    AND ta.project_object = 'Desenvolvimento Sistema ERP Corporativo'
+);
+
+WITH test_user AS (
+  SELECT user_id FROM profiles LIMIT 1
+)
+-- Insert test legal document using CORRECT document_type
+INSERT INTO legal_documents (
+  user_id,
+  document_name,
+  document_type,
+  validity_date,
+  status,
+  document_url
+)
+SELECT 
+  tu.user_id,
+  'Documentação de Qualificação Legal - Cliente ABC',
+  'legal_qualification',
+  CURRENT_DATE + INTERVAL '10 days',
+  'expiring',
+  'https://example.com/doc1.pdf'
+FROM test_user tu
+WHERE NOT EXISTS (
+  SELECT 1 FROM legal_documents ld 
+  WHERE ld.user_id = tu.user_id 
+    AND ld.document_name = 'Documentação de Qualificação Legal - Cliente ABC'
+);

@@ -1,65 +1,39 @@
-import { Card } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { DashboardStats } from '@/hooks/useSupabaseQuery';
+import { Card } from "@/components/ui/card";
+import { SkeletonCard } from "@/components/common/SkeletonCard";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
+import { AnalyticsData } from "@/hooks/useDashboardAnalytics";
 
 interface DashboardChartsProps {
-  stats?: DashboardStats;
+  analytics?: AnalyticsData;
 }
 
-export function DashboardCharts({ stats }: DashboardChartsProps) {
-  if (!stats) {
+export function DashboardCharts({ analytics }: DashboardChartsProps) {
+  if (!analytics) {
     return (
-      <Card className="card-corporate">
-        <div className="animate-pulse">
-          <div className="h-4 bg-muted rounded w-48 mb-4"></div>
-          <div className="h-64 bg-muted rounded"></div>
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
     );
   }
 
-  const documentData = [
-    {
-      name: 'Certificações',
-      total: stats.total_certifications,
-      vencendo: stats.expiring_certifications,
-      válidos: stats.total_certifications - stats.expiring_certifications,
-    },
-    {
-      name: 'Atestados',
-      total: stats.total_certificates,
-      vencendo: stats.expiring_certificates,
-      válidos: stats.total_certificates - stats.expiring_certificates,
-    },
-    {
-      name: 'Documentos',
-      total: stats.total_documents,
-      vencendo: stats.expiring_documents,
-      válidos: stats.total_documents - stats.expiring_documents,
-    },
-  ];
+  // Prepare data for charts using analytics data
+  const documentData = analytics.categoryBreakdown.map(category => ({
+    name: category.category,
+    total: category.count,
+    vencendo: category.expiring,
+    válidos: category.valid,
+    vencidos: category.expired
+  }));
 
   const statusData = [
-    {
-      name: 'Válidos',
-      value: (stats.total_certifications + stats.total_certificates + stats.total_documents) - (stats.expiring_certifications + stats.expiring_certificates + stats.expiring_documents),
-      color: '#10b981'
-    },
-    {
-      name: 'Vencendo',
-      value: stats.expiring_certifications + stats.expiring_certificates + stats.expiring_documents,
-      color: '#f59e0b'
-    }
+    { name: 'Válidos', value: analytics.validDocuments, color: '#10B981' },
+    { name: 'Vencendo', value: analytics.expiringDocuments, color: '#F59E0B' },
+    { name: 'Vencidos', value: analytics.expiredDocuments, color: '#EF4444' }
   ];
 
-  const complianceData = [
-    { name: 'Jan', compliance: 85 },
-    { name: 'Fev', compliance: 88 },
-    { name: 'Mar', compliance: 92 },
-    { name: 'Abr', compliance: 89 },
-    { name: 'Mai', compliance: 94 },
-    { name: 'Jun', compliance: stats.completion_percentage },
-  ];
+  const complianceData = analytics.monthlyTrend;
 
   const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
@@ -94,6 +68,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
               />
               <Bar dataKey="válidos" stackId="a" fill="#10b981" name="Válidos" />
               <Bar dataKey="vencendo" stackId="a" fill="#f59e0b" name="Vencendo" />
+              <Bar dataKey="vencidos" stackId="a" fill="#ef4444" name="Vencidos" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -156,7 +131,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
             <LineChart data={complianceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey="name" 
+                dataKey="month" 
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
                 fontSize={12}
               />

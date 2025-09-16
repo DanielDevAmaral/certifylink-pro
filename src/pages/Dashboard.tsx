@@ -11,7 +11,9 @@ import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestatio
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
-import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { 
   Award, 
   FileCheck, 
@@ -29,6 +31,7 @@ import { useState } from "react";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
   const { data: recentActivity, isLoading: activityLoading } = useRecentActivity();
   const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
   
@@ -136,7 +139,7 @@ export default function Dashboard() {
 
       {/* Analytics Charts */}
       <div className="mb-8">
-        <DashboardCharts stats={stats} />
+        <DashboardCharts analytics={analytics} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

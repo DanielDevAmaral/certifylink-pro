@@ -420,6 +420,16 @@ export type Database = {
         Args: { target_user_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_new_values?: Json
+          p_old_values?: Json
+          p_record_id: string
+          p_table_name: string
+        }
+        Returns: string
+      }
       mark_notification_read: {
         Args: { notification_id: string }
         Returns: boolean

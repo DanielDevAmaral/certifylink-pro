@@ -8,7 +8,8 @@ import {
   Scale, 
   Settings, 
   Users,
-  LogOut
+  LogOut,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,13 @@ export function Sidebar() {
       href: "/settings",
       icon: Settings,
       description: "Configurações do sistema",
+      requiredRole: 'admin'
+    },
+    {
+      name: "Auditoria",
+      href: "/audit",
+      icon: Database,
+      description: "Logs de auditoria do sistema",
       requiredRole: 'admin'
     },
   ].filter(item => {

@@ -434,6 +434,10 @@ export type Database = {
         Args: { notification_id: string }
         Returns: boolean
       }
+      update_document_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       document_category:

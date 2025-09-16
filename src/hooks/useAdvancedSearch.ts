@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -193,4 +194,29 @@ export function useTechnicalAttestationSearch(filters: SearchFilters) {
     },
     enabled: !!user
   });
+}
+
+// Generic hook for managing search state
+export function useAdvancedSearch() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  return {
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder
+  };
 }

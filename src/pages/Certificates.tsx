@@ -4,9 +4,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestationForm";
+import { SearchBar } from "@/components/common/SearchBar";
+import { FilterPanel } from "@/components/common/FilterPanel";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
 import type { TechnicalCertificate } from "@/types";
 import { 
@@ -23,19 +26,92 @@ import {
   Trash2
 } from "lucide-react";
 
+// Filter configurations for certificates
+const filterConfigs = [
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select' as const,
+    options: [
+      { value: 'valid', label: 'Válidos' },
+      { value: 'expiring', label: 'Expirando' },
+      { value: 'expired', label: 'Expirados' }
+    ]
+  },
+  {
+    key: 'project_value',
+    label: 'Valor do Projeto',
+    type: 'select' as const,
+    options: [
+      { value: 'low', label: 'Até R$ 100k' },
+      { value: 'medium', label: 'R$ 100k - R$ 1M' },
+      { value: 'high', label: 'Acima de R$ 1M' }
+    ]
+  },
+  {
+    key: 'validity_date',
+    label: 'Validade',
+    type: 'date' as const,
+    options: []
+  }
+];
+
 export default function Certificates() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedAttestation, setSelectedAttestation] = useState<TechnicalCertificate | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage
+  } = useAdvancedSearch();
 
   const { attestations = [], isLoading } = useTechnicalAttestations();
   const deleteMutation = useDeleteTechnicalAttestation();
 
-  const filteredCertificates = attestations.filter(cert =>
-    cert.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.project_object?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.issuer_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Apply search and filters
+  let filteredCertificates = attestations.filter(cert => {
+    // Search filter
+    const matchesSearch = cert.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cert.project_object?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cert.issuer_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // Status filter
+    const statusFilter = filters.status;
+    if (statusFilter && cert.status !== statusFilter) return false;
+
+    // Value filter
+    const valueFilter = filters.project_value;
+    if (valueFilter && cert.project_value) {
+      const value = cert.project_value;
+      if (valueFilter === 'low' && value > 100000) return false;
+      if (valueFilter === 'medium' && (value <= 100000 || value > 1000000)) return false;
+      if (valueFilter === 'high' && value <= 1000000) return false;
+    }
+
+    // Date filter
+    const dateFilter = filters.validity_date;
+    if (dateFilter && cert.validity_date) {
+      const certDate = new Date(cert.validity_date);
+      const filterDate = new Date(dateFilter);
+      if (certDate.toDateString() !== filterDate.toDateString()) return false;
+    }
+
+    return true;
+  });
+
+  // Apply pagination
+  const totalItems = filteredCertificates.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCertificates = filteredCertificates.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (attestation: TechnicalCertificate) => {
     setSelectedAttestation(attestation);
@@ -77,10 +153,12 @@ export default function Certificates() {
         title="Atestados de Capacidade Técnica"
         description="Gestão de atestados para comprovação de experiência em editais"
       >
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Button>
+        <FilterPanel
+          filterConfigs={filterConfigs}
+          activeFilters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={() => setFilters({})}
+        />
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button className="btn-corporate gap-2">
@@ -101,15 +179,12 @@ export default function Certificates() {
       {/* Search Bar */}
       <Card className="card-corporate mb-6">
         <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente, objeto ou responsável..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchBar
+            placeholder="Buscar por cliente, objeto ou responsável..."
+            value={searchTerm}
+            onChange={setSearchTerm}
+            className="flex-1"
+          />
           <div className="flex items-center gap-2">
             <StatusBadge status="valid" />
             <span className="text-sm text-muted-foreground">
@@ -121,7 +196,7 @@ export default function Certificates() {
 
       {/* Certificates Grid */}
       <div className="space-y-4">
-        {filteredCertificates.map((certificate) => (
+        {paginatedCertificates.map((certificate) => (
           <Card key={certificate.id} className="card-corporate">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Main Info */}
@@ -230,7 +305,7 @@ export default function Certificates() {
         ))}
       </div>
 
-      {filteredCertificates.length === 0 && (
+      {paginatedCertificates.length === 0 && (
         <Card className="card-corporate">
           <div className="text-center py-12">
             <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -238,7 +313,10 @@ export default function Certificates() {
               Nenhum atestado encontrado
             </h3>
             <p className="text-muted-foreground mb-6">
-              Cadastre o primeiro atestado de capacidade técnica para comprovar experiência.
+              {searchTerm || Object.keys(filters).length > 0
+                ? 'Ajuste os filtros ou termos de busca.'
+                : 'Cadastre o primeiro atestado de capacidade técnica para comprovar experiência.'
+              }
             </p>
             <Button className="btn-corporate gap-2" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4" />
@@ -246,6 +324,20 @@ export default function Certificates() {
             </Button>
           </div>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <div className="mt-6">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        </div>
       )}
     </Layout>
   );

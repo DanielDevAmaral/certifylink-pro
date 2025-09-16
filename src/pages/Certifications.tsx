@@ -4,66 +4,137 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { CertificationForm } from "@/components/forms/CertificationForm";
+import { SearchBar } from "@/components/common/SearchBar";
+import { FilterPanel } from "@/components/common/FilterPanel";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
+import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
 import { 
   Plus, 
-  Search, 
   Filter, 
   Award, 
   Calendar,
   ExternalLink,
-  Eye
+  Eye,
+  Edit,
+  Trash2
 } from "lucide-react";
 
-// Mock data - será substituído pela integração com Supabase
-const mockCertifications = [
+// Filter configurations for certifications
+const filterConfigs = [
   {
-    id: "1",
-    name: "AWS Solutions Architect Professional",
-    function: "Cloud Architecture",
-    public_link: "https://aws.amazon.com/certification/",
-    validity_date: "2024-12-15",
-    equivalence_services: ["Cloud Computing", "Infrastructure Design", "DevOps"],
-    approved_equivalence: true,
-    status: "valid" as const,
-    user_name: "João Silva",
-    created_at: "2024-01-10"
+    key: 'status',
+    label: 'Status',
+    type: 'select' as const,
+    options: [
+      { value: 'valid', label: 'Válidas' },
+      { value: 'expiring', label: 'Expirando' },
+      { value: 'expired', label: 'Expiradas' }
+    ]
   },
   {
-    id: "2", 
-    name: "PMP - Project Management Professional",
-    function: "Project Management",
-    public_link: "https://pmi.org/certifications/pmp",
-    validity_date: "2024-02-20",
-    equivalence_services: ["Project Management", "Team Leadership", "Process Improvement"],
-    approved_equivalence: false,
-    status: "expiring" as const,
-    user_name: "Maria Santos",
-    created_at: "2023-12-05"
+    key: 'approved_equivalence',
+    label: 'Equivalência',
+    type: 'select' as const,
+    options: [
+      { value: 'true', label: 'Aprovada' },
+      { value: 'false', label: 'Pendente' }
+    ]
   },
   {
-    id: "3",
-    name: "CISSP - Certified Information Systems Security Professional",
-    function: "Cybersecurity",
-    public_link: "https://isc2.org/certifications/cissp",
-    validity_date: "2023-11-30",
-    equivalence_services: ["Information Security", "Risk Management", "Compliance"],
-    approved_equivalence: true,
-    status: "expired" as const,
-    user_name: "Carlos Oliveira",
-    created_at: "2023-10-15"
+    key: 'validity_date',
+    label: 'Validade',
+    type: 'dateRange' as const,
+    options: []
   }
 ];
 
 export default function Certifications() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCertification, setSelectedCertification] = useState<CertificationWithProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const filteredCertifications = mockCertifications.filter(cert =>
-    cert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.function.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.user_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder
+  } = useAdvancedSearch();
+
+  const { data: certifications = [], isLoading } = useCertifications(searchTerm);
+  const deleteMutation = useDeleteCertification();
+
+  // Apply filters and pagination
+  let filteredCertifications = certifications.filter(cert => {
+    const statusFilter = filters.status;
+    const equivalenceFilter = filters.approved_equivalence;
+    const dateFilter = filters.validity_date;
+
+    if (statusFilter && cert.status !== statusFilter) return false;
+    if (equivalenceFilter !== undefined && cert.approved_equivalence.toString() !== equivalenceFilter) return false;
+    if (dateFilter?.from || dateFilter?.to) {
+      const certDate = new Date(cert.validity_date || '');
+      if (dateFilter.from && certDate < dateFilter.from) return false;
+      if (dateFilter.to && certDate > dateFilter.to) return false;
+    }
+
+    return true;
+  });
+
+  // Apply sorting
+  filteredCertifications = filteredCertifications.sort((a, b) => {
+    const factor = sortOrder === 'desc' ? -1 : 1;
+    switch (sortBy) {
+      case 'name':
+        return factor * a.name.localeCompare(b.name);
+      case 'validity_date':
+        return factor * (new Date(a.validity_date || '').getTime() - new Date(b.validity_date || '').getTime());
+      case 'created_at':
+        return factor * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      default:
+        return 0;
+    }
+  });
+
+  const totalItems = filteredCertifications.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCertifications = filteredCertifications.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleEdit = (certification: CertificationWithProfile) => {
+    setSelectedCertification(certification);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta certificação?')) {
+      await deleteMutation.mutateAsync(id);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setSelectedCertification(null);
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -71,31 +142,38 @@ export default function Certifications() {
         title="Gestão de Certificações"
         description="Controle de certificações profissionais e equivalências de serviços"
       >
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Button>
-        <Button 
-          className="btn-corporate gap-2"
-          onClick={() => setShowForm(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Nova Certificação
-        </Button>
+        <FilterPanel
+          filterConfigs={filterConfigs}
+          activeFilters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={() => setFilters({})}
+        />
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogTrigger asChild>
+            <Button className="btn-corporate gap-2">
+              <Plus className="h-4 w-4" />
+              Nova Certificação
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <CertificationForm
+              certification={selectedCertification || undefined}
+              onSuccess={handleFormSuccess}
+              onCancel={() => setShowForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </PageHeader>
 
-      {/* Search and Filters */}
+      {/* Search and Status */}
       <Card className="card-corporate mb-6">
         <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, função ou responsável..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchBar
+            placeholder="Buscar por nome, função ou responsável..."
+            value={searchTerm}
+            onChange={setSearchTerm}
+            className="flex-1"
+          />
           <div className="flex items-center gap-2">
             <StatusBadge status="valid" />
             <span className="text-sm text-muted-foreground">
@@ -107,7 +185,7 @@ export default function Certifications() {
 
       {/* Certifications Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredCertifications.map((certification) => (
+        {paginatedCertifications.map((certification) => (
           <Card key={certification.id} className="card-corporate">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -135,7 +213,9 @@ export default function Certifications() {
 
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Responsável:</p>
-                <p className="text-sm text-muted-foreground">{certification.user_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {certification.profiles?.full_name || 'Não informado'}
+                </p>
               </div>
 
               {certification.equivalence_services && certification.equivalence_services.length > 0 && (
@@ -158,9 +238,18 @@ export default function Certifications() {
               )}
 
               <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Button size="sm" variant="outline" className="flex-1 gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="gap-2"
+                  onClick={() => handleEdit(certification)}
+                >
+                  <Edit className="h-3 w-3" />
+                  Editar
+                </Button>
+                <Button size="sm" variant="outline" className="gap-2">
                   <Eye className="h-3 w-3" />
-                  Visualizar
+                  Ver
                 </Button>
                 {certification.public_link && (
                   <Button size="sm" variant="outline" className="gap-2">
@@ -168,13 +257,22 @@ export default function Certifications() {
                     Link
                   </Button>
                 )}
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="gap-2 text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(certification.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Excluir
+                </Button>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      {filteredCertifications.length === 0 && (
+      {paginatedCertifications.length === 0 && (
         <Card className="card-corporate">
           <div className="text-center py-12">
             <Award className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -182,7 +280,10 @@ export default function Certifications() {
               Nenhuma certificação encontrada
             </h3>
             <p className="text-muted-foreground mb-6">
-              Cadastre a primeira certificação para começar a gestão documental.
+              {searchTerm || Object.keys(filters).length > 0 
+                ? 'Ajuste os filtros ou termos de busca.' 
+                : 'Cadastre a primeira certificação para começar a gestão documental.'
+              }
             </p>
             <Button 
               className="btn-corporate gap-2"
@@ -193,6 +294,20 @@ export default function Certifications() {
             </Button>
           </div>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <div className="mt-6">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        </div>
       )}
     </Layout>
   );

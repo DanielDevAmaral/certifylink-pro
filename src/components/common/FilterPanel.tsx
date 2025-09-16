@@ -24,7 +24,7 @@ export interface FilterConfig {
 }
 
 interface FilterPanelProps {
-  filters: FilterConfig[];
+  filterConfigs: FilterConfig[];
   activeFilters: Record<string, any>;
   onFiltersChange: (filters: Record<string, any>) => void;
   onClearFilters: () => void;
@@ -32,7 +32,7 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
-  filters,
+  filterConfigs,
   activeFilters,
   onFiltersChange,
   onClearFilters,
@@ -111,7 +111,7 @@ export function FilterPanel({
                 </div>
 
                 <div className="space-y-4">
-                  {filters.map((filter, index) => (
+                  {filterConfigs.map((filter, index) => (
                     <div key={filter.key}>
                       <label className="text-sm font-medium text-foreground mb-2 block">
                         {filter.label}
@@ -161,7 +161,7 @@ export function FilterPanel({
                         </Popover>
                       )}
 
-                      {index < filters.length - 1 && <Separator className="mt-4" />}
+                      {index < filterConfigs.length - 1 && <Separator className="mt-4" />}
                     </div>
                   ))}
                 </div>
@@ -178,7 +178,7 @@ export function FilterPanel({
           {Object.entries(activeFilters).map(([key, value]) => {
             if (value === undefined || value === null || value === "") return null;
             
-            const filter = filters.find(f => f.key === key);
+            const filter = filterConfigs.find(f => f.key === key);
             if (!filter) return null;
 
             return (

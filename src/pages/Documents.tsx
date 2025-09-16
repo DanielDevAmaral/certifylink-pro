@@ -4,10 +4,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
+import { SearchBar } from "@/components/common/SearchBar";
+import { FilterPanel } from "@/components/common/FilterPanel";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
 import type { LegalDocument, LegalDocumentType } from "@/types";
 import { 
@@ -58,19 +61,85 @@ const categories: Array<{
   }
 ];
 
+// Filter configurations for documents
+const filterConfigs = [
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select' as const,
+    options: [
+      { value: 'valid', label: 'Válidos' },
+      { value: 'expiring', label: 'Expirando' },
+      { value: 'expired', label: 'Expirados' }
+    ]
+  },
+  {
+    key: 'is_sensitive',
+    label: 'Sensibilidade',
+    type: 'select' as const,
+    options: [
+      { value: 'true', label: 'Sensível' },
+      { value: 'false', label: 'Normal' }
+    ]
+  },
+  {
+    key: 'validity_date',
+    label: 'Validade',
+    type: 'date' as const,
+    options: []
+  }
+];
+
 export default function Documents() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<LegalDocumentType>("legal_qualification");
   const [selectedDocument, setSelectedDocument] = useState<LegalDocument | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage
+  } = useAdvancedSearch();
 
   const { documents = [], isLoading } = useLegalDocuments();
   const deleteMutation = useDeleteLegalDocument();
 
   const currentDocuments = documents.filter(doc => doc.document_type === activeTab);
-  const filteredDocuments = currentDocuments.filter(doc =>
-    doc.document_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
+  // Apply search and filters
+  let filteredDocuments = currentDocuments.filter(doc => {
+    // Search filter
+    const matchesSearch = doc.document_name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Status filter
+    const statusFilter = filters.status;
+    if (statusFilter && doc.status !== statusFilter) return false;
+    
+    // Sensitivity filter
+    const sensitiveFilter = filters.is_sensitive;
+    if (sensitiveFilter !== undefined && doc.is_sensitive.toString() !== sensitiveFilter) return false;
+    
+    // Date filter
+    const dateFilter = filters.validity_date;
+    if (dateFilter && doc.validity_date) {
+      const docDate = new Date(doc.validity_date);
+      const filterDate = new Date(dateFilter);
+      if (docDate.toDateString() !== filterDate.toDateString()) return false;
+    }
+    
+    return matchesSearch;
+  });
+
+  // Apply pagination
+  const totalItems = filteredDocuments.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedDocuments = filteredDocuments.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (document: LegalDocument) => {
     setSelectedDocument(document);
@@ -104,10 +173,12 @@ export default function Documents() {
         title="Documentos Jurídicos e Fiscais"
         description="Gestão centralizada da documentação para editais governamentais"
       >
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Button>
+        <FilterPanel
+          filterConfigs={filterConfigs}
+          activeFilters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={() => setFilters({})}
+        />
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button className="btn-corporate gap-2">
@@ -128,15 +199,12 @@ export default function Documents() {
       {/* Search Bar */}
       <Card className="card-corporate mb-6">
         <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar documentos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchBar
+            placeholder="Buscar documentos..."
+            value={searchTerm}
+            onChange={setSearchTerm}
+            className="flex-1"
+          />
         </div>
       </Card>
 
@@ -166,7 +234,7 @@ export default function Documents() {
         {categories.map((category) => (
           <TabsContent key={category.key} value={category.key} className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredDocuments.map((document) => (
+              {paginatedDocuments.map((document) => (
                 <Card key={document.id} className="card-corporate">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -233,7 +301,7 @@ export default function Documents() {
               ))}
             </div>
 
-            {filteredDocuments.length === 0 && (
+            {paginatedDocuments.length === 0 && (
               <Card className="card-corporate">
                 <div className="text-center py-12">
                   <category.icon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -241,7 +309,10 @@ export default function Documents() {
                     Nenhum documento encontrado
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Adicione documentos da categoria "{category.title}" para iniciar a gestão.
+                    {searchTerm || Object.keys(filters).length > 0
+                      ? 'Ajuste os filtros ou termos de busca.'
+                      : `Adicione documentos da categoria "${category.title}" para iniciar a gestão.`
+                    }
                   </p>
                   <Button className="btn-corporate gap-2" onClick={() => setShowForm(true)}>
                     <Plus className="h-4 w-4" />
@@ -249,6 +320,20 @@ export default function Documents() {
                   </Button>
                 </div>
               </Card>
+            )}
+
+            {/* Pagination for this category */}
+            {totalItems > 0 && (
+              <div className="mt-6">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
+              </div>
             )}
           </TabsContent>
         ))}

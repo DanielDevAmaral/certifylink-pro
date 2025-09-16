@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings, useUpdateSettings, useBackupSettings, useRestoreSettings } from "@/hooks/useSettings";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { toast } from "@/hooks/use-toast";
 import { 
   Settings as SettingsIcon, 
   Bot,
@@ -20,6 +22,107 @@ import {
 } from "lucide-react";
 
 export default function Settings() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: settings, isLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+  const backupSettings = useBackupSettings();
+  const restoreSettings = useRestoreSettings();
+
+  const [localSettings, setLocalSettings] = useState({
+    ai: {
+      provider: settings?.ai?.provider || '',
+      api_key: settings?.ai?.api_key || '',
+      prompt_template: settings?.ai?.prompt_template || '',
+      auto_suggestions: settings?.ai?.auto_suggestions || false
+    },
+    notifications: {
+      cert_expiry_days: settings?.notifications?.cert_expiry_days || 30,
+      doc_expiry_days: settings?.notifications?.doc_expiry_days || 30,
+      email_enabled: settings?.notifications?.email_enabled || false,
+      email_leaders: settings?.notifications?.email_leaders || false
+    },
+    export: {
+      company_name: settings?.export?.company_name || '',
+      logo_url: settings?.export?.logo_url || '',
+      footer_text: settings?.export?.footer_text || '',
+      cover_template: settings?.export?.cover_template || '',
+      auto_toc: settings?.export?.auto_toc || false
+    },
+    security: {
+      encryption_enabled: settings?.security?.encryption_enabled || false,
+      audit_logging: settings?.security?.audit_logging || false,
+      sensitive_access: settings?.security?.sensitive_access || false,
+      session_timeout: settings?.security?.session_timeout || 60
+    }
+  });
+
+  // Update local state when settings are loaded
+  useState(() => {
+    if (settings) {
+      setLocalSettings({
+        ai: settings.ai,
+        notifications: settings.notifications,
+        export: settings.export,
+        security: settings.security
+      });
+    }
+  });
+
+  const handleSave = async () => {
+    try {
+      await updateSettings.mutateAsync(localSettings);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  };
+
+  const handleBackup = async () => {
+    try {
+      await backupSettings.mutateAsync();
+    } catch (error) {
+      console.error('Error creating backup:', error);
+    }
+  };
+
+  const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await restoreSettings.mutateAsync(file);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error restoring settings:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao restaurar configurações. Verifique o arquivo.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const updateLocalSetting = (category: keyof typeof localSettings, key: string, value: any) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: value
+      }
+    }));
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      </Layout>
+    );
+  }
   const { data: settings, isLoading } = useSettings();
   const updateMutation = useUpdateSettings();
   const backupMutation = useBackupSettings();

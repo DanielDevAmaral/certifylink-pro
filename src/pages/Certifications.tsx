@@ -12,6 +12,8 @@ import { PaginationControls } from "@/components/common/PaginationControls";
 import { SkeletonList } from "@/components/common/SkeletonCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { ReportGenerator } from "@/components/reports/ReportGenerator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
 import { 
@@ -22,7 +24,9 @@ import {
   ExternalLink,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  FileDown,
+  ChevronDown
 } from "lucide-react";
 
 // Filter configurations for certifications
@@ -57,6 +61,7 @@ const filterConfigs = [
 export default function Certifications() {
   const [selectedCertification, setSelectedCertification] = useState<CertificationWithProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showReports, setShowReports] = useState(false);
 
   const {
     searchTerm,
@@ -156,6 +161,16 @@ export default function Certifications() {
           onFiltersChange={setFilters}
           onClearFilters={() => setFilters({})}
         />
+        
+        <Button
+          variant="outline"
+          onClick={() => setShowReports(!showReports)}
+          className="gap-2"
+        >
+          <FileDown className="h-4 w-4" />
+          Relatórios
+        </Button>
+        
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button className="btn-corporate gap-2">
@@ -172,6 +187,19 @@ export default function Certifications() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {/* Reports Section */}
+      <Collapsible open={showReports} onOpenChange={setShowReports}>
+        <CollapsibleContent>
+          <div className="mb-6">
+            <ReportGenerator 
+              data={filteredCertifications} 
+              type="certifications"
+              title="Certificações"
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Search and Status */}
       <Card className="card-corporate mb-6">

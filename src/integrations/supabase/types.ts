@@ -408,6 +408,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_test_data: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_unread_notifications_count: {
         Args: { user_uuid?: string }
         Returns: number

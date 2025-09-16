@@ -13,6 +13,7 @@ import Documents from "./pages/Documents";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
+import AdminDashboard from "./pages/AdminDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -75,6 +76,11 @@ const App = () => (
               <Route path="/audit" element={
                 <ProtectedRoute requiredRole="admin">
                   <AuditLogs />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

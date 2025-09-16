@@ -9,7 +9,8 @@ import {
   Settings, 
   Users,
   LogOut,
-  Database
+  Database,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,13 @@ export function Sidebar() {
       icon: Users,
       description: "Gerenciamento de usuários",
       requiredRole: 'leader'
+    },
+    {
+      name: "Painel Admin",
+      href: "/admin",
+      icon: Shield,
+      description: "Painel administrativo e testes",
+      requiredRole: 'admin'
     },
     {
       name: "Configurações",
@@ -105,7 +113,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* User Profile */}
+        {/* User Profile and Notification Center */}
         <div className="border-t border-border p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">

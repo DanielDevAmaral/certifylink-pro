@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings, useUpdateSettings, useBackupSettings, useRestoreSettings } from "@/hooks/useSettings";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { 
   Settings as SettingsIcon, 
   Bot,
@@ -18,13 +20,39 @@ import {
 } from "lucide-react";
 
 export default function Settings() {
+  const { data: settings, isLoading } = useSettings();
+  const updateMutation = useUpdateSettings();
+  const backupMutation = useBackupSettings();
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <PageHeader
         title="Configurações do Sistema"
         description="Personalize as configurações da plataforma de gestão documental"
       >
-        <Button className="btn-corporate gap-2">
+        <Button 
+          onClick={() => backupMutation.mutate()}
+          variant="outline" 
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Backup
+        </Button>
+        <Button 
+          onClick={() => updateMutation.mutate(settings || {})}
+          disabled={updateMutation.isPending}
+          className="btn-corporate gap-2"
+        >
           <Save className="h-4 w-4" />
           Salvar Alterações
         </Button>

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -33,31 +33,29 @@ export default function Settings() {
       provider: settings?.ai?.provider || '',
       api_key: settings?.ai?.api_key || '',
       prompt_template: settings?.ai?.prompt_template || '',
-      auto_suggestions: settings?.ai?.auto_suggestions || false
+      auto_suggestions: settings?.ai?.auto_suggestions ?? false
     },
     notifications: {
-      cert_expiry_days: settings?.notifications?.cert_expiry_days || 30,
-      doc_expiry_days: settings?.notifications?.doc_expiry_days || 30,
-      email_enabled: settings?.notifications?.email_enabled || false,
-      email_leaders: settings?.notifications?.email_leaders || false
+      expiration_alert_days: settings?.notifications?.expiration_alert_days ?? 30,
+      email_notifications: settings?.notifications?.email_notifications ?? true,
+      leader_notifications: settings?.notifications?.leader_notifications ?? true
     },
     export: {
       company_name: settings?.export?.company_name || '',
       logo_url: settings?.export?.logo_url || '',
       footer_text: settings?.export?.footer_text || '',
       cover_template: settings?.export?.cover_template || '',
-      auto_toc: settings?.export?.auto_toc || false
+      auto_toc: settings?.export?.auto_toc ?? true
     },
     security: {
-      encryption_enabled: settings?.security?.encryption_enabled || false,
-      audit_logging: settings?.security?.audit_logging || false,
-      sensitive_access: settings?.security?.sensitive_access || false,
-      session_timeout: settings?.security?.session_timeout || 60
+      data_encryption: settings?.security?.data_encryption ?? true,
+      audit_logging: settings?.security?.audit_logging ?? true,
+      sensitive_access: settings?.security?.sensitive_access ?? false,
+      session_timeout: settings?.security?.session_timeout ?? 60
     }
   });
 
-  // Update local state when settings are loaded
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setLocalSettings({
         ai: settings.ai,
@@ -66,7 +64,7 @@ export default function Settings() {
         security: settings.security
       });
     }
-  });
+  }, [settings]);
 
   const handleSave = async () => {
     try {
@@ -123,19 +121,6 @@ export default function Settings() {
       </Layout>
     );
   }
-  const { data: settings, isLoading } = useSettings();
-  const updateMutation = useUpdateSettings();
-  const backupMutation = useBackupSettings();
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -144,7 +129,7 @@ export default function Settings() {
         description="Personalize as configurações da plataforma de gestão documental"
       >
         <Button 
-          onClick={() => backupMutation.mutate()}
+          onClick={handleBackup}
           variant="outline" 
           className="gap-2"
         >
@@ -152,8 +137,8 @@ export default function Settings() {
           Backup
         </Button>
         <Button 
-          onClick={() => updateMutation.mutate(settings || {})}
-          disabled={updateMutation.isPending}
+          onClick={handleSave}
+          disabled={updateSettings.isPending}
           className="btn-corporate gap-2"
         >
           <Save className="h-4 w-4" />
@@ -199,13 +184,13 @@ export default function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ai-provider">Provedor de IA</Label>
-                  <Input id="ai-provider" placeholder="OpenAI, Anthropic, etc." />
+                  <Input id="ai-provider" placeholder="OpenAI, Anthropic, etc." value={localSettings.ai.provider} onChange={(e) => updateLocalSetting('ai', 'provider', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ai-key">Chave da API</Label>
                   <div className="relative">
                     <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="ai-key" type="password" placeholder="sk-..." className="pl-10" />
+                    <Input id="ai-key" type="password" placeholder="sk-..." className="pl-10" value={localSettings.ai.api_key} onChange={(e) => updateLocalSetting('ai', 'api_key', e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -216,7 +201,8 @@ export default function Settings() {
                   id="ai-prompt"
                   rows={4}
                   placeholder="Baseado na certificação fornecida, sugira serviços equivalentes que podem ser executados..."
-                  defaultValue="Baseado na certificação fornecida, sugira até 5 serviços técnicos específicos que o profissional certificado pode executar em projetos governamentais e corporativos. Foque em atividades práticas e mensuráveis relacionadas à área de conhecimento da certificação."
+                  value={localSettings.ai.prompt_template}
+                  onChange={(e) => updateLocalSetting('ai', 'prompt_template', e.target.value)}
                 />
               </div>
 
@@ -227,7 +213,7 @@ export default function Settings() {
                     Gerar equivalências automaticamente ao cadastrar certificações
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={localSettings.ai.auto_suggestions} onCheckedChange={(val) => updateLocalSetting('ai', 'auto_suggestions', val)} />
               </div>
             </div>
           </Card>
@@ -248,40 +234,28 @@ export default function Settings() {
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="warning-60">Primeiro Alerta (dias)</Label>
-                  <Input id="warning-60" type="number" defaultValue="60" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="warning-30">Segundo Alerta (dias)</Label>
-                  <Input id="warning-30" type="number" defaultValue="30" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="warning-7">Alerta Final (dias)</Label>
-                  <Input id="warning-7" type="number" defaultValue="7" />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="expiration-days">Dias antes do vencimento</Label>
+                <Input
+                  id="expiration-days"
+                  type="number"
+                  value={localSettings.notifications.expiration_alert_days}
+                  onChange={(e) => updateLocalSetting('notifications', 'expiration_alert_days', Number(e.target.value))}
+                />
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
                   <div>
-                    <p className="font-medium text-foreground">Email de Certificações</p>
+                    <p className="font-medium text-foreground">Notificações por Email</p>
                     <p className="text-sm text-muted-foreground">
-                      Notificações por email para certificações vencendo
+                      Receber notificações por email para vencimentos
                     </p>
                   </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
-                  <div>
-                    <p className="font-medium text-foreground">Email de Documentos</p>
-                    <p className="text-sm text-muted-foreground">
-                      Notificações por email para documentos vencendo
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={localSettings.notifications.email_notifications}
+                    onCheckedChange={(val) => updateLocalSetting('notifications', 'email_notifications', val)}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
@@ -291,7 +265,10 @@ export default function Settings() {
                       Líderes recebem alertas da equipe
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={localSettings.notifications.leader_notifications}
+                    onCheckedChange={(val) => updateLocalSetting('notifications', 'leader_notifications', val)}
+                  />
                 </div>
               </div>
             </div>
@@ -315,30 +292,34 @@ export default function Settings() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="company-name">Nome da Empresa</Label>
-                <Input id="company-name" placeholder="Nome da empresa para cabeçalho" />
+                <Input id="company-name" placeholder="Nome da empresa para cabeçalho" value={localSettings.export.company_name} onChange={(e) => updateLocalSetting('export', 'company_name', e.target.value)} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="company-logo">Logo da Empresa (URL)</Label>
-                <Input id="company-logo" placeholder="https://exemplo.com/logo.png" />
+                <Input id="company-logo" placeholder="https://exemplo.com/logo.png" value={localSettings.export.logo_url} onChange={(e) => updateLocalSetting('export', 'logo_url', e.target.value)} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="footer-text">Texto do Rodapé</Label>
-                  <Textarea
-                    id="footer-text"
-                    rows={3}
-                    placeholder="Texto personalizado para o rodapé dos documentos..."
-                  />
+                <Textarea
+                  id="footer-text"
+                  rows={3}
+                  placeholder="Texto personalizado para o rodapé dos documentos..."
+                  value={localSettings.export.footer_text}
+                  onChange={(e) => updateLocalSetting('export', 'footer_text', e.target.value)}
+                />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cover-template">Template de Capa</Label>
-                  <Textarea
-                    id="cover-template"
-                    rows={3}
-                    placeholder="Template HTML/CSS para capa dos relatórios..."
-                  />
+                <Textarea
+                  id="cover-template"
+                  rows={3}
+                  placeholder="Template HTML/CSS para capa dos relatórios..."
+                  value={localSettings.export.cover_template}
+                  onChange={(e) => updateLocalSetting('export', 'cover_template', e.target.value)}
+                />
                 </div>
               </div>
 
@@ -349,7 +330,7 @@ export default function Settings() {
                     Gerar índice automático nos relatórios PDF
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={localSettings.export.auto_toc} onCheckedChange={(val) => updateLocalSetting('export', 'auto_toc', val)} />
               </div>
             </div>
           </Card>
@@ -378,7 +359,7 @@ export default function Settings() {
                       Criptografar RG, CPF e documentos marcados como sensíveis
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={localSettings.security.data_encryption} onCheckedChange={(val) => updateLocalSetting('security', 'data_encryption', val)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
@@ -388,7 +369,7 @@ export default function Settings() {
                       Registrar todas as ações dos usuários
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={localSettings.security.audit_logging} onCheckedChange={(val) => updateLocalSetting('security', 'audit_logging', val)} />
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
@@ -398,13 +379,13 @@ export default function Settings() {
                       Apenas Admins podem ver documentos sensíveis
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={localSettings.security.sensitive_access} onCheckedChange={(val) => updateLocalSetting('security', 'sensitive_access', val)} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="session-timeout">Timeout de Sessão (minutos)</Label>
-                <Input id="session-timeout" type="number" defaultValue="60" />
+                <Input id="session-timeout" type="number" value={localSettings.security.session_timeout} onChange={(e) => updateLocalSetting('security', 'session_timeout', Number(e.target.value))} />
               </div>
 
               <div className="p-4 rounded-lg border border-warning/50 bg-warning-light">

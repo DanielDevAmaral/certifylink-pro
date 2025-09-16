@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { TeamForm } from "@/components/forms/TeamForm";
+import { TeamMemberForm } from "@/components/forms/TeamMemberForm";
+import { useTeams, useTeamStats } from "@/hooks/useTeams";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { 
   Plus, 
   Users, 
@@ -11,62 +17,9 @@ import {
   Shield,
   User,
   Mail,
-  Calendar
+  Calendar,
+  FileText
 } from "lucide-react";
-
-// Mock data - será substituído pela integração com Supabase
-const mockUsers = [
-  {
-    id: "1",
-    name: "João Silva",
-    email: "joao.silva@empresa.com",
-    role: "admin" as const,
-    team_name: "TI & Infraestrutura",
-    documents_count: 24,
-    last_activity: "2024-01-15",
-    created_at: "2023-06-15"
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    email: "maria.santos@empresa.com", 
-    role: "leader" as const,
-    team_name: "Projetos Especiais",
-    documents_count: 18,
-    last_activity: "2024-01-14",
-    created_at: "2023-08-20"
-  },
-  {
-    id: "3",
-    name: "Carlos Oliveira",
-    email: "carlos.oliveira@empresa.com",
-    role: "user" as const,
-    team_name: "Projetos Especiais",
-    documents_count: 15,
-    last_activity: "2024-01-13",
-    created_at: "2023-09-10"
-  },
-  {
-    id: "4",
-    name: "Ana Costa",
-    email: "ana.costa@empresa.com",
-    role: "user" as const,
-    team_name: "TI & Infraestrutura", 
-    documents_count: 12,
-    last_activity: "2024-01-12",
-    created_at: "2023-10-05"
-  },
-  {
-    id: "5",
-    name: "Roberto Lima",
-    email: "roberto.lima@empresa.com",
-    role: "leader" as const,
-    team_name: "Consultoria",
-    documents_count: 20,
-    last_activity: "2024-01-11",
-    created_at: "2023-07-18"
-  }
-];
 
 const roleConfig = {
   admin: {
@@ -90,11 +43,32 @@ const roleConfig = {
 };
 
 export default function Team() {
+  const { data: teams = [], isLoading: teamsLoading } = useTeams();
+  const { data: stats, isLoading: statsLoading } = useTeamStats();
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  const teams = Array.from(new Set(mockUsers.map(user => user.team_name)));
+  // Flatten all team members with their team info
+  const allMembers = teams.flatMap(team => 
+    team.team_members.map(member => ({
+      ...member,
+      team_name: team.name,
+      team_leader: team.leader_profile.full_name,
+      user_role: member.user_roles[0]?.role || 'user'
+    }))
+  );
+
+  if (teamsLoading || statsLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -102,14 +76,8 @@ export default function Team() {
         title="Gestão de Equipes"
         description="Controle de usuários, hierarquia e permissões de acesso"
       >
-        <Button variant="outline" className="gap-2">
-          <Users className="h-4 w-4" />
-          Importar CSV
-        </Button>
-        <Button className="btn-corporate gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Usuário
-        </Button>
+        <TeamMemberForm />
+        <TeamForm />
       </PageHeader>
 
       {/* Stats Cards */}
@@ -120,7 +88,7 @@ export default function Team() {
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{mockUsers.length}</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.totalUsers || 0}</p>
               <p className="text-sm text-muted-foreground">Total de Usuários</p>
             </div>
           </div>
@@ -132,7 +100,7 @@ export default function Team() {
               <Crown className="h-6 w-6 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{teams.length}</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.totalTeams || 0}</p>
               <p className="text-sm text-muted-foreground">Equipes Ativas</p>
             </div>
           </div>
@@ -144,9 +112,7 @@ export default function Team() {
               <Shield className="h-6 w-6 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">
-                {mockUsers.filter(u => u.role === 'admin').length}
-              </p>
+              <p className="text-2xl font-bold text-foreground">{stats?.totalAdmins || 0}</p>
               <p className="text-sm text-muted-foreground">Administradores</p>
             </div>
           </div>
@@ -155,69 +121,89 @@ export default function Team() {
 
       {/* Users List */}
       <div className="space-y-4">
-        {mockUsers.map((user) => {
-          const roleInfo = roleConfig[user.role];
-          const RoleIcon = roleInfo.icon;
+        {allMembers.length === 0 ? (
+          <Card className="card-corporate">
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-medium text-foreground mb-2">Nenhum membro encontrado</p>
+              <p className="text-muted-foreground">Comece criando uma equipe e adicionando membros.</p>
+            </div>
+          </Card>
+        ) : (
+          allMembers.map((member) => {
+            const roleInfo = roleConfig[member.user_role];
+            const RoleIcon = roleInfo.icon;
+            const documentCount = stats?.documentCounts[member.user_id] || 0;
 
-          return (
-            <Card key={user.id} className="card-corporate">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {getInitials(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
+            return (
+              <Card key={member.id} className="card-corporate">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {getInitials(member.profiles.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-foreground">{user.name}</h3>
-                      <Badge className={roleInfo.color}>
-                        <RoleIcon className="h-3 w-3 mr-1" />
-                        {roleInfo.label}
-                      </Badge>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold text-foreground">{member.profiles.full_name}</h3>
+                        <Badge className={roleInfo.color}>
+                          <RoleIcon className="h-3 w-3 mr-1" />
+                          {roleInfo.label}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          <span>{member.profiles.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{member.team_name}</span>
+                        </div>
+                        {member.profiles.position && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span>{member.profiles.position}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        <span>{user.email}</span>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-foreground">{documentCount}</p>
+                      <p className="text-xs text-muted-foreground">Documentos</p>
+                    </div>
+
+                    <div className="text-center">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          {formatDistanceToNow(new Date(member.joined_at), {
+                            addSuffix: true,
+                            locale: ptBR
+                          })}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        <span>{user.team_name}</span>
-                      </div>
+                      <p className="text-xs text-muted-foreground">Na equipe há</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Documentos
+                      </Button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-foreground">{user.documents_count}</p>
-                    <p className="text-xs text-muted-foreground">Documentos</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>{user.last_activity}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Última atividade</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline">
-                      Editar
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      Documentos
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })
+        )}
       </div>
 
       {/* Teams Summary */}
@@ -225,18 +211,22 @@ export default function Team() {
         <h3 className="text-lg font-semibold text-foreground mb-4">Resumo por Equipe</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {teams.map((team) => {
-            const teamUsers = mockUsers.filter(u => u.team_name === team);
-            const totalDocs = teamUsers.reduce((sum, u) => sum + u.documents_count, 0);
+            const teamMembers = team.team_members || [];
+            const totalDocs = teamMembers.reduce((sum, member) => {
+              return sum + (stats?.documentCounts[member.user_id] || 0);
+            }, 0);
+            const leaderCount = teamMembers.filter(member => 
+              member.user_roles[0]?.role === 'leader'
+            ).length;
             
             return (
-              <div key={team} className="p-4 rounded-lg bg-accent/30 border border-border">
-                <h4 className="font-semibold text-foreground mb-2">{team}</h4>
+              <div key={team.id} className="p-4 rounded-lg bg-accent/30 border border-border">
+                <h4 className="font-semibold text-foreground mb-2">{team.name}</h4>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>{teamUsers.length} membros</p>
+                  <p>{teamMembers.length} membros</p>
                   <p>{totalDocs} documentos totais</p>
-                  <p>
-                    {teamUsers.filter(u => u.role === 'leader').length} líder(es)
-                  </p>
+                  <p>{leaderCount} líder(es)</p>
+                  <p className="text-xs">Líder: {team.leader_profile.full_name}</p>
                 </div>
               </div>
             );

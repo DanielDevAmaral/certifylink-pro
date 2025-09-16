@@ -11,8 +11,7 @@ import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestatio
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { 
   Award, 

@@ -21,6 +21,19 @@ serve(async (req) => {
 
     console.log('Starting daily notifications and status update job...')
 
+    // First, let's check what documents are expiring
+    const { data: expiringDocs, error: queryError } = await supabaseAdmin
+      .from('certifications')
+      .select('id, name, validity_date, user_id')
+      .not('validity_date', 'is', null)
+      .lte('validity_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+      .gte('validity_date', new Date().toISOString())
+
+    console.log(`Found ${expiringDocs?.length || 0} expiring certifications`)
+    if (expiringDocs && expiringDocs.length > 0) {
+      console.log('Expiring docs:', JSON.stringify(expiringDocs, null, 2))
+    }
+
     // Call the database function to update document statuses and create notifications
     const { data, error } = await supabaseAdmin.rpc('update_document_status')
 
@@ -30,6 +43,7 @@ serve(async (req) => {
     }
 
     console.log('Document status update completed successfully')
+    console.log('RPC result:', data)
 
     // Get count of notifications created today for reporting
     const today = new Date().toISOString().split('T')[0]

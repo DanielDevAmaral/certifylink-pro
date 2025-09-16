@@ -14,16 +14,409 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      certifications: {
+        Row: {
+          ai_suggested_services: string[] | null
+          approved_equivalence: boolean | null
+          created_at: string
+          equivalence_services: string[] | null
+          function: string
+          id: string
+          name: string
+          public_link: string | null
+          screenshot_url: string | null
+          status: Database["public"]["Enums"]["document_status"]
+          updated_at: string
+          user_id: string
+          validity_date: string | null
+        }
+        Insert: {
+          ai_suggested_services?: string[] | null
+          approved_equivalence?: boolean | null
+          created_at?: string
+          equivalence_services?: string[] | null
+          function: string
+          id?: string
+          name: string
+          public_link?: string | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id: string
+          validity_date?: string | null
+        }
+        Update: {
+          ai_suggested_services?: string[] | null
+          approved_equivalence?: boolean | null
+          created_at?: string
+          equivalence_services?: string[] | null
+          function?: string
+          id?: string
+          name?: string
+          public_link?: string | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id?: string
+          validity_date?: string | null
+        }
+        Relationships: []
+      }
+      legal_documents: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_subtype: string | null
+          document_type: Database["public"]["Enums"]["legal_document_type"]
+          document_url: string
+          encrypted_data: string | null
+          id: string
+          is_sensitive: boolean | null
+          status: Database["public"]["Enums"]["document_status"]
+          updated_at: string
+          user_id: string
+          validity_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_subtype?: string | null
+          document_type: Database["public"]["Enums"]["legal_document_type"]
+          document_url: string
+          encrypted_data?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id: string
+          validity_date?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_subtype?: string | null
+          document_type?: Database["public"]["Enums"]["legal_document_type"]
+          document_url?: string
+          encrypted_data?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id?: string
+          validity_date?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          related_document_id: string | null
+          related_document_type:
+            | Database["public"]["Enums"]["document_category"]
+            | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          related_document_id?: string | null
+          related_document_type?:
+            | Database["public"]["Enums"]["document_category"]
+            | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          related_document_id?: string | null
+          related_document_type?:
+            | Database["public"]["Enums"]["document_category"]
+            | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          position: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          leader_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          leader_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          leader_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      technical_attestations: {
+        Row: {
+          client_name: string
+          created_at: string
+          document_url: string | null
+          id: string
+          issuer_contact: string | null
+          issuer_name: string
+          issuer_position: string | null
+          project_object: string
+          project_period_end: string | null
+          project_period_start: string | null
+          project_value: number | null
+          related_certifications: string[] | null
+          status: Database["public"]["Enums"]["document_status"]
+          updated_at: string
+          user_id: string
+          validity_date: string | null
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          issuer_contact?: string | null
+          issuer_name: string
+          issuer_position?: string | null
+          project_object: string
+          project_period_end?: string | null
+          project_period_start?: string | null
+          project_value?: number | null
+          related_certifications?: string[] | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id: string
+          validity_date?: string | null
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          issuer_contact?: string | null
+          issuer_name?: string
+          issuer_position?: string | null
+          project_object?: string
+          project_period_end?: string | null
+          project_period_start?: string | null
+          project_value?: number | null
+          related_certifications?: string[] | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id?: string
+          validity_date?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      is_team_leader: {
+        Args: { target_user_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      document_category:
+        | "certification"
+        | "technical_attestation"
+        | "legal_document"
+      document_status: "valid" | "expiring" | "expired" | "pending"
+      legal_document_type:
+        | "legal_qualification"
+        | "fiscal_regularity"
+        | "economic_financial"
+        | "common_declarations"
+      user_role: "user" | "leader" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +543,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      document_category: [
+        "certification",
+        "technical_attestation",
+        "legal_document",
+      ],
+      document_status: ["valid", "expiring", "expired", "pending"],
+      legal_document_type: [
+        "legal_qualification",
+        "fiscal_regularity",
+        "economic_financial",
+        "common_declarations",
+      ],
+      user_role: ["user", "leader", "admin"],
+    },
   },
 } as const

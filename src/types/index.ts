@@ -1,11 +1,28 @@
 // Corporate Document Management Platform Types
 
+export type UserRole = 'user' | 'leader' | 'admin';
+export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending';
+export type DocumentCategory = 'certification' | 'technical_attestation' | 'legal_document';
+export type LegalDocumentType = 'legal_qualification' | 'fiscal_regularity' | 'economic_financial' | 'common_declarations';
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'user' | 'leader' | 'admin';
+  role: UserRole;
   team_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  department?: string;
+  position?: string;
+  phone?: string;
   created_at: string;
   updated_at: string;
 }
@@ -49,12 +66,6 @@ export interface TechnicalCertificate {
   updated_at: string;
 }
 
-export type DocumentCategory = 
-  | 'legal_qualification'
-  | 'tax_regularity' 
-  | 'economic_financial'
-  | 'common_declarations';
-
 export type DocumentSubtype = 
   // Legal Qualification
   | 'social_contract'
@@ -79,13 +90,13 @@ export type DocumentSubtype =
 export interface LegalDocument {
   id: string;
   user_id: string;
-  category: DocumentCategory;
+  category: LegalDocumentType;
   subtype: DocumentSubtype;
   name: string;
   pdf_url: string;
   validity_date?: string;
   is_sensitive: boolean;
-  status: 'valid' | 'expiring' | 'expired' | 'not_applicable';
+  status: DocumentStatus;
   created_at: string;
   updated_at: string;
 }
@@ -105,7 +116,7 @@ export interface ExportReport {
   id: string;
   user_id: string;
   type: 'pdf' | 'docx';
-  categories: DocumentCategory[];
+  categories: LegalDocumentType[];
   generated_at: string;
   download_url: string;
   status: 'generating' | 'ready' | 'expired';

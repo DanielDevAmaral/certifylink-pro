@@ -75,6 +75,33 @@ serve(async (req) => {
       console.log('Cleaned up expired notifications older than 30 days')
     }
 
+    // Test manual execution by creating a test notification
+    const testUserId = await supabaseAdmin
+      .from('profiles')
+      .select('user_id')
+      .limit(1)
+      .single()
+
+    if (testUserId.data) {
+      const { data: testNotif, error: testError } = await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: testUserId.data.user_id,
+          title: 'Sistema de Notificações Ativo',
+          message: 'Sistema de notificações automáticas está funcionando corretamente.',
+          notification_type: 'info',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        })
+        .select('id')
+        .single()
+
+      if (testError) {
+        console.error('Error creating test notification:', testError)
+      } else {
+        console.log('Test notification created successfully:', testNotif.id)
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true,

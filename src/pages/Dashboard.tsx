@@ -4,6 +4,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
 import { 
   Award, 
   FileCheck, 
@@ -12,68 +13,36 @@ import {
   Clock,
   Plus,
   Download,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
-
-// Mock data - será substituído pela integração com Supabase
-const mockStats = {
-  total_certifications: 24,
-  expiring_certifications: 3,
-  total_certificates: 18,
-  expiring_certificates: 2,
-  total_documents: 42,
-  expiring_documents: 5,
-  recent_uploads: 8,
-  completion_percentage: 85
-};
-
-const mockRecentActivity = [
-  {
-    id: 1,
-    type: "certification",
-    title: "Certificação AWS Solutions Architect",
-    user: "João Silva",
-    date: "2024-01-15",
-    status: "valid" as const
-  },
-  {
-    id: 2,
-    type: "certificate",
-    title: "Atestado Técnico - Projeto Alpha",
-    user: "Maria Santos",
-    date: "2024-01-14", 
-    status: "expiring" as const
-  },
-  {
-    id: 3,
-    type: "document",
-    title: "Certidão Negativa Federal",
-    user: "Admin",
-    date: "2024-01-13",
-    status: "valid" as const
-  }
-];
-
-const mockExpiringItems = [
-  {
-    id: 1,
-    title: "Certificação PMP",
-    user: "Carlos Oliveira",
-    expires_in: "15 dias",
-    type: "certification",
-    status: "expiring" as const
-  },
-  {
-    id: 2,
-    title: "CND Estadual",
-    user: "Sistema",
-    expires_in: "30 dias",
-    type: "document", 
-    status: "expiring" as const
-  }
-];
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity();
+  const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+  };
+
+  const formatExpiryDays = (days: number) => {
+    if (days <= 0) return 'Vencido';
+    if (days === 1) return '1 dia';
+    return `${days} dias`;
+  };
+
+  const getTypeLabel = (type: string) => {
+    const labels = {
+      certification: 'Certificação',
+      certificate: 'Atestado',
+      document: 'Documento'
+    };
+    return labels[type as keyof typeof labels] || type;
+  };
+
   return (
     <Layout>
       <PageHeader
@@ -92,34 +61,49 @@ export default function Dashboard() {
 
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Certificações"
-          value={mockStats.total_certifications}
-          description={`${mockStats.expiring_certifications} vencendo em breve`}
-          icon={Award}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <StatsCard
-          title="Atestados Técnicos"
-          value={mockStats.total_certificates}
-          description={`${mockStats.expiring_certificates} vencendo em breve`}
-          icon={FileCheck}
-          trend={{ value: 8, isPositive: true }}
-        />
-        <StatsCard
-          title="Documentos Jurídicos"
-          value={mockStats.total_documents}
-          description={`${mockStats.expiring_documents} vencendo em breve`}
-          icon={Scale}
-          trend={{ value: 5, isPositive: false }}
-        />
-        <StatsCard
-          title="Taxa de Conformidade"
-          value={`${mockStats.completion_percentage}%`}
-          description="Meta: 95% de documentos válidos"
-          icon={TrendingUp}
-          trend={{ value: 3, isPositive: true }}
-        />
+        {statsLoading ? (
+          // Loading skeleton
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="card-corporate">
+              <div className="animate-pulse">
+                <div className="h-4 bg-muted rounded w-24 mb-2"></div>
+                <div className="h-8 bg-muted rounded w-16 mb-1"></div>
+                <div className="h-3 bg-muted rounded w-32"></div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <>
+            <StatsCard
+              title="Certificações"
+              value={stats?.total_certifications || 0}
+              description={`${stats?.expiring_certifications || 0} vencendo em breve`}
+              icon={Award}
+              trend={{ value: 12, isPositive: true }}
+            />
+            <StatsCard
+              title="Atestados Técnicos"
+              value={stats?.total_certificates || 0}
+              description={`${stats?.expiring_certificates || 0} vencendo em breve`}
+              icon={FileCheck}
+              trend={{ value: 8, isPositive: true }}
+            />
+            <StatsCard
+              title="Documentos Jurídicos"
+              value={stats?.total_documents || 0}
+              description={`${stats?.expiring_documents || 0} vencendo em breve`}
+              icon={Scale}
+              trend={{ value: 5, isPositive: false }}
+            />
+            <StatsCard
+              title="Taxa de Conformidade"
+              value={`${stats?.completion_percentage || 0}%`}
+              description="Meta: 95% de documentos válidos"
+              icon={TrendingUp}
+              trend={{ value: 3, isPositive: true }}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -130,17 +114,27 @@ export default function Dashboard() {
             <Clock className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="space-y-4">
-            {mockRecentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{activity.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {activity.user} • {activity.date}
-                  </p>
-                </div>
-                <StatusBadge status={activity.status} />
+            {activityLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ))}
+            ) : recentActivity && recentActivity.length > 0 ? (
+              recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">{activity.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.user_name} • {formatDate(activity.created_at)} • {getTypeLabel(activity.type)}
+                    </p>
+                  </div>
+                  <StatusBadge status={activity.status} />
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Nenhuma atividade recente</p>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -151,18 +145,23 @@ export default function Dashboard() {
             <AlertCircle className="h-5 w-5 text-warning" />
           </div>
           <div className="space-y-4">
-            {mockExpiringItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light">
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{item.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.user} • Vence em {item.expires_in}
-                  </p>
-                </div>
-                <StatusBadge status={item.status} />
+            {expiringLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ))}
-            {mockExpiringItems.length === 0 && (
+            ) : expiringItems && expiringItems.length > 0 ? (
+              expiringItems.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light">
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.user_name} • Vence em {formatExpiryDays(item.expires_in_days)} • {getTypeLabel(item.type)}
+                    </p>
+                  </div>
+                  <StatusBadge status={item.status} />
+                </div>
+              ))
+            ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Nenhum item vencendo em breve</p>
               </div>

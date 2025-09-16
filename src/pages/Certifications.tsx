@@ -9,6 +9,9 @@ import { CertificationForm } from "@/components/forms/CertificationForm";
 import { SearchBar } from "@/components/common/SearchBar";
 import { FilterPanel } from "@/components/common/FilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
+import { SkeletonList } from "@/components/common/SkeletonCard";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
 import { 
@@ -128,16 +131,21 @@ export default function Certifications() {
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
+      <ErrorBoundary>
+        <Layout>
+          <PageHeader
+            title="Gestão de Certificações"
+            description="Controle de certificações profissionais e equivalências de serviços"
+          />
+          <SkeletonList count={6} />
+        </Layout>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <Layout>
+    <ErrorBoundary>
+      <Layout>
       <PageHeader
         title="Gestão de Certificações"
         description="Controle de certificações profissionais e equivalências de serviços"
@@ -273,27 +281,17 @@ export default function Certifications() {
       </div>
 
       {paginatedCertifications.length === 0 && (
-        <Card className="card-corporate">
-          <div className="text-center py-12">
-            <Award className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              Nenhuma certificação encontrada
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              {searchTerm || Object.keys(filters).length > 0 
-                ? 'Ajuste os filtros ou termos de busca.' 
-                : 'Cadastre a primeira certificação para começar a gestão documental.'
-              }
-            </p>
-            <Button 
-              className="btn-corporate gap-2"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Nova Certificação
-            </Button>
-          </div>
-        </Card>
+        <EmptyState
+          icon={Award}
+          title="Nenhuma certificação encontrada"
+          description={
+            searchTerm || Object.keys(filters).length > 0 
+              ? 'Ajuste os filtros ou termos de busca.' 
+              : 'Cadastre a primeira certificação para começar a gestão documental.'
+          }
+          actionLabel="Nova Certificação"
+          onAction={() => setShowForm(true)}
+        />
       )}
 
       {/* Pagination */}
@@ -309,6 +307,7 @@ export default function Certifications() {
           />
         </div>
       )}
-    </Layout>
+      </Layout>
+    </ErrorBoundary>
   );
 }

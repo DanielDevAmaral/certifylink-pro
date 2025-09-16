@@ -5,6 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { PageLoadingSkeleton } from "@/components/common/LoadingStates";
 import { TeamForm } from "@/components/forms/TeamForm";
 import { TeamMemberForm } from "@/components/forms/TeamMemberForm";
 import { useTeams, useTeamStats } from "@/hooks/useTeams";
@@ -62,16 +65,16 @@ export default function Team() {
 
   if (teamsLoading || statsLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LoadingSpinner />
-        </div>
-      </Layout>
+      <PageLoadingSkeleton 
+        title="Gestão de Equipes"
+        description="Controle de usuários, hierarquia e permissões de acesso"
+      />
     );
   }
 
   return (
-    <Layout>
+    <ErrorBoundary>
+      <Layout>
       <PageHeader
         title="Gestão de Equipes"
         description="Controle de usuários, hierarquia e permissões de acesso"
@@ -122,13 +125,13 @@ export default function Team() {
       {/* Users List */}
       <div className="space-y-4">
         {allMembers.length === 0 ? (
-          <Card className="card-corporate">
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-lg font-medium text-foreground mb-2">Nenhum membro encontrado</p>
-              <p className="text-muted-foreground">Comece criando uma equipe e adicionando membros.</p>
-            </div>
-          </Card>
+          <EmptyState
+            icon={Users}
+            title="Nenhum membro encontrado"
+            description="Comece criando uma equipe e adicionando membros."
+            actionLabel="Adicionar Membro"
+            onAction={() => {/* Handle add member */}}
+          />
         ) : (
           allMembers.map((member) => {
             const roleInfo = roleConfig[member.user_role];
@@ -233,6 +236,7 @@ export default function Team() {
           })}
         </div>
       </Card>
-    </Layout>
+      </Layout>
+    </ErrorBoundary>
   );
 }

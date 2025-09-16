@@ -10,6 +10,10 @@ import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { SearchBar } from "@/components/common/SearchBar";
 import { FilterPanel } from "@/components/common/FilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
+import { SkeletonList } from "@/components/common/SkeletonCard";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { PageLoadingSkeleton } from "@/components/common/LoadingStates";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
 import type { LegalDocument, LegalDocumentType } from "@/types";
@@ -159,16 +163,16 @@ export default function Documents() {
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
+      <PageLoadingSkeleton 
+        title="Documentos Jurídicos e Fiscais"
+        description="Gestão centralizada da documentação para editais governamentais"
+      />
     );
   }
 
   return (
-    <Layout>
+    <ErrorBoundary>
+      <Layout>
       <PageHeader
         title="Documentos Jurídicos e Fiscais"
         description="Gestão centralizada da documentação para editais governamentais"
@@ -302,24 +306,17 @@ export default function Documents() {
             </div>
 
             {paginatedDocuments.length === 0 && (
-              <Card className="card-corporate">
-                <div className="text-center py-12">
-                  <category.icon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">
-                    Nenhum documento encontrado
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    {searchTerm || Object.keys(filters).length > 0
-                      ? 'Ajuste os filtros ou termos de busca.'
-                      : `Adicione documentos da categoria "${category.title}" para iniciar a gestão.`
-                    }
-                  </p>
-                  <Button className="btn-corporate gap-2" onClick={() => setShowForm(true)}>
-                    <Plus className="h-4 w-4" />
-                    Adicionar Documento
-                  </Button>
-                </div>
-              </Card>
+              <EmptyState
+                icon={category.icon}
+                title="Nenhum documento encontrado"
+                description={
+                  searchTerm || Object.keys(filters).length > 0
+                    ? 'Ajuste os filtros ou termos de busca.'
+                    : `Adicione documentos da categoria "${category.title}" para iniciar a gestão.`
+                }
+                actionLabel="Adicionar Documento"
+                onAction={() => setShowForm(true)}
+              />
             )}
 
             {/* Pagination for this category */}
@@ -338,6 +335,7 @@ export default function Documents() {
           </TabsContent>
         ))}
       </Tabs>
-    </Layout>
+      </Layout>
+    </ErrorBoundary>
   );
 }

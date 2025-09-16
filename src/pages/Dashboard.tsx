@@ -4,6 +4,10 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { CertificationForm } from "@/components/forms/CertificationForm";
+import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestationForm";
+import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
 import { 
   Award, 
@@ -18,11 +22,14 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useState } from "react";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: recentActivity, isLoading: activityLoading } = useRecentActivity();
   const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
+  
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
@@ -174,18 +181,41 @@ export default function Dashboard() {
       <Card className="card-corporate mt-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Ações Rápidas</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button variant="outline" className="h-auto p-4 flex-col gap-2">
-            <Award className="h-6 w-6" />
-            <span>Nova Certificação</span>
-          </Button>
-          <Button variant="outline" className="h-auto p-4 flex-col gap-2">
-            <FileCheck className="h-6 w-6" />
-            <span>Novo Atestado</span>
-          </Button>
-          <Button variant="outline" className="h-auto p-4 flex-col gap-2">
-            <Scale className="h-6 w-6" />
-            <span>Novo Documento</span>
-          </Button>
+          <Dialog open={openDialog === 'certification'} onOpenChange={(open) => setOpenDialog(open ? 'certification' : null)}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="h-auto p-4 flex-col gap-2">
+                <Award className="h-6 w-6" />
+                <span>Nova Certificação</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <CertificationForm onSuccess={() => setOpenDialog(null)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openDialog === 'attestation'} onOpenChange={(open) => setOpenDialog(open ? 'attestation' : null)}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="h-auto p-4 flex-col gap-2">
+                <FileCheck className="h-6 w-6" />
+                <span>Novo Atestado</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <TechnicalAttestationForm onSuccess={() => setOpenDialog(null)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openDialog === 'document'} onOpenChange={(open) => setOpenDialog(open ? 'document' : null)}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="h-auto p-4 flex-col gap-2">
+                <Scale className="h-6 w-6" />
+                <span>Novo Documento</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <LegalDocumentForm onSuccess={() => setOpenDialog(null)} />
+            </DialogContent>
+          </Dialog>
         </div>
       </Card>
     </Layout>

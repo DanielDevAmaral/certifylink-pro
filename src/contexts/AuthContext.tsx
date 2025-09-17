@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 interface AuthContextType {
   user: User | null;
@@ -35,44 +36,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const isPageVisible = usePageVisibility();
 
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile and role
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
-        } else {
-          setUserRole(null);
-          setProfile(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = useCallback(async (userId: string) => {
+    console.log('🔍 AuthContext: Fetching user data for:', userId);
+    
     try {
       // Fetch user role
       const { data: roleData } = await supabase
@@ -82,6 +50,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .single();
 
       if (roleData) {
+        console.log('👤 AuthContext: User role fetched:', roleData.role);
         setUserRole(roleData.role);
       }
 
@@ -93,12 +62,61 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .single();
 
       if (profileData) {
+        console.log('📄 AuthContext: User profile fetched');
         setProfile(profileData);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ AuthContext: Error fetching user data:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    console.log('🚀 AuthContext: Setting up auth state listener');
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('🔄 AuthContext: Auth state changed:', event, !!session);
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user && isPageVisible) {
+          // Defer fetchUserData to prevent blocking
+          setTimeout(() => {
+            fetchUserData(session.user.id);
+          }, 100);
+        } else {
+          console.log('🚪 AuthContext: User signed out or page not visible');
+          setUserRole(null);
+          setProfile(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session only once
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 AuthContext: Checking existing session:', !!session);
+      
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        
+        if (isPageVisible) {
+          fetchUserData(session.user.id);
+        }
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      console.log('🧹 AuthContext: Cleaning up auth listener');
+      subscription.unsubscribe();
+    };
+  }, [fetchUserData, isPageVisible]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;

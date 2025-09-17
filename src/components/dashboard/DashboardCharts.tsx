@@ -2,12 +2,13 @@ import { Card } from "@/components/ui/card";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { AnalyticsData } from "@/hooks/useDashboardAnalytics";
+import { memo, useMemo } from 'react';
 
 interface DashboardChartsProps {
   analytics?: AnalyticsData;
 }
 
-export function DashboardCharts({ analytics }: DashboardChartsProps) {
+const DashboardCharts = memo(function DashboardCharts({ analytics }: DashboardChartsProps) {
   if (!analytics) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -18,22 +19,24 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
     );
   }
 
-  // Prepare data for charts using analytics data
-  const documentData = analytics.categoryBreakdown.map(category => ({
-    name: category.category,
-    total: category.count,
-    vencendo: category.expiring,
-    válidos: category.valid,
-    vencidos: category.expired
-  }));
+  // Memoize chart data to prevent recalculations
+  const documentData = useMemo(() => 
+    analytics.categoryBreakdown.map(category => ({
+      name: category.category,
+      total: category.count,
+      vencendo: category.expiring,
+      válidos: category.valid,
+      vencidos: category.expired
+    })), [analytics.categoryBreakdown]
+  );
 
-  const statusData = [
+  const statusData = useMemo(() => [
     { name: 'Válidos', value: analytics.validDocuments, color: '#10B981' },
     { name: 'Vencendo', value: analytics.expiringDocuments, color: '#F59E0B' },
     { name: 'Vencidos', value: analytics.expiredDocuments, color: '#EF4444' }
-  ];
+  ], [analytics.validDocuments, analytics.expiringDocuments, analytics.expiredDocuments]);
 
-  const complianceData = analytics.monthlyTrend;
+  const complianceData = useMemo(() => analytics.monthlyTrend, [analytics.monthlyTrend]);
 
   const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
@@ -163,4 +166,6 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
       </Card>
     </div>
   );
-}
+});
+
+export { DashboardCharts };

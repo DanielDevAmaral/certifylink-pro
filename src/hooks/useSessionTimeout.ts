@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 interface SessionTimeoutConfig {
   timeout: number; // in milliseconds
@@ -12,6 +13,7 @@ interface SessionTimeoutConfig {
 export function useSessionTimeout(config: SessionTimeoutConfig) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const isPageVisible = usePageVisibility();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
@@ -53,7 +55,7 @@ export function useSessionTimeout(config: SessionTimeoutConfig) {
   }, [user, toast, config]);
 
   const resetTimer = useCallback(() => {
-    if (!user) return;
+    if (!user || !isPageVisible) return;
     
     lastActivityRef.current = Date.now();
     clearTimers();
@@ -63,22 +65,22 @@ export function useSessionTimeout(config: SessionTimeoutConfig) {
     
     // Set timeout timer
     timeoutRef.current = setTimeout(handleTimeout, config.timeout);
-  }, [user, config.timeout, config.warningTime, clearTimers, handleWarning, handleTimeout]);
+  }, [user, isPageVisible, config.timeout, config.warningTime, clearTimers, handleWarning, handleTimeout]);
 
   const trackActivity = useCallback(() => {
     resetTimer();
   }, [resetTimer]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !isPageVisible) {
       clearTimers();
       return;
     }
 
-    // Set up activity listeners
+    // Set up activity listeners only when page is visible
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
     
-    const throttledTrackActivity = throttle(trackActivity, 1000);
+    const throttledTrackActivity = throttle(trackActivity, 2000); // More aggressive throttling
     
     events.forEach(event => {
       document.addEventListener(event, throttledTrackActivity, true);
@@ -93,7 +95,7 @@ export function useSessionTimeout(config: SessionTimeoutConfig) {
         document.removeEventListener(event, throttledTrackActivity, true);
       });
     };
-  }, [user, trackActivity, resetTimer, clearTimers]);
+  }, [user, isPageVisible, trackActivity, resetTimer, clearTimers]);
 
   return {
     resetTimer,

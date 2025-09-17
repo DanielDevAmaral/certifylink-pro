@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMemo } from 'react';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 export interface AnalyticsData {
   totalDocuments: number;
@@ -23,10 +25,14 @@ export interface AnalyticsData {
 }
 
 export function useDashboardAnalytics() {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
+  const isPageVisible = usePageVisibility();
+
+  const currentDate = useMemo(() => new Date(), []);
+  const sixMonthsAgo = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1), [currentDate]);
 
   return useQuery({
-    queryKey: ['dashboard-analytics', user?.id, userRole],
+    queryKey: ['dashboard-analytics', user?.id],
     queryFn: async (): Promise<AnalyticsData> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -171,7 +177,9 @@ export function useDashboardAnalytics() {
         categoryBreakdown
       };
     },
-    enabled: !!user,
+    enabled: !!user && isPageVisible,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }

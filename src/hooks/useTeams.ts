@@ -76,25 +76,14 @@ export function useTeams() {
 
       if (profilesError) throw profilesError;
 
-      // Buscar roles dos usuários ordenados por prioridade
+      // Buscar roles dos usuários
       const userIds = teamMembers?.map(member => member.user_id) || [];
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('user_id', userIds)
-        .order('role', { ascending: false }); // admin -> user -> leader (ordem alfabética reversa)
+        .in('user_id', userIds);
 
       if (rolesError) throw rolesError;
-
-      // Função para determinar o role principal baseado na hierarquia
-      const getPrincipalRole = (roles: { role: string }[]) => {
-        const rolePriority = { admin: 3, leader: 2, user: 1 };
-        return roles.reduce((highest, current) => {
-          const currentPriority = rolePriority[current.role as keyof typeof rolePriority] || 0;
-          const highestPriority = rolePriority[highest.role as keyof typeof rolePriority] || 0;
-          return currentPriority > highestPriority ? current : highest;
-        }, roles[0]);
-      };
 
       // Combinar os dados
       const teams: TeamWithMembers[] = teamsData?.map(team => {

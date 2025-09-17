@@ -24,9 +24,10 @@ interface UserActionsDropdownProps {
     status: 'active' | 'inactive' | 'suspended' | 'terminated';
     role: 'user' | 'leader' | 'admin';
   };
+  isTeamMember?: boolean; // Indica se o usuário está na equipe do líder atual
 }
 
-export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
+export function UserActionsDropdown({ user, isTeamMember = false }: UserActionsDropdownProps) {
   const { userRole } = useAuth();
   const navigate = useNavigate();
   const [userManagementDialogOpen, setUserManagementDialogOpen] = useState(false);
@@ -39,8 +40,12 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
     navigate(`/documents?user=${user.user_id}`);
   };
 
-  // If user is not admin, show limited options
-  if (userRole !== 'admin') {
+  // Check permissions based on role and team membership
+  const canManageUser = userRole === 'admin' || (userRole === 'leader' && isTeamMember);
+  const canChangeRole = userRole === 'admin'; // Only admins can change roles
+  
+  // If user has no management permissions, show limited options
+  if (!canManageUser) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -72,10 +77,12 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
             Editar Perfil
           </DropdownMenuItem>
           
-          <DropdownMenuItem onClick={() => setRoleChangeDialogOpen(true)}>
-            <Settings className="mr-2 h-4 w-4" />
-            Alterar Papel
-          </DropdownMenuItem>
+          {canChangeRole && (
+            <DropdownMenuItem onClick={() => setRoleChangeDialogOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Alterar Papel
+            </DropdownMenuItem>
+          )}
           
           <DropdownMenuSeparator />
           
@@ -137,11 +144,13 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
         onOpenChange={setTerminationDialogOpen}
       />
 
-      <RoleChangeDialog
-        user={user}
-        open={roleChangeDialogOpen}
-        onOpenChange={setRoleChangeDialogOpen}
-      />
+      {canChangeRole && (
+        <RoleChangeDialog
+          user={user}
+          open={roleChangeDialogOpen}
+          onOpenChange={setRoleChangeDialogOpen}
+        />
+      )}
 
       <UserStatusHistoryDialog
         user={user}

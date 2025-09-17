@@ -15,6 +15,7 @@ import { UserActionsDropdown } from "@/components/ui/user-actions-dropdown";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTeams, useTeamStats } from "@/hooks/useTeams";
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
@@ -56,6 +57,7 @@ const roleConfig = {
 };
 
 export default function Team() {
+  const { user: currentUser, userRole } = useAuth();
   const { data: teams = [], isLoading: teamsLoading } = useTeams();
   const { data: stats, isLoading: statsLoading } = useTeamStats();
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +66,18 @@ export default function Team() {
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  // Check if current user is leader of the member's team
+  const isCurrentUserLeaderOf = (member: any) => {
+    if (userRole === 'admin') return true; // Admins have access to everyone
+    if (userRole !== 'leader') return false;
+    
+    const memberTeam = teams.find(team => 
+      team.team_members.some(tm => tm.user_id === member.user_id)
+    );
+    
+    return memberTeam?.leader_id === currentUser?.id;
   };
 
   // Flatten all team members with their team info
@@ -314,6 +328,7 @@ export default function Team() {
                           status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
                           role: member.user_role,
                         }}
+                        isTeamMember={isCurrentUserLeaderOf(member)}
                       />
                     </div>
                   </div>

@@ -79,6 +79,20 @@ export default function UserDocuments() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userName = searchParams.get('name') || 'Usuário';
+  
+  const handleDocumentClick = (doc: UserDocument) => {
+    switch (doc.type) {
+      case 'certification':
+        navigate(`/certifications?highlight=${doc.id}`);
+        break;
+      case 'technical_attestation':
+        navigate(`/certificates?highlight=${doc.id}`);
+        break;
+      case 'legal_document':
+        navigate(`/documents?highlight=${doc.id}`);
+        break;
+    }
+  };
 
   const { data: documents, isLoading, error } = useQuery({
     queryKey: ['user-documents', userId],
@@ -274,7 +288,11 @@ export default function UserDocuments() {
                       const StatusIcon = statusInfo.icon;
 
                       return (
-                        <Card key={doc.id} className="card-corporate">
+                        <Card 
+                          key={doc.id} 
+                          className="card-corporate cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => handleDocumentClick(doc)}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className={`p-2 rounded-lg ${config.color}`}>

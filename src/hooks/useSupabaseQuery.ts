@@ -46,12 +46,7 @@ export function useDashboardStats() {
       let attQuery = supabase.from('technical_attestations').select('status, validity_date');
       let docQuery = supabase.from('legal_documents').select('status, validity_date');
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        certQuery = certQuery.eq('user_id', user.id);
-        attQuery = attQuery.eq('user_id', user.id);
-        docQuery = docQuery.eq('user_id', user.id);
-      }
+      // All authenticated users can see all data (RLS handles access control)
 
       // Query paralela para todas as estatísticas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
@@ -129,7 +124,7 @@ export function useRecentActivity() {
           name,
           created_at,
           status,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -141,7 +136,7 @@ export function useRecentActivity() {
           project_object,
           created_at,
           status,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -153,17 +148,12 @@ export function useRecentActivity() {
           document_name,
           created_at,
           status,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
         .limit(10);
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        certQuery = certQuery.eq('user_id', user.id);
-        attQuery = attQuery.eq('user_id', user.id);
-        docQuery = docQuery.eq('user_id', user.id);
-      }
+      // All authenticated users can see all data (RLS handles access control)
 
       // Buscar atividades recentes de diferentes tabelas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
@@ -180,7 +170,7 @@ export function useRecentActivity() {
           id: cert.id,
           type: 'certification',
           title: cert.name,
-          user_name: (cert.profiles as any).full_name,
+            user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
           created_at: cert.created_at,
           status: cert.status as any
         });
@@ -192,7 +182,7 @@ export function useRecentActivity() {
           id: att.id,
           type: 'certificate',
           title: att.project_object,
-          user_name: (att.profiles as any).full_name,
+            user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
           created_at: att.created_at,
           status: att.status as any
         });
@@ -204,7 +194,7 @@ export function useRecentActivity() {
           id: doc.id,
           type: 'document',
           title: doc.document_name,
-          user_name: (doc.profiles as any).full_name,
+            user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
           created_at: doc.created_at,
           status: doc.status as any
         });
@@ -239,7 +229,7 @@ export function useExpiringItems() {
           id,
           name,
           validity_date,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .not('validity_date', 'is', null)
         .lte('validity_date', thirtyDaysFromNow.toISOString())
@@ -251,7 +241,7 @@ export function useExpiringItems() {
           id,
           project_object,
           validity_date,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .not('validity_date', 'is', null)
         .lte('validity_date', thirtyDaysFromNow.toISOString())
@@ -263,18 +253,13 @@ export function useExpiringItems() {
           id,
           document_name,
           validity_date,
-          profiles!inner(full_name)
+          profiles!left(full_name)
         `)
         .not('validity_date', 'is', null)
         .lte('validity_date', thirtyDaysFromNow.toISOString())
         .gt('validity_date', now.toISOString()); // Exclude already expired
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        certQuery = certQuery.eq('user_id', user.id);
-        attQuery = attQuery.eq('user_id', user.id);
-        docQuery = docQuery.eq('user_id', user.id);
-      }
+      // All authenticated users can see all data (RLS handles access control)
 
       // Buscar itens vencendo nas próximas semanas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
@@ -294,7 +279,7 @@ export function useExpiringItems() {
           expiringItems.push({
             id: cert.id,
             title: cert.name,
-            user_name: (cert.profiles as any).full_name,
+            user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'certification',
             status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'
@@ -311,7 +296,7 @@ export function useExpiringItems() {
           expiringItems.push({
             id: att.id,
             title: att.project_object,
-            user_name: (att.profiles as any).full_name,
+            user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'certificate',
             status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'
@@ -328,7 +313,7 @@ export function useExpiringItems() {
           expiringItems.push({
             id: doc.id,
             title: doc.document_name,
-            user_name: (doc.profiles as any).full_name,
+            user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'document',
             status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'

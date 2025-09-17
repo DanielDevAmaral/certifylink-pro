@@ -31,10 +31,7 @@ export function useCertifications(searchTerm?: string) {
         `)
         .order('created_at', { ascending: false });
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        query = query.eq('user_id', user.id);
-      }
+      // All authenticated users can see all certifications (RLS handles access control)
 
       // Aplicar filtro de busca se fornecido
       if (searchTerm && searchTerm.trim()) {
@@ -71,7 +68,6 @@ export function useCertification(id: string) {
           profiles(full_name)
         `)
         .eq('id', id)
-        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {

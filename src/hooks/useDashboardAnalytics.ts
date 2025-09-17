@@ -38,12 +38,7 @@ export function useDashboardAnalytics() {
       let attQuery = supabase.from('technical_attestations').select('*');
       let docQuery = supabase.from('legal_documents').select('*');
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        certQuery = certQuery.eq('user_id', user.id);
-        attQuery = attQuery.eq('user_id', user.id);
-        docQuery = docQuery.eq('user_id', user.id);
-      }
+      // All authenticated users can see all documents (RLS handles access control)
 
       const [certResult, attResult, docResult] = await Promise.all([
         certQuery,

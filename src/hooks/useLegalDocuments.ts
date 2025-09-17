@@ -19,10 +19,7 @@ export function useLegalDocuments() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Apply role-based filtering: admin sees all, others see only their own
-      if (userRole !== 'admin') {
-        query = query.eq('user_id', user.id);
-      }
+      // All authenticated users can see documents (RLS handles access control)
 
       const { data, error } = await query;
 

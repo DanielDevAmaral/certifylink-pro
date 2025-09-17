@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Check, Clock, AlertCircle, Info, CheckCircle } from 'lucide-react';
 import {
   DropdownMenu,
@@ -11,17 +12,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications, useUnreadNotificationsCount, useMarkNotificationRead } from '@/hooks/useNotifications';
+import { navigateToRelatedDocument } from '@/lib/utils/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const { data: notifications = [], isLoading } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadNotificationsCount();
   const markAsReadMutation = useMarkNotificationRead();
 
   const handleMarkAsRead = (notificationId: string) => {
     markAsReadMutation.mutate(notificationId);
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    // Mark as read if not already read
+    if (!notification.read_at) {
+      handleMarkAsRead(notification.id);
+    }
+    
+    // Navigate to related document if exists
+    if (notification.related_document_id && notification.related_document_type) {
+      setOpen(false);
+      navigateToRelatedDocument(
+        notification.related_document_type,
+        notification.related_document_id
+      );
+    }
   };
 
   const getNotificationIcon = (type: string) => {
@@ -89,11 +108,7 @@ export function NotificationCenter() {
                 <DropdownMenuItem 
                   key={notification.id}
                   className="flex items-start gap-3 p-3 cursor-pointer"
-                  onClick={() => {
-                    if (!notification.read_at) {
-                      handleMarkAsRead(notification.id);
-                    }
-                  }}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex-shrink-0 mt-1">
                     {getNotificationIcon(notification.notification_type)}
@@ -138,7 +153,10 @@ export function NotificationCenter() {
                 variant="ghost" 
                 size="sm" 
                 className="w-full text-xs"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/notifications');
+                }}
               >
                 Ver todas as notificações
               </Button>

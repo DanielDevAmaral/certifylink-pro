@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Eye, Download, Trash2 } from 'lucide-react';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,19 +12,17 @@ import { FilterPanel } from "@/components/common/FilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
-import type { TechnicalCertificate } from "@/types";
+import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { toast } from '@/hooks/use-toast';
+import type { TechnicalCertificate } from '@/types';
 import { 
-  Plus, 
   Search, 
   Filter, 
   FileCheck, 
   Calendar,
   DollarSign,
-  Building,
-  Eye,
-  Download,
-  Edit,
-  Trash2
+  Building
 } from "lucide-react";
 
 // Filter configurations for certificates
@@ -59,6 +58,7 @@ const filterConfigs = [
 export default function Certificates() {
   const [selectedAttestation, setSelectedAttestation] = useState<TechnicalCertificate | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const {
     searchTerm,
@@ -73,6 +73,19 @@ export default function Certificates() {
 
   const { attestations = [], isLoading } = useTechnicalAttestations();
   const deleteMutation = useDeleteTechnicalAttestation();
+
+  // Handle highlighting from notifications
+  useEffect(() => {
+    const highlighted = getHighlightedDocumentId();
+    if (highlighted) {
+      setHighlightedId(highlighted);
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedId(null);
+        clearHighlight();
+      }, 3000);
+    }
+  }, []);
 
   // Apply search and filters
   let filteredCertificates = attestations.filter(cert => {
@@ -197,7 +210,14 @@ export default function Certificates() {
       {/* Certificates Grid */}
       <div className="space-y-4">
         {paginatedCertificates.map((certificate) => (
-          <Card key={certificate.id} className="card-corporate">
+          <Card 
+            key={certificate.id} 
+            className={`card-corporate ${
+              highlightedId === certificate.id 
+                ? 'ring-2 ring-primary shadow-lg bg-primary/5' 
+                : ''
+            }`}
+          >
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Main Info */}
               <div className="lg:col-span-2 space-y-4">

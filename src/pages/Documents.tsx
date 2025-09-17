@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react';
+import { Plus, FileText, Calendar, Shield, Edit, Trash2, Scale, Building, Receipt, UserCheck, TrendingUp, Briefcase, AlertTriangle } from 'lucide-react';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -18,21 +19,16 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
-import type { LegalDocument, LegalDocumentType } from "@/types";
+import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
+import { toast } from '@/hooks/use-toast';
+import type { LegalDocument, LegalDocumentType } from '@/types';
 import { 
-  Plus, 
   Search, 
   Filter, 
-  Scale, 
-  Calendar,
-  Shield,
   DollarSign,
-  FileText,
   Eye,
   Download,
   Lock,
-  Edit,
-  Trash2,
   FileDown
 } from "lucide-react";
 
@@ -102,6 +98,7 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<LegalDocument | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showReports, setShowReports] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const {
     searchTerm,
@@ -116,6 +113,19 @@ export default function Documents() {
 
   const { documents = [], isLoading } = useLegalDocuments();
   const deleteMutation = useDeleteLegalDocument();
+
+  // Handle highlighting from notifications
+  useEffect(() => {
+    const highlighted = getHighlightedDocumentId();
+    if (highlighted) {
+      setHighlightedId(highlighted);
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedId(null);
+        clearHighlight();
+      }, 3000);
+    }
+  }, []);
 
   const currentDocuments = documents.filter(doc => doc.document_type === activeTab);
 
@@ -264,7 +274,14 @@ export default function Documents() {
           <TabsContent key={category.key} value={category.key} className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {paginatedDocuments.map((document) => (
-                <Card key={document.id} className="card-corporate">
+                <Card 
+                  key={document.id} 
+                  className={`card-corporate ${
+                    highlightedId === document.id 
+                      ? 'ring-2 ring-primary shadow-lg bg-primary/5' 
+                      : ''
+                  }`}
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

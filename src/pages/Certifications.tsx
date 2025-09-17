@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
+import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
+import { toast } from '@/hooks/use-toast';
 import { 
   Plus, 
   Filter, 
@@ -62,6 +64,7 @@ export default function Certifications() {
   const [selectedCertification, setSelectedCertification] = useState<CertificationWithProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showReports, setShowReports] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const {
     searchTerm,
@@ -80,6 +83,19 @@ export default function Certifications() {
 
   const { data: certifications = [], isLoading } = useCertifications(searchTerm);
   const deleteMutation = useDeleteCertification();
+
+  // Handle highlighting from notifications
+  useEffect(() => {
+    const highlighted = getHighlightedDocumentId();
+    if (highlighted) {
+      setHighlightedId(highlighted);
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedId(null);
+        clearHighlight();
+      }, 3000);
+    }
+  }, []);
 
   // Apply filters and pagination
   let filteredCertifications = certifications.filter(cert => {
@@ -222,7 +238,14 @@ export default function Certifications() {
       {/* Certifications Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {paginatedCertifications.map((certification) => (
-          <Card key={certification.id} className="card-corporate">
+          <Card 
+            key={certification.id} 
+            className={`card-corporate ${
+              highlightedId === certification.id 
+                ? 'ring-2 ring-primary shadow-lg bg-primary/5' 
+                : ''
+            }`}
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

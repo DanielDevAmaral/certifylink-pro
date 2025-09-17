@@ -294,10 +294,6 @@ export default function Certifications() {
                   <Edit className="h-3 w-3" />
                   Editar
                 </Button>
-                <Button size="sm" variant="outline" className="gap-2">
-                  <Eye className="h-3 w-3" />
-                  Ver
-                </Button>
                 {certification.public_link && (
                   <Button 
                     size="sm" 

@@ -66,12 +66,15 @@ export function TeamMembersList({ members, teamId, leaderId }: TeamMembersListPr
   const canManageMember = (member: TeamMemberDetail) => {
     // Admins podem gerenciar qualquer membro
     if (userRole === 'admin') return true;
-    
-    // Líderes podem gerenciar membros de suas equipes (exceto eles mesmos)
+
+    // Líderes podem gerenciar membros de suas equipes (exceto eles mesmos) mas NUNCA admins
     if (userRole === 'leader' && currentUser?.id === leaderId && member.user_id !== currentUser.id) {
+      const memberRoles = (member.user_roles || []).map(r => r.role);
+      const isMemberAdmin = memberRoles.includes('admin');
+      if (isMemberAdmin) return false;
       return true;
     }
-    
+
     return false;
   };
 

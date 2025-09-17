@@ -41,7 +41,8 @@ export function UserActionsDropdown({ user, isTeamMember = false }: UserActionsD
   };
 
   // Check permissions based on role and team membership
-  const canManageUser = userRole === 'admin' || (userRole === 'leader' && isTeamMember);
+  const isTargetAdmin = user.role === 'admin';
+  const canManageUser = userRole === 'admin' || (userRole === 'leader' && isTeamMember && !isTargetAdmin);
   const canChangeRole = userRole === 'admin'; // Only admins can change roles
   
   // If user has no management permissions, show limited options

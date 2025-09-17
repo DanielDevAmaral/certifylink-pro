@@ -284,36 +284,38 @@ export default function Certifications() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={() => handleEdit(certification)}
-                >
-                  <Edit className="h-3 w-3" />
-                  Editar
-                </Button>
+              <div className="flex flex-col gap-2 pt-2 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2 flex-1"
+                    onClick={() => handleEdit(certification)}
+                  >
+                    <Edit className="h-3 w-3" />
+                    Editar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2 text-destructive hover:text-destructive flex-1"
+                    onClick={() => handleDelete(certification.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Excluir
+                  </Button>
+                </div>
                 {certification.public_link && (
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="gap-2"
+                    className="gap-2 w-full"
                     onClick={() => window.open(certification.public_link, '_blank')}
                   >
                     <ExternalLink className="h-3 w-3" />
                     Ver Certificação
                   </Button>
                 )}
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="gap-2 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(certification.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Excluir
-                </Button>
               </div>
             </div>
           </Card>

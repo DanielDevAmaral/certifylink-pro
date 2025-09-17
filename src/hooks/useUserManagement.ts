@@ -95,7 +95,9 @@ export function useUserManagement() {
 
   const updateUserProfile = useMutation({
     mutationFn: async ({ userId, full_name, position, department }: UpdateUserProfileParams) => {
-      const { error } = await supabase
+      console.log('Updating user profile:', { userId, full_name, position, department });
+      
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           full_name,
@@ -103,12 +105,19 @@ export function useUserManagement() {
           department: department || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error updating profile:', error);
+        throw error;
+      }
+      
+      console.log('Profile updated successfully:', data);
       return { userId, full_name, position, department };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Update profile mutation success:', data);
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['team-stats'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -117,7 +126,7 @@ export function useUserManagement() {
     },
     onError: (error) => {
       console.error('Error updating user profile:', error);
-      toast.error('Erro ao atualizar perfil do usuário');
+      toast.error(`Erro ao atualizar perfil do usuário: ${error.message}`);
     },
   });
 

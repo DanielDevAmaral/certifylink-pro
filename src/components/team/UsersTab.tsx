@@ -8,6 +8,7 @@ import { UserActionsDropdown } from "@/components/ui/user-actions-dropdown";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
+import { useUsers } from '@/hooks/useUserSearch';
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
@@ -22,7 +23,8 @@ import {
   Search,
   UserCheck,
   UserX,
-  AlertTriangle
+  AlertTriangle,
+  UserMinus
 } from "lucide-react";
 
 const roleConfig = {
@@ -53,9 +55,11 @@ interface UsersTabProps {
 
 export function UsersTab({ teams, stats }: UsersTabProps) {
   const { user: currentUser, userRole } = useAuth();
+  const { data: allUsers = [], isLoading } = useUsers();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [teamFilter, setTeamFilter] = useState<string>("all");
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -84,16 +88,47 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
     return memberTeam?.leader_id === currentUser?.id;
   };
 
+  // Get all users in teams
+  const teamMemberIds = new Set(teams.flatMap(team => 
+    team.team_members.map(member => member.user_id)
+  ));
+
   // Flatten all team members with their team info
-  const allMembers = teams.flatMap(team => 
+  const teamMembers = teams.flatMap(team => 
     team.team_members.map(member => ({
       ...member,
       team_name: team.name,
       team_leader: team.leader_profile.full_name,
       user_role: getPrincipalRole(member.user_roles),
       status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended',
+      has_team: true,
     }))
   );
+
+  // Get users without teams
+  const usersWithoutTeams = allUsers
+    .filter(user => !teamMemberIds.has(user.user_id))
+    .map(user => ({
+      id: `no-team-${user.user_id}`,
+      user_id: user.user_id,
+      profiles: {
+        full_name: user.full_name,
+        email: user.email,
+        status: user.status,
+        position: user.position,
+        department: user.department,
+      },
+      user_roles: [{ role: user.role }],
+      joined_at: user.created_at,
+      team_name: "Sem Equipe",
+      team_leader: "N/A",
+      user_role: user.role,
+      status: user.status,
+      has_team: false,
+    }));
+
+  // Combine all users
+  const allMembers = [...teamMembers, ...usersWithoutTeams];
 
   // Apply filters
   const filteredMembers = allMembers.filter(member => {
@@ -104,26 +139,30 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
     
     const matchesStatus = statusFilter === "all" || member.status === statusFilter;
     const matchesRole = roleFilter === "all" || member.user_role === roleFilter;
+    const matchesTeam = teamFilter === "all" || 
+      (teamFilter === "no-team" && !member.has_team) ||
+      (teamFilter === "with-team" && member.has_team);
     
-    return matchesSearch && matchesStatus && matchesRole;
+    return matchesSearch && matchesStatus && matchesRole && matchesTeam;
   });
 
   // Calculate stats for different statuses
   const activeUsers = allMembers.filter(m => m.status === 'active').length;
   const inactiveUsers = allMembers.filter(m => m.status === 'inactive').length;
   const suspendedUsers = allMembers.filter(m => m.status === 'suspended').length;
+  const usersWithoutTeamsCount = usersWithoutTeams.length;
 
   return (
     <div className="space-y-6">
       {/* User Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <Card className="card-corporate">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats?.totalUsers || 0}</p>
+              <p className="text-2xl font-bold text-foreground">{allMembers.length}</p>
               <p className="text-sm text-muted-foreground">Total de Usuários</p>
             </div>
           </div>
@@ -168,7 +207,19 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
         <Card className="card-corporate">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/10">
-              <Shield className="h-6 w-6 text-warning" />
+              <UserMinus className="h-6 w-6 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{usersWithoutTeamsCount}</p>
+              <p className="text-sm text-muted-foreground">Sem Equipe</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="card-corporate">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
+              <Shield className="h-6 w-6 text-accent" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats?.totalAdmins || 0}</p>
@@ -216,20 +267,35 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
                 <SelectItem value="user">Usuário</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={teamFilter} onValueChange={setTeamFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Equipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Equipes</SelectItem>
+                <SelectItem value="with-team">Com Equipe</SelectItem>
+                <SelectItem value="no-team">Sem Equipe</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </Card>
 
       {/* Users List */}
       <div className="space-y-4">
-        {filteredMembers.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredMembers.length === 0 ? (
           <EmptyState
             icon={Users}
-            title={searchQuery || statusFilter !== "all" || roleFilter !== "all" 
+            title={searchQuery || statusFilter !== "all" || roleFilter !== "all" || teamFilter !== "all"
               ? "Nenhum usuário encontrado" 
               : "Nenhum membro encontrado"
             }
-            description={searchQuery || statusFilter !== "all" || roleFilter !== "all"
+            description={searchQuery || statusFilter !== "all" || roleFilter !== "all" || teamFilter !== "all"
               ? "Tente ajustar os filtros de busca."
               : "Comece criando uma equipe e adicionando membros."
             }
@@ -268,8 +334,9 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
                           <span>{member.profiles.email}</span>
                         </div>
                         <div className="flex items-center gap-1">
+                          {!member.has_team && <AlertTriangle className="h-3 w-3 text-warning" />}
                           <Users className="h-3 w-3" />
-                          <span>{member.team_name}</span>
+                          <span className={!member.has_team ? "text-warning font-medium" : ""}>{member.team_name}</span>
                         </div>
                         {member.profiles.position && (
                           <div className="flex items-center gap-1">
@@ -297,7 +364,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
                           })}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground">Na equipe há</p>
+                      <p className="text-xs text-muted-foreground">{member.has_team ? "Na equipe há" : "Criado há"}</p>
                     </div>
 
                     <div className="flex items-center gap-2">

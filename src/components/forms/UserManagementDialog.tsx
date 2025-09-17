@@ -29,6 +29,15 @@ const userManagementSchema = z.object({
   position: z.string().optional(),
   department: z.string().optional(),
   deactivation_reason: z.string().optional(),
+}).refine((data) => {
+  // Require reason when changing to inactive, suspended, or terminated
+  if (['inactive', 'suspended', 'terminated'].includes(data.status)) {
+    return data.deactivation_reason && data.deactivation_reason.trim().length > 0;
+  }
+  return true;
+}, {
+  message: 'Motivo é obrigatório para desativação, suspensão ou desligamento',
+  path: ['deactivation_reason'],
 });
 
 type UserManagementFormData = z.infer<typeof userManagementSchema>;
@@ -70,29 +79,30 @@ export function UserManagementDialog({ user, open, onOpenChange }: UserManagemen
   // Update requiresReason based on status change
   React.useEffect(() => {
     const newStatus = watchedStatus;
-    const oldStatus = user.status;
     setRequiresReason(
-      oldStatus === 'active' && (newStatus === 'inactive' || newStatus === 'suspended')
+      ['inactive', 'suspended', 'terminated'].includes(newStatus)
     );
-  }, [watchedStatus, user.status]);
+  }, [watchedStatus]);
 
   const onSubmit = async (data: UserManagementFormData) => {
     try {
+      const promises = [];
+
       // Update status if changed
       if (data.status !== user.status) {
-        await updateUserStatus({
+        promises.push(updateUserStatus({
           userId: user.user_id,
           status: data.status,
           reason: data.deactivation_reason,
-        });
+        }));
       }
 
       // Update role if changed
       if (data.role !== user.role) {
-        await updateUserRole({
+        promises.push(updateUserRole({
           userId: user.user_id,
           role: data.role,
-        });
+        }));
       }
 
       // Update profile if changed
@@ -102,12 +112,17 @@ export function UserManagementDialog({ user, open, onOpenChange }: UserManagemen
         data.department !== (user.department || '');
 
       if (profileChanged) {
-        await updateUserProfile({
+        promises.push(updateUserProfile({
           userId: user.user_id,
           full_name: data.full_name,
           position: data.position,
           department: data.department,
-        });
+        }));
+      }
+
+      // Execute all updates
+      if (promises.length > 0) {
+        await Promise.all(promises);
       }
 
       onOpenChange(false);

@@ -63,58 +63,94 @@ export function exportToCSV(reportData: ReportData, filename: string) {
 
 // Export to PDF
 export function exportToPDF(reportData: ReportData, filename: string) {
-  const doc = new jsPDF();
-  
-  // Add title
-  doc.setFontSize(18);
-  doc.text(reportData.title, 20, 20);
-  
-  // Add generation date
-  doc.setFontSize(10);
-  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 30);
-  
-  // Add table
-  (doc as any).autoTable({
-    head: [reportData.headers],
-    body: reportData.data,
-    startY: 40,
-    styles: {
-      fontSize: 8,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [66, 139, 202], // Corporate blue
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-  });
-  
-  // Add summary if available
-  if (reportData.summary) {
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
-    doc.setFontSize(14);
-    doc.text('Resumo:', 20, finalY);
+  try {
+    const doc = new jsPDF();
     
-    const summaryData = Object.entries(reportData.summary).map(([key, value]) => [key, value]);
+    // Validate data
+    if (!reportData.headers || reportData.headers.length === 0) {
+      throw new Error('Headers are required for PDF generation');
+    }
+    
+    if (!reportData.data || reportData.data.length === 0) {
+      throw new Error('Data is required for PDF generation');
+    }
+
+    // Sanitize data for PDF - handle null/undefined values
+    const sanitizedData = reportData.data.map(row => 
+      row.map(cell => {
+        if (cell === null || cell === undefined) return 'N/A';
+        if (typeof cell === 'string') return cell.replace(/[^\u0000-\u007F]/g, '?'); // Remove non-ASCII chars
+        return String(cell);
+      })
+    );
+    
+    // Add title with UTF-8 support
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(18);
+    doc.text(reportData.title || 'Relatório', 20, 20);
+    
+    // Add generation date
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 30);
+    
+    // Add table with error handling
     (doc as any).autoTable({
-      head: [['Métrica', 'Valor']],
-      body: summaryData,
-      startY: finalY + 10,
+      head: [reportData.headers],
+      body: sanitizedData,
+      startY: 40,
       styles: {
-        fontSize: 10,
+        fontSize: 8,
+        cellPadding: 3,
+        font: 'helvetica',
       },
       headStyles: {
-        fillColor: [66, 139, 202],
+        fillColor: [66, 139, 202], // Corporate blue
         textColor: [255, 255, 255],
+        fontStyle: 'bold',
       },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      didParseCell: function(data: any) {
+        // Ensure all cell values are strings
+        if (data.cell.text && Array.isArray(data.cell.text)) {
+          data.cell.text = data.cell.text.map(String);
+        }
+      }
     });
+    
+    // Add summary if available
+    if (reportData.summary && Object.keys(reportData.summary).length > 0) {
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      doc.setFontSize(14);
+      doc.text('Resumo:', 20, finalY);
+      
+      const summaryData = Object.entries(reportData.summary).map(([key, value]) => [
+        key, 
+        value === null || value === undefined ? 'N/A' : String(value)
+      ]);
+      
+      (doc as any).autoTable({
+        head: [['Métrica', 'Valor']],
+        body: summaryData,
+        startY: finalY + 10,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+        },
+      });
+    }
+    
+    // Save the PDF
+    doc.save(`${filename}.pdf`);
+  } catch (error) {
+    console.error('PDF Export Error:', error);
+    throw new Error(`Erro ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
-  
-  // Save the PDF
-  doc.save(`${filename}.pdf`);
 }
 
 // Generic report generator

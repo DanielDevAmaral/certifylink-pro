@@ -82,7 +82,7 @@ export default function Dashboard() {
           <div className="mb-6">
             <ReportGenerator 
               data={[...recentActivity || [], ...expiringItems || []]} 
-              type="certifications"
+              type="dashboard"
               title="Relatório Dashboard Executivo"
             />
           </div>

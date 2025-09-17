@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ReportGeneratorProps {
   data: any[];
-  type: 'certifications' | 'documents' | 'attestations';
+  type: 'certifications' | 'documents' | 'attestations' | 'dashboard';
   title: string;
 }
 
@@ -55,6 +55,18 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
           { key: 'project_period_end', label: 'Fim', format: (date: string) => date ? new Date(date).toLocaleDateString('pt-BR') : 'N/A' },
           { key: 'project_value', label: 'Valor', format: (value: number) => value ? `R$ ${value.toLocaleString('pt-BR')}` : 'N/A' },
         ];
+      case 'dashboard':
+        return [
+          { key: 'title', label: 'Título' },
+          { key: 'type', label: 'Categoria', format: (type: string) => {
+            const labels = { certification: 'Certificação', certificate: 'Atestado', document: 'Documento' };
+            return labels[type as keyof typeof labels] || type;
+          }},
+          { key: 'user_name', label: 'Usuário' },
+          { key: 'status', label: 'Status' },
+          { key: 'created_at', label: 'Data', format: (date: string) => new Date(date).toLocaleDateString('pt-BR') },
+          { key: 'expires_in_days', label: 'Vence em', format: (days: number) => days !== undefined ? `${days} dias` : 'N/A' },
+        ];
       default:
         return [];
     }
@@ -73,6 +85,18 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
       summary['Válidos'] = validCount;
       summary['Vencidos'] = expiredCount;
       summary['Vencendo em Breve'] = expiringSoonCount;
+    }
+
+    if (type === 'dashboard') {
+      const typeCount = filteredData.reduce((acc, item) => {
+        const type = item.type || 'outros';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      summary['Certificações'] = typeCount.certification || 0;
+      summary['Atestados'] = typeCount.certificate || 0;
+      summary['Documentos'] = typeCount.document || 0;
     }
 
     return summary;
@@ -201,7 +225,7 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
               <span className="text-muted-foreground">Total de registros:</span>
               <div className="font-semibold text-primary">{filteredData.length}</div>
             </div>
-            {type !== 'attestations' && (
+            {type !== 'attestations' && type !== 'dashboard' && (
               <>
                 <div>
                   <span className="text-muted-foreground">Válidos:</span>
@@ -219,6 +243,28 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
                   <span className="text-muted-foreground">Vencendo:</span>
                   <div className="font-semibold text-warning">
                     {filteredData.filter(item => item.status === 'expiring_soon').length}
+                  </div>
+                </div>
+              </>
+            )}
+            {type === 'dashboard' && (
+              <>
+                <div>
+                  <span className="text-muted-foreground">Certificações:</span>
+                  <div className="font-semibold text-primary">
+                    {filteredData.filter(item => item.type === 'certification').length}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Atestados:</span>
+                  <div className="font-semibold text-secondary">
+                    {filteredData.filter(item => item.type === 'certificate').length}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Documentos:</span>
+                  <div className="font-semibold text-accent">
+                    {filteredData.filter(item => item.type === 'document').length}
                   </div>
                 </div>
               </>

@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Plus, 
   Users, 
@@ -57,6 +58,7 @@ const roleConfig = {
 };
 
 export default function Team() {
+  const navigate = useNavigate();
   const { user: currentUser, userRole } = useAuth();
   const { data: teams = [], isLoading: teamsLoading } = useTeams();
   const { data: stats, isLoading: statsLoading } = useTeamStats();
@@ -364,7 +366,11 @@ export default function Team() {
             ).length;
             
             return (
-              <div key={team.id} className="p-4 rounded-lg bg-accent/30 border border-border">
+              <div 
+                key={team.id} 
+                className="p-4 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/40 transition-colors"
+                onClick={() => navigate(`/team/${team.id}`)}
+              >
                 <h4 className="font-semibold text-foreground mb-2">{team.name}</h4>
                 <div className="space-y-1 text-sm text-muted-foreground">
                   <p>{teamMembers.length} membros</p>

@@ -12,6 +12,7 @@ import Certificates from "./pages/Certificates";
 import Documents from "./pages/Documents";
 import Notifications from "./pages/Notifications";
 import Team from "./pages/Team";
+import TeamDetail from "./pages/TeamDetail";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -72,6 +73,11 @@ const App = () => (
               <Route path="/team" element={
                 <ProtectedRoute requiredRole="leader">
                   <Team />
+                </ProtectedRoute>
+              } />
+              <Route path="/team/:teamId" element={
+                <ProtectedRoute requiredRole="leader">
+                  <TeamDetail />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={

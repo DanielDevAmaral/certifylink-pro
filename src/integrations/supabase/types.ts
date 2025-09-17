@@ -486,6 +486,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_full_names: {
+        Args: { user_ids: string[] }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_unread_notifications_count: {
         Args: { user_uuid?: string }
         Returns: number

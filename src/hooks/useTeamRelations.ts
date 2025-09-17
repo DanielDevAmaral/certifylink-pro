@@ -87,9 +87,15 @@ export function useCanEditDocument(documentUserId: string) {
   // Admins can edit any document
   if (userRole === 'admin') return true;
   
-  // Leaders can edit documents from their team members (but not admins)
+  // Leaders can ONLY edit documents from their team members
+  // They cannot edit admin documents or documents from users not in their teams
   if (userRole === 'leader') {
-    return teamRelations.some(relation => relation.user_id === documentUserId);
+    // Check if the document owner is in the leader's team relations
+    const canEdit = teamRelations.some(relation => relation.user_id === documentUserId);
+    
+    // Additional check: ensure we're not trying to edit an admin's document
+    // This is handled by the teamRelations query which only returns team members, not admins
+    return canEdit;
   }
   
   return false;

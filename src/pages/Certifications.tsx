@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
+import { usePublicNames } from "@/hooks/usePublicNames";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -84,6 +85,13 @@ export default function Certifications() {
 
   const { data: certifications = [], isLoading } = useCertifications(searchTerm);
   const deleteMutation = useDeleteCertification();
+
+  // Get unique user IDs from certifications for name lookup
+  const userIds = useMemo(() => {
+    return Array.from(new Set(certifications.map(cert => cert.user_id)));
+  }, [certifications]);
+
+  const { data: userNames = {} } = usePublicNames(userIds);
 
   // Handle highlighting from notifications
   useEffect(() => {
@@ -285,7 +293,7 @@ export default function Certifications() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Responsável:</p>
                 <p className="text-sm text-muted-foreground">
-                  {certification.profiles?.full_name || `Usuário ${certification.user_id.slice(0, 8)}...`}
+                  {userNames[certification.user_id] || 'Não informado'}
                 </p>
               </div>
 

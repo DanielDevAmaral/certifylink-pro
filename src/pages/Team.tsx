@@ -340,6 +340,8 @@ export default function Team() {
                           email: member.profiles.email,
                           status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
                           role: member.user_role,
+                          position: member.profiles.position,
+                          department: member.profiles.department,
                         }}
                         isTeamMember={isCurrentUserLeaderOf(member)}
                       />

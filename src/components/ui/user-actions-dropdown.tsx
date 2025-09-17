@@ -23,6 +23,8 @@ interface UserActionsDropdownProps {
     email: string;
     status: 'active' | 'inactive' | 'suspended' | 'terminated';
     role: 'user' | 'leader' | 'admin';
+    position?: string;
+    department?: string;
   };
   isTeamMember?: boolean; // Indica se o usuário está na equipe do líder atual
 }

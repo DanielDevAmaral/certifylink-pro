@@ -195,6 +195,8 @@ export function TeamMembersList({ members, teamId, leaderId }: TeamMembersListPr
                       email: member.profiles.email,
                       status: member.profiles.status as 'active' | 'inactive' | 'suspended' | 'terminated',
                       role: getPrincipalRole(member.user_roles),
+                      position: member.profiles.position,
+                      department: member.profiles.department,
                     }}
                     isTeamMember={canManage}
                   />

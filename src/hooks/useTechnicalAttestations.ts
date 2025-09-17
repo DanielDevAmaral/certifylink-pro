@@ -5,20 +5,26 @@ import { useToast } from '@/hooks/use-toast';
 import type { TechnicalCertificate } from '@/types';
 
 export function useTechnicalAttestations() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: attestations = [], isLoading } = useQuery({
-    queryKey: ['technical-attestations', user?.id],
+    queryKey: ['technical-attestations', user?.id, userRole],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('technical_attestations')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];

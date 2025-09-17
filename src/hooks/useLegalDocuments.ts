@@ -5,20 +5,26 @@ import { useToast } from '@/hooks/use-toast';
 import type { LegalDocument } from '@/types';
 
 export function useLegalDocuments() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: documents = [], isLoading } = useQuery({
-    queryKey: ['legal-documents', user?.id],
+    queryKey: ['legal-documents', user?.id, userRole],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('legal_documents')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];

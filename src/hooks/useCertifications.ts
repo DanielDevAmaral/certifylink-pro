@@ -16,10 +16,10 @@ export interface CertificationWithProfile extends Certification {
 
 // Hook para listar certificações
 export function useCertifications(searchTerm?: string) {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   
   return useQuery({
-    queryKey: ['certifications', user?.id, searchTerm],
+    queryKey: ['certifications', user?.id, userRole, searchTerm],
     queryFn: async (): Promise<CertificationWithProfile[]> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -29,8 +29,12 @@ export function useCertifications(searchTerm?: string) {
           *,
           profiles(full_name)
         `)
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
 
       // Aplicar filtro de busca se fornecido
       if (searchTerm && searchTerm.trim()) {

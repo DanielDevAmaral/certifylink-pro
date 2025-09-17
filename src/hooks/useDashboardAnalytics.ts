@@ -38,19 +38,12 @@ export function useDashboardAnalytics() {
       let attQuery = supabase.from('technical_attestations').select('*');
       let docQuery = supabase.from('legal_documents').select('*');
 
-      // Apply role-based filtering
-      if (userRole === 'user') {
-        certQuery = certQuery.eq('user_id', user.id);
-        attQuery = attQuery.eq('user_id', user.id);
-        docQuery = docQuery.eq('user_id', user.id);
-      } else if (userRole === 'leader') {
-        // Leaders can see their team's data - would need team relationship
-        // For now, keeping simple and showing user's data
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
         certQuery = certQuery.eq('user_id', user.id);
         attQuery = attQuery.eq('user_id', user.id);
         docQuery = docQuery.eq('user_id', user.id);
       }
-      // Admins see all data (no additional filtering)
 
       const [certResult, attResult, docResult] = await Promise.all([
         certQuery,

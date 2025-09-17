@@ -34,27 +34,30 @@ export interface ExpiringItem {
 
 // Hook para estatísticas do dashboard
 export function useDashboardStats() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   
   return useQuery({
-    queryKey: ['dashboard-stats', user?.id],
+    queryKey: ['dashboard-stats', user?.id, userRole],
     queryFn: async (): Promise<DashboardStats> => {
       if (!user) throw new Error('User not authenticated');
 
+      // Build queries based on user role
+      let certQuery = supabase.from('certifications').select('status, validity_date');
+      let attQuery = supabase.from('technical_attestations').select('status, validity_date');
+      let docQuery = supabase.from('legal_documents').select('status, validity_date');
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        certQuery = certQuery.eq('user_id', user.id);
+        attQuery = attQuery.eq('user_id', user.id);
+        docQuery = docQuery.eq('user_id', user.id);
+      }
+
       // Query paralela para todas as estatísticas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
-        supabase
-          .from('certifications')
-          .select('status, validity_date')
-          .eq('user_id', user.id),
-        supabase
-          .from('technical_attestations')
-          .select('status, validity_date')
-          .eq('user_id', user.id),
-        supabase
-          .from('legal_documents')
-          .select('status, validity_date')
-          .eq('user_id', user.id)
+        certQuery,
+        attQuery,
+        docQuery
       ]);
 
       const certifications = certificationsResult.data || [];
@@ -64,20 +67,26 @@ export function useDashboardStats() {
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-      // Calcular certificações vencendo
-      const expiringCertifications = certifications.filter(cert => 
-        cert.validity_date && new Date(cert.validity_date) <= thirtyDaysFromNow
-      ).length;
+      // Calcular certificações vencendo (excluindo já vencidas)
+      const expiringCertifications = certifications.filter(cert => {
+        if (!cert.validity_date) return false;
+        const validityDate = new Date(cert.validity_date);
+        return validityDate <= thirtyDaysFromNow && validityDate > now;
+      }).length;
 
-      // Calcular atestados vencendo
-      const expiringAttestations = attestations.filter(att => 
-        att.validity_date && new Date(att.validity_date) <= thirtyDaysFromNow
-      ).length;
+      // Calcular atestados vencendo (excluindo já vencidos)
+      const expiringAttestations = attestations.filter(att => {
+        if (!att.validity_date) return false;
+        const validityDate = new Date(att.validity_date);
+        return validityDate <= thirtyDaysFromNow && validityDate > now;
+      }).length;
 
-      // Calcular documentos vencendo
-      const expiringDocuments = documents.filter(doc => 
-        doc.validity_date && new Date(doc.validity_date) <= thirtyDaysFromNow
-      ).length;
+      // Calcular documentos vencendo (excluindo já vencidos)
+      const expiringDocuments = documents.filter(doc => {
+        if (!doc.validity_date) return false;
+        const validityDate = new Date(doc.validity_date);
+        return validityDate <= thirtyDaysFromNow && validityDate > now;
+      }).length;
 
       const totalDocuments = certifications.length + attestations.length + documents.length;
       const validDocuments = [...certifications, ...attestations, ...documents]
@@ -105,51 +114,62 @@ export function useDashboardStats() {
 
 // Hook para atividade recente
 export function useRecentActivity() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   
   return useQuery({
-    queryKey: ['recent-activity', user?.id],
+    queryKey: ['recent-activity', user?.id, userRole],
     queryFn: async (): Promise<RecentActivity[]> => {
       if (!user) throw new Error('User not authenticated');
 
+      // Build queries based on user role
+      let certQuery = supabase
+        .from('certifications')
+        .select(`
+          id,
+          name,
+          created_at,
+          status,
+          profiles!inner(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      let attQuery = supabase
+        .from('technical_attestations')
+        .select(`
+          id,
+          project_object,
+          created_at,
+          status,
+          profiles!inner(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      let docQuery = supabase
+        .from('legal_documents')
+        .select(`
+          id,
+          document_name,
+          created_at,
+          status,
+          profiles!inner(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        certQuery = certQuery.eq('user_id', user.id);
+        attQuery = attQuery.eq('user_id', user.id);
+        docQuery = docQuery.eq('user_id', user.id);
+      }
+
       // Buscar atividades recentes de diferentes tabelas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
-        supabase
-          .from('certifications')
-          .select(`
-            id,
-            name,
-            created_at,
-            status,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase
-          .from('technical_attestations')
-          .select(`
-            id,
-            project_object,
-            created_at,
-            status,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase
-          .from('legal_documents')
-          .select(`
-            id,
-            document_name,
-            created_at,
-            status,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10)
+        certQuery,
+        attQuery,
+        docQuery
       ]);
 
       const activities: RecentActivity[] = [];
@@ -202,51 +222,65 @@ export function useRecentActivity() {
 
 // Hook para itens vencendo
 export function useExpiringItems() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   
   return useQuery({
-    queryKey: ['expiring-items', user?.id],
+    queryKey: ['expiring-items', user?.id, userRole],
     queryFn: async (): Promise<ExpiringItem[]> => {
       if (!user) throw new Error('User not authenticated');
 
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+      // Build queries based on user role
+      let certQuery = supabase
+        .from('certifications')
+        .select(`
+          id,
+          name,
+          validity_date,
+          profiles!inner(full_name)
+        `)
+        .not('validity_date', 'is', null)
+        .lte('validity_date', thirtyDaysFromNow.toISOString())
+        .gt('validity_date', now.toISOString()); // Exclude already expired
+
+      let attQuery = supabase
+        .from('technical_attestations')
+        .select(`
+          id,
+          project_object,
+          validity_date,
+          profiles!inner(full_name)
+        `)
+        .not('validity_date', 'is', null)
+        .lte('validity_date', thirtyDaysFromNow.toISOString())
+        .gt('validity_date', now.toISOString()); // Exclude already expired
+
+      let docQuery = supabase
+        .from('legal_documents')
+        .select(`
+          id,
+          document_name,
+          validity_date,
+          profiles!inner(full_name)
+        `)
+        .not('validity_date', 'is', null)
+        .lte('validity_date', thirtyDaysFromNow.toISOString())
+        .gt('validity_date', now.toISOString()); // Exclude already expired
+
+      // Apply role-based filtering: admin sees all, others see only their own
+      if (userRole !== 'admin') {
+        certQuery = certQuery.eq('user_id', user.id);
+        attQuery = attQuery.eq('user_id', user.id);
+        docQuery = docQuery.eq('user_id', user.id);
+      }
+
       // Buscar itens vencendo nas próximas semanas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
-        supabase
-          .from('certifications')
-          .select(`
-            id,
-            name,
-            validity_date,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .not('validity_date', 'is', null)
-          .lte('validity_date', thirtyDaysFromNow.toISOString()),
-        supabase
-          .from('technical_attestations')
-          .select(`
-            id,
-            project_object,
-            validity_date,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .not('validity_date', 'is', null)
-          .lte('validity_date', thirtyDaysFromNow.toISOString()),
-        supabase
-          .from('legal_documents')
-          .select(`
-            id,
-            document_name,
-            validity_date,
-            profiles!inner(full_name)
-          `)
-          .eq('user_id', user.id)
-          .not('validity_date', 'is', null)
-          .lte('validity_date', thirtyDaysFromNow.toISOString())
+        certQuery,
+        attQuery,
+        docQuery
       ]);
 
       const expiringItems: ExpiringItem[] = [];

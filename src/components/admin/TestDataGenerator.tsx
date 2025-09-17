@@ -88,9 +88,9 @@ export function TestDataGenerator() {
           <div className="space-y-2">
             <h4 className="font-medium">Dados que serão criados:</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Certificações com status: expiring (2), expired (1), valid (1)</li>
+              <li>• Certificações com status: expiring (3), expired (1)</li>
               <li>• Atestados técnicos: expiring (1), expired (1)</li>
-              <li>• Documentos jurídicos: expiring (1), expired (1), valid (1)</li>
+              <li>• Documentos jurídicos: Qualificação Legal (expiring), Regularidade Fiscal (expired), Capacidade Econômico-Financeira (valid)</li>
               <li>• Notificação de teste do sistema</li>
             </ul>
           </div>

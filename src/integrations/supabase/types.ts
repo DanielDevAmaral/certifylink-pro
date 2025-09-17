@@ -99,7 +99,15 @@ export type Database = {
           user_id?: string
           validity_date?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "certifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       legal_documents: {
         Row: {
@@ -144,7 +152,15 @@ export type Database = {
           user_id?: string
           validity_date?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "legal_documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -189,7 +205,15 @@ export type Database = {
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -365,7 +389,15 @@ export type Database = {
           user_id?: string
           validity_date?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "technical_attestations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

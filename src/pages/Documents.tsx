@@ -19,6 +19,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
+import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
 import type { LegalDocument, LegalDocumentType } from '@/types';
@@ -318,29 +319,13 @@ export default function Documents() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 pt-2 border-t border-border">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="gap-2"
-                        onClick={() => handleEdit(document)}
-                      >
-                        <Edit className="h-3 w-3" />
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="outline" className="gap-2">
-                        <Eye className="h-3 w-3" />
-                        Ver
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="gap-2 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(document.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Excluir
-                      </Button>
+                    <div className="pt-2 border-t border-border">
+                      <DocumentActionButtons
+                        documentUserId={document.user_id}
+                        onEdit={() => handleEdit(document)}
+                        onDelete={() => handleDelete(document.id)}
+                        onView={() => console.log('View document:', document.id)}
+                      />
                     </div>
                   </div>
                 </Card>

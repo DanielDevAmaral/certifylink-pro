@@ -12,6 +12,7 @@ import { FilterPanel } from "@/components/common/FilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
+import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { toast } from '@/hooks/use-toast';
@@ -291,32 +292,17 @@ export default function Certificates() {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-2"
-                    onClick={() => handleEdit(certificate)}
-                  >
-                    <Edit className="h-3 w-3" />
-                    Editar
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Eye className="h-3 w-3" />
-                    Visualizar
-                  </Button>
+                <DocumentActionButtons
+                  documentUserId={certificate.user_id}
+                  onEdit={() => handleEdit(certificate)}
+                  onDelete={() => handleDelete(certificate.id)}
+                  onView={() => console.log('View certificate:', certificate.id)}
+                />
+                
+                <div className="flex flex-col gap-2 mt-2">
                   <Button size="sm" variant="outline" className="gap-2">
                     <Download className="h-3 w-3" />
                     Download PDF
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-2 text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(certificate.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Excluir
                   </Button>
                 </div>
               </div>

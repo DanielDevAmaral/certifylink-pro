@@ -27,7 +27,7 @@ export function useCertifications(searchTerm?: string) {
         .from('certifications')
         .select(`
           *,
-          profiles(full_name)
+          profiles!left(full_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -65,7 +65,7 @@ export function useCertification(id: string) {
         .from('certifications')
         .select(`
           *,
-          profiles(full_name)
+          profiles!left(full_name)
         `)
         .eq('id', id)
         .maybeSingle();

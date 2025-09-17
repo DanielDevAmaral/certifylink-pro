@@ -16,6 +16,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
+import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -284,7 +285,7 @@ export default function Certifications() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Responsável:</p>
                 <p className="text-sm text-muted-foreground">
-                  {certification.profiles?.full_name || 'Não informado'}
+                  {certification.profiles?.full_name || `Usuário ${certification.user_id.slice(0, 8)}...`}
                 </p>
               </div>
 
@@ -307,38 +308,13 @@ export default function Certifications() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 pt-2 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-2 flex-1"
-                    onClick={() => handleEdit(certification)}
-                  >
-                    <Edit className="h-3 w-3" />
-                    Editar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-2 text-destructive hover:text-destructive flex-1"
-                    onClick={() => handleDelete(certification.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Excluir
-                  </Button>
-                </div>
-                {certification.public_link && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-2 w-full"
-                    onClick={() => window.open(certification.public_link, '_blank')}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Ver Certificação
-                  </Button>
-                )}
+              <div className="pt-2 border-t border-border">
+                <DocumentActionButtons
+                  documentUserId={certification.user_id}
+                  onEdit={() => handleEdit(certification)}
+                  onDelete={() => handleDelete(certification.id)}
+                  externalLink={certification.public_link || undefined}
+                />
               </div>
             </div>
           </Card>

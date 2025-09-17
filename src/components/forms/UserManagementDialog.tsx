@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { User, Mail, Calendar, Shield } from 'lucide-react';
 
 const userManagementSchema = z.object({
-  status: z.enum(['active', 'inactive', 'suspended']),
+  status: z.enum(['active', 'inactive', 'suspended', 'terminated']),
   role: z.enum(['user', 'leader', 'admin']),
   full_name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido'),
@@ -38,7 +38,7 @@ interface UserManagementDialogProps {
     user_id: string;
     full_name: string;
     email: string;
-    status: 'active' | 'inactive' | 'suspended';
+    status: 'active' | 'inactive' | 'suspended' | 'terminated';
     role: 'user' | 'leader' | 'admin';
     position?: string;
     department?: string;

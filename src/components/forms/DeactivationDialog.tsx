@@ -27,6 +27,8 @@ interface DeactivationDialogProps {
     user_id: string;
     full_name: string;
     email: string;
+    status: 'active' | 'inactive' | 'suspended' | 'terminated';
+    role: 'user' | 'leader' | 'admin';
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;

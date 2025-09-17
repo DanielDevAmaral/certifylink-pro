@@ -1,46 +1,55 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MoreHorizontal, Edit, Power, History, FileText, UserX, Settings, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
-import { UserManagementDialog } from '@/components/forms/UserManagementDialog';
-import { DeactivationDialog } from '@/components/forms/DeactivationDialog';
-import { MoreHorizontal, Edit, UserX, UserCheck, Shield, History, FileText } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserManagementDialog } from "@/components/forms/UserManagementDialog";
+import { DeactivationDialog } from "@/components/forms/DeactivationDialog";
+import { TerminationDialog } from "@/components/forms/TerminationDialog";
+import { RoleChangeDialog } from "@/components/forms/RoleChangeDialog";
+import { UserStatusHistoryDialog } from "@/components/forms/UserStatusHistoryDialog";
 
 interface UserActionsDropdownProps {
   user: {
     user_id: string;
     full_name: string;
     email: string;
-    status: 'active' | 'inactive' | 'suspended';
+    status: 'active' | 'inactive' | 'suspended' | 'terminated';
     role: 'user' | 'leader' | 'admin';
   };
 }
 
 export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
   const { userRole } = useAuth();
-  const [managementOpen, setManagementOpen] = useState(false);
-  const [deactivationOpen, setDeactivationOpen] = useState(false);
+  const navigate = useNavigate();
+  const [userManagementDialogOpen, setUserManagementDialogOpen] = useState(false);
+  const [deactivationDialogOpen, setDeactivationDialogOpen] = useState(false);
+  const [terminationDialogOpen, setTerminationDialogOpen] = useState(false);
+  const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
+  const [statusHistoryDialogOpen, setStatusHistoryDialogOpen] = useState(false);
 
-  // Only admins can see user management actions
+  const handleDocumentsClick = () => {
+    navigate(`/documents?user=${user.user_id}`);
+  };
+
+  // If user is not admin, show limited options
   if (userRole !== 'admin') {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Abrir menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-          <DropdownMenuItem>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleDocumentsClick}>
             <FileText className="mr-2 h-4 w-4" />
             Ver Documentos
           </DropdownMenuItem>
@@ -54,50 +63,56 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Abrir menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Gerenciar Usuário</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem onClick={() => setManagementOpen(true)}>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => setUserManagementDialogOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Editar Perfil
           </DropdownMenuItem>
-
-          {user.status === 'active' ? (
-            <DropdownMenuItem 
-              onClick={() => setDeactivationOpen(true)}
-              className="text-destructive focus:text-destructive"
-            >
+          
+          <DropdownMenuItem onClick={() => setRoleChangeDialogOpen(true)}>
+            <Settings className="mr-2 h-4 w-4" />
+            Alterar Papel
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          {user.status === 'active' && (
+            <DropdownMenuItem onClick={() => setDeactivationDialogOpen(true)}>
               <UserX className="mr-2 h-4 w-4" />
               Desativar Usuário
             </DropdownMenuItem>
-          ) : (
+          )}
+          
+          {user.status !== 'active' && user.status !== 'terminated' && (
             <DropdownMenuItem 
-              onClick={() => setManagementOpen(true)}
-              className="text-success focus:text-success"
+              onClick={() => setUserManagementDialogOpen(true)}
             >
-              <UserCheck className="mr-2 h-4 w-4" />
+              <Power className="mr-2 h-4 w-4" />
               Ativar Usuário
             </DropdownMenuItem>
           )}
 
+          {user.status !== 'terminated' && (
+            <DropdownMenuItem 
+              onClick={() => setTerminationDialogOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Profissional Desligado
+            </DropdownMenuItem>
+          )}
+          
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem>
-            <Shield className="mr-2 h-4 w-4" />
-            Alterar Papel
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setStatusHistoryDialogOpen(true)}>
             <History className="mr-2 h-4 w-4" />
             Histórico de Status
           </DropdownMenuItem>
           
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDocumentsClick}>
             <FileText className="mr-2 h-4 w-4" />
             Ver Documentos
           </DropdownMenuItem>
@@ -106,14 +121,32 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
 
       <UserManagementDialog
         user={user}
-        open={managementOpen}
-        onOpenChange={setManagementOpen}
+        open={userManagementDialogOpen}
+        onOpenChange={setUserManagementDialogOpen}
       />
 
       <DeactivationDialog
         user={user}
-        open={deactivationOpen}
-        onOpenChange={setDeactivationOpen}
+        open={deactivationDialogOpen}
+        onOpenChange={setDeactivationDialogOpen}
+      />
+
+      <TerminationDialog
+        user={user}
+        open={terminationDialogOpen}
+        onOpenChange={setTerminationDialogOpen}
+      />
+
+      <RoleChangeDialog
+        user={user}
+        open={roleChangeDialogOpen}
+        onOpenChange={setRoleChangeDialogOpen}
+      />
+
+      <UserStatusHistoryDialog
+        user={user}
+        open={statusHistoryDialogOpen}
+        onOpenChange={setStatusHistoryDialogOpen}
       />
     </>
   );

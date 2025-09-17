@@ -198,9 +198,10 @@ export default function Team() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos Status</SelectItem>
-                <SelectItem value="active">Ativos</SelectItem>
-                <SelectItem value="inactive">Inativos</SelectItem>
-                <SelectItem value="suspended">Suspensos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                  <SelectItem value="suspended">Suspensos</SelectItem>
+                  <SelectItem value="terminated">Desligados</SelectItem>
               </SelectContent>
             </Select>
 
@@ -310,7 +311,7 @@ export default function Team() {
                           user_id: member.user_id,
                           full_name: member.profiles.full_name,
                           email: member.profiles.email,
-                          status: member.status as 'active' | 'inactive' | 'suspended',
+                          status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
                           role: member.user_role,
                         }}
                       />

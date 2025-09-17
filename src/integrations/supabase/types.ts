@@ -494,6 +494,18 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_user_status_history: {
+        Args: { target_user_id: string }
+        Returns: {
+          changed_by: string
+          changed_by_name: string
+          created_at: string
+          id: string
+          new_status: string
+          old_status: string
+          reason: string
+        }[]
+      }
       is_team_leader: {
         Args: { target_user_uuid: string; user_uuid: string }
         Returns: boolean

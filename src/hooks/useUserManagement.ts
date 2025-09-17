@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 interface UpdateUserStatusParams {
   userId: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'terminated';
   reason?: string;
 }
 
@@ -42,7 +42,8 @@ export function useUserManagement() {
       const statusLabels = {
         active: 'ativado',
         inactive: 'desativado',
-        suspended: 'suspenso'
+        suspended: 'suspenso',
+        terminated: 'desligado'
       };
       
       toast.success(`Usuário ${statusLabels[variables.status]} com sucesso!`);

@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Check, X, AlertTriangle } from "lucide-react";
 
 interface UserStatusBadgeProps {
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'terminated';
   className?: string;
 }
 
@@ -22,6 +22,11 @@ export function UserStatusBadge({ status, className }: UserStatusBadgeProps) {
       className: "bg-destructive/10 text-destructive border-destructive/20",
       icon: AlertTriangle,
       label: "Suspenso"
+    },
+    terminated: {
+      className: "bg-destructive text-destructive-foreground border-destructive",
+      icon: X,
+      label: "Desligado"
     }
   };
 

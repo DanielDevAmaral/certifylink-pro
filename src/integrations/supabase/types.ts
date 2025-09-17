@@ -456,6 +456,14 @@ export type Database = {
         Args: { target_user_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      is_user_team_leader: {
+        Args: { target_team_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_user_team_member: {
+        Args: { target_team_id: string; user_uuid: string }
+        Returns: boolean
+      }
       log_audit_event: {
         Args: {
           p_action: string

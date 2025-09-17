@@ -18,6 +18,12 @@ export interface TeamMemberDetail {
   user_roles: Array<{
     role: string;
   }>;
+  document_counts: {
+    certifications: number;
+    technical_attestations: number;
+    legal_documents: number;
+    total: number;
+  };
 }
 
 export interface TeamDetail {
@@ -129,15 +135,53 @@ export function useTeamDetail(teamId: string) {
 
       if (rolesError) throw rolesError;
 
+      // Buscar contagem de documentos para cada membro
+      const { data: certCounts, error: certCountError } = await supabase
+        .from('certifications')
+        .select('user_id')
+        .in('user_id', memberIds);
+
+      if (certCountError) throw certCountError;
+
+      const { data: techCounts, error: techCountError } = await supabase
+        .from('technical_attestations')
+        .select('user_id')
+        .in('user_id', memberIds);
+
+      if (techCountError) throw techCountError;
+
+      const { data: legalCounts, error: legalCountError } = await supabase
+        .from('legal_documents')
+        .select('user_id')
+        .in('user_id', memberIds);
+
+      if (legalCountError) throw legalCountError;
+
+      // Calcular contagens por usuário
+      const getDocumentCounts = (userId: string) => {
+        const certs = (certCounts || []).filter(c => c.user_id === userId).length;
+        const techs = (techCounts || []).filter(t => t.user_id === userId).length;
+        const legals = (legalCounts || []).filter(l => l.user_id === userId).length;
+        
+        return {
+          certifications: certs,
+          technical_attestations: techs,
+          legal_documents: legals,
+          total: certs + techs + legals
+        };
+      };
+
       // Combinar dados dos membros
       const membersWithProfiles = teamMembers.map(member => {
         const profile = profiles.find(p => p.user_id === member.user_id);
         const roles = userRoles.filter(r => r.user_id === member.user_id);
+        const documentCounts = getDocumentCounts(member.user_id);
         
         return {
           ...member,
           profiles: profile!,
-          user_roles: roles
+          user_roles: roles,
+          document_counts: documentCounts
         };
       });
 

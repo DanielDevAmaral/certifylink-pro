@@ -10,6 +10,7 @@ import { useRemoveTeamMember } from "@/hooks/useTeamDetail";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import { 
   Shield,
   Crown,
@@ -18,7 +19,11 @@ import {
   Phone,
   Calendar,
   Trash2,
-  Building
+  Building,
+  FileText,
+  Award,
+  Scale,
+  Eye
 } from "lucide-react";
 
 interface TeamMembersListProps {
@@ -48,6 +53,7 @@ const roleConfig = {
 export function TeamMembersList({ members, teamId, leaderId }: TeamMembersListProps) {
   const { user: currentUser, userRole } = useAuth();
   const removeTeamMemberMutation = useRemoveTeamMember();
+  const navigate = useNavigate();
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -80,6 +86,10 @@ export function TeamMembersList({ members, teamId, leaderId }: TeamMembersListPr
 
   const handleRemoveMember = (memberId: string) => {
     removeTeamMemberMutation.mutate({ memberId });
+  };
+
+  const handleViewDocuments = (userId: string, userName: string) => {
+    navigate(`/user/${userId}/documents?name=${encodeURIComponent(userName)}`);
   };
 
   return (
@@ -115,26 +125,53 @@ export function TeamMembersList({ members, teamId, leaderId }: TeamMembersListPr
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      <span>{member.profiles.email}</span>
-                    </div>
-                    {member.profiles.position && (
-                      <div className="flex items-center gap-1">
-                        <Building className="h-3 w-3" />
-                        <span>{member.profiles.position}</span>
-                      </div>
-                    )}
-                    {member.profiles.phone && (
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        <span>{member.profiles.phone}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                     <div className="flex items-center gap-1">
+                       <Mail className="h-3 w-3" />
+                       <span>{member.profiles.email}</span>
+                     </div>
+                     {member.profiles.position && (
+                       <div className="flex items-center gap-1">
+                         <Building className="h-3 w-3" />
+                         <span>{member.profiles.position}</span>
+                       </div>
+                     )}
+                     {member.profiles.phone && (
+                       <div className="flex items-center gap-1">
+                         <Phone className="h-3 w-3" />
+                         <span>{member.profiles.phone}</span>
+                       </div>
+                     )}
+                   </div>
+
+                   {/* Resumo de Documentos */}
+                   <div className="flex items-center gap-4 mt-2">
+                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                       <Award className="h-3 w-3" />
+                       <span>{member.document_counts.certifications} Certificações</span>
+                     </div>
+                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                       <FileText className="h-3 w-3" />
+                       <span>{member.document_counts.technical_attestations} Atestados</span>
+                     </div>
+                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                       <Scale className="h-3 w-3" />
+                       <span>{member.document_counts.legal_documents} Jurídicos</span>
+                     </div>
+                     {member.document_counts.total > 0 && (
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => handleViewDocuments(member.user_id, member.profiles.full_name)}
+                         className="h-6 px-2 text-xs"
+                       >
+                         <Eye className="h-3 w-3 mr-1" />
+                         Ver Documentos ({member.document_counts.total})
+                       </Button>
+                     )}
+                   </div>
+                 </div>
+               </div>
 
               <div className="flex items-center gap-4">
                 <div className="text-center">

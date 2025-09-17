@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePublicNames } from '@/hooks/usePublicNames';
+import { AuditLogDetailDialog } from './AuditLogDetailDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -26,7 +28,8 @@ import {
   XCircle,
   Edit,
   Plus,
-  Trash2
+  Trash2,
+  Eye
 } from 'lucide-react';
 
 interface AuditLog {
@@ -60,6 +63,7 @@ export function AuditLogViewer() {
     userFilter: 'all'
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const itemsPerPage = 50;
 
   // Only admins can view audit logs
@@ -110,6 +114,17 @@ export function AuditLogViewer() {
     enabled: userRole === 'admin',
     staleTime: 30 * 1000, // 30 seconds
   });
+
+  // Get unique user IDs from audit logs
+  const userIds = useMemo(() => {
+    const ids = auditLogs
+      .map(log => log.user_id)
+      .filter((id): id is string => id !== null);
+    return [...new Set(ids)];
+  }, [auditLogs]);
+
+  // Fetch user names
+  const { data: userNames = {} } = usePublicNames(userIds);
 
   if (userRole !== 'admin') {
     return (
@@ -263,8 +278,11 @@ export function AuditLogViewer() {
             ) : (
               <div className="space-y-0">
                 {auditLogs.map((log, index) => (
-                  <div key={log.id}>
-                    <div className="p-4 hover:bg-muted/50 transition-colors">
+                <div key={log.id}>
+                    <div 
+                      className="p-4 hover:bg-muted/50 transition-colors cursor-pointer group"
+                      onClick={() => setSelectedLog(log)}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="mt-1">
@@ -287,7 +305,9 @@ export function AuditLogViewer() {
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                <span>Usuário: {log.user_id?.slice(0, 8) || 'Sistema'}...</span>
+                                <span>
+                                  Usuário: {log.user_id ? userNames[log.user_id] || 'Carregando...' : 'Sistema'}
+                                </span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
@@ -323,6 +343,10 @@ export function AuditLogViewer() {
                             )}
                           </div>
                         </div>
+                        
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
                     </div>
                     {index < auditLogs.length - 1 && <Separator />}
@@ -357,6 +381,14 @@ export function AuditLogViewer() {
             </Button>
           </div>
         </div>
+
+        {/* Audit Log Detail Dialog */}
+        <AuditLogDetailDialog
+          log={selectedLog}
+          isOpen={!!selectedLog}
+          onClose={() => setSelectedLog(null)}
+          userName={selectedLog?.user_id ? userNames[selectedLog.user_id] : undefined}
+        />
       </div>
     </Card>
   );

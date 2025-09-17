@@ -68,6 +68,17 @@ export default function Team() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  // Função para determinar o role principal baseado na hierarquia
+  const getPrincipalRole = (roles: { role: string }[]): 'user' | 'leader' | 'admin' => {
+    if (!roles || roles.length === 0) return 'user';
+    const rolePriority = { admin: 3, leader: 2, user: 1 };
+    return roles.reduce((highest, current) => {
+      const currentPriority = rolePriority[current.role as keyof typeof rolePriority] || 0;
+      const highestPriority = rolePriority[highest.role as keyof typeof rolePriority] || 0;
+      return currentPriority > highestPriority ? current : highest;
+    }, roles[0]).role as 'user' | 'leader' | 'admin';
+  };
+
   // Check if current user is leader of the member's team
   const isCurrentUserLeaderOf = (member: any) => {
     if (userRole === 'admin') return true; // Admins have access to everyone
@@ -86,7 +97,7 @@ export default function Team() {
       ...member,
       team_name: team.name,
       team_leader: team.leader_profile.full_name,
-      user_role: member.user_roles[0]?.role || 'user',
+      user_role: getPrincipalRole(member.user_roles), // Usar função para determinar role principal
       status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended',
     }))
   );
@@ -349,7 +360,7 @@ export default function Team() {
               return sum + (stats?.documentCounts[member.user_id] || 0);
             }, 0);
             const leaderCount = teamMembers.filter(member => 
-              member.user_roles[0]?.role === 'leader'
+              getPrincipalRole(member.user_roles) === 'leader'
             ).length;
             
             return (

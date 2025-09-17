@@ -232,15 +232,26 @@ export default function Certifications() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-foreground line-clamp-2">
-                  {certification.name}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {certification.function}
-                </p>
-              </div>
+              <div className="space-y-3">
+                {/* Screenshot thumbnail if available */}
+                {certification.screenshot_url && (
+                  <div className="w-full h-32 rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={certification.screenshot_url}
+                      alt={`Screenshot de ${certification.name}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="font-semibold text-foreground line-clamp-2">
+                    {certification.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {certification.function}
+                  </p>
+                </div>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
@@ -288,9 +299,14 @@ export default function Certifications() {
                   Ver
                 </Button>
                 {certification.public_link && (
-                  <Button size="sm" variant="outline" className="gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={() => window.open(certification.public_link, '_blank')}
+                  >
                     <ExternalLink className="h-3 w-3" />
-                    Link
+                    Ver Certificação
                   </Button>
                 )}
                 <Button 

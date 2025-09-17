@@ -10,7 +10,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { ScreenshotUpload } from '@/components/forms/ScreenshotUpload';
 import { useCreateCertification, useUpdateCertification } from '@/hooks/useCertifications';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Plus, X, Calendar, Award } from 'lucide-react';
 
@@ -21,8 +23,8 @@ const certificationSchema = z.object({
   status: z.enum(['valid', 'expired', 'expiring', 'pending']).default('valid'),
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
-  public_link: z.string().url().optional().or(z.literal('')),
-  screenshot_url: z.string().url().optional().or(z.literal('')),
+  public_link: z.string().url('URL inválida').min(1, 'Link público é obrigatório'),
+  screenshot_url: z.string().optional(),
 });
 
 type CertificationFormData = z.infer<typeof certificationSchema>;
@@ -37,6 +39,7 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
   const [newService, setNewService] = useState('');
   const createMutation = useCreateCertification();
   const updateMutation = useUpdateCertification();
+  const { userRole } = useAuth();
 
   const form = useForm<CertificationFormData>({
     resolver: zodResolver(certificationSchema),
@@ -96,6 +99,7 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
+  const canManageEquivalences = userRole === 'admin' || userRole === 'leader';
 
   return (
     <Card className="card-corporate">
@@ -191,92 +195,100 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
             />
           </div>
 
-          {/* Links */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="public_link"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Link Público (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="https://..." 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="screenshot_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL do Screenshot (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="https://..." 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Serviços de Equivalência */}
-          <div className="space-y-4">
-            <FormLabel>Serviços de Equivalência</FormLabel>
-            
-            {/* Lista de serviços */}
-            {watchedServices.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {watchedServices.map((service, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="flex items-center gap-2 px-3 py-1"
-                  >
-                    {service}
-                    <button
-                      type="button"
-                      onClick={() => removeService(index)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+          {/* Link Público */}
+          <FormField
+            control={form.control}
+            name="public_link"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Link Público</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="https://exemplo.com/certificacao" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
+          />
 
-            {/* Adicionar novo serviço */}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Nome do serviço"
-                value={newService}
-                onChange={(e) => setNewService(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addService();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                onClick={addService}
-                variant="outline"
-                size="icon"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          {/* Screenshot Upload */}
+          <FormField
+            control={form.control}
+            name="screenshot_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <ScreenshotUpload
+                    currentUrl={field.value || ''}
+                    onUploadComplete={(url) => field.onChange(url)}
+                    onUploadError={(error) => {
+                      console.error('Screenshot upload error:', error);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Serviços de Equivalência - apenas para admin e leader */}
+          {canManageEquivalences && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <FormLabel>Serviços de Equivalência</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Tags para facilitar a busca e categorização de certificações semelhantes
+                </p>
+              </div>
+              
+              {/* Lista de serviços */}
+              {watchedServices.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {watchedServices.map((service, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="flex items-center gap-2 px-3 py-1"
+                    >
+                      {service}
+                      <button
+                        type="button"
+                        onClick={() => removeService(index)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Adicionar novo serviço */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: Datalake, Cloud Computing, Big Data..."
+                  value={newService}
+                  onChange={(e) => setNewService(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addService();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={addService}
+                  variant="outline"
+                  size="icon"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Ações do Formulário */}
           <div className="flex justify-end gap-3 pt-6 border-t border-border">

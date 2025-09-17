@@ -1,3 +1,4 @@
+import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TestDataGenerator } from '@/components/admin/TestDataGenerator';
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
@@ -72,106 +73,108 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Painel Administrativo"
-        description="Monitoramento do sistema, testes e configurações de segurança"
-      />
+    <Layout>
+      <div className="space-y-8">
+        <PageHeader
+          title="Painel Administrativo"
+          description="Monitoramento do sistema, testes e configurações de segurança"
+        />
 
-      {/* Security Indicator */}
-      <SecurityIndicator
-        level="medium"
-        features={[
-          'Row Level Security Ativo',
-          'Funções de Auditoria',
-          'Cron Jobs Configurados',
-          'Edge Functions Ativas'
-        ]}
-      />
+        {/* Security Indicator */}
+        <SecurityIndicator
+          level="medium"
+          features={[
+            'Row Level Security Ativo',
+            'Funções de Auditoria',
+            'Cron Jobs Configurados',
+            'Edge Functions Ativas'
+          ]}
+        />
 
-      {/* System Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Status do Sistema
-          </CardTitle>
-          <CardDescription>
-            Visão geral do status de todos os componentes do sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {systemStatus.map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(item.status)}
-                  <div>
-                    <h4 className="font-medium">{item.item}</h4>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
+        {/* System Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Status do Sistema
+            </CardTitle>
+            <CardDescription>
+              Visão geral do status de todos os componentes do sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {systemStatus.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getStatusIcon(item.status)}
+                    <div>
+                      <h4 className="font-medium">{item.item}</h4>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                    </div>
                   </div>
+                  <Badge variant={getStatusVariant(item.status)}>
+                    {item.status === 'active' ? 'Ativo' : item.status === 'warning' ? 'Atenção' : 'Pendente'}
+                  </Badge>
                 </div>
-                <Badge variant={getStatusVariant(item.status)}>
-                  {item.status === 'active' ? 'Ativo' : item.status === 'warning' ? 'Atenção' : 'Pendente'}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Ações Rápidas de Segurança
-          </CardTitle>
-          <CardDescription>
-            Links diretos para configurações importantes no Supabase
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button 
-            variant="outline" 
-            className="w-full justify-between"
-            onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/auth/providers', '_blank')}
-          >
-            <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Ativar Leaked Password Protection
-            </span>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full justify-between"
-            onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/functions/daily-notifications/logs', '_blank')}
-          >
-            <span className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Ver Logs Edge Functions
-            </span>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Ações Rápidas de Segurança
+            </CardTitle>
+            <CardDescription>
+              Links diretos para configurações importantes no Supabase
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/auth/providers', '_blank')}
+            >
+              <span className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Ativar Leaked Password Protection
+              </span>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/functions/daily-notifications/logs', '_blank')}
+            >
+              <span className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Ver Logs Edge Functions
+              </span>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
 
-          <Button 
-            variant="outline" 
-            className="w-full justify-between"
-            onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/sql/new', '_blank')}
-          >
-            <span className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              SQL Editor
-            </span>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.open('https://supabase.com/dashboard/project/fxfmswnvfqqdsgrcgvhl/sql/new', '_blank')}
+            >
+              <span className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                SQL Editor
+              </span>
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
 
-      {/* Test Data Generator */}
-      <TestDataGenerator />
-    </div>
+        {/* Test Data Generator */}
+        <TestDataGenerator />
+      </div>
+    </Layout>
   );
 }

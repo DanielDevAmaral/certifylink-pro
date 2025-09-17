@@ -174,12 +174,6 @@ export default function TeamDetail() {
                 <Users className="h-5 w-5" />
                 Membros da Equipe ({teamDetail.team_members.length})
               </h3>
-              {canManageTeam() && (
-                <Button size="sm">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Adicionar Membro
-                </Button>
-              )}
             </div>
 
             <TeamMembersList 

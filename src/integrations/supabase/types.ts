@@ -218,34 +218,46 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
+          deactivation_reason: string | null
           department: string | null
           email: string
           full_name: string
           id: string
           phone: string | null
           position: string | null
+          status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
           department?: string | null
           email: string
           full_name: string
           id?: string
           phone?: string | null
           position?: string | null
+          status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
           department?: string | null
           email?: string
           full_name?: string
           id?: string
           phone?: string | null
           position?: string | null
+          status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -423,6 +435,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          new_status: string
+          old_status: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status: string
+          old_status?: string | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -481,6 +523,10 @@ export type Database = {
       update_document_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      update_user_status: {
+        Args: { new_status: string; reason?: string; target_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -13,6 +13,7 @@ interface TeamMemberWithProfile {
     email: string;
     position?: string;
     department?: string;
+    status?: string;
   };
   user_roles: {
     role: 'user' | 'leader' | 'admin';
@@ -70,7 +71,7 @@ export function useTeams() {
       const memberIds = teamMembers?.map(member => member.user_id) || [];
       const { data: memberProfiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, full_name, email, position, department')
+        .select('user_id, full_name, email, position, department, status')
         .in('user_id', memberIds);
 
       if (profilesError) throw profilesError;

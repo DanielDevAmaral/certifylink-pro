@@ -4,17 +4,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { UserSelectorCombobox } from '@/components/ui/user-selector-combobox';
 import { useTeams, useAddTeamMember } from '@/hooks/useTeams';
 import { Plus } from 'lucide-react';
 
 const teamMemberSchema = z.object({
   team_id: z.string().min(1, 'Selecione uma equipe'),
-  user_email: z.string().email('Email inválido'),
+  user_id: z.string().min(1, 'Selecione um usuário'),
 });
 
 type TeamMemberFormData = z.infer<typeof teamMemberSchema>;
@@ -33,28 +32,20 @@ export function TeamMemberForm({ onSuccess, onCancel }: TeamMemberFormProps) {
     resolver: zodResolver(teamMemberSchema),
     defaultValues: {
       team_id: '',
-      user_email: '',
+      user_id: '',
     },
   });
 
+  // Get existing team member IDs to exclude from user selector
+  const existingMemberIds = teams.flatMap(team => 
+    team.team_members.map(member => member.user_id)
+  );
+
   const onSubmit = async (data: TeamMemberFormData) => {
     try {
-      // Primeiro, buscar o user_id pelo email
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('email', data.user_email)
-        .single();
-
-      if (error || !profile) {
-        form.setError('user_email', { message: 'Usuário não encontrado' });
-        return;
-      }
-
       await addMemberMutation.mutateAsync({
         team_id: data.team_id,
-        user_id: profile.user_id,
+        user_id: data.user_id,
       });
 
       form.reset();
@@ -109,15 +100,17 @@ export function TeamMemberForm({ onSuccess, onCancel }: TeamMemberFormProps) {
 
               <FormField
                 control={form.control}
-                name="user_email"
+                name="user_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email do Usuário</FormLabel>
+                    <FormLabel>Usuário</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="usuario@empresa.com"
+                      <UserSelectorCombobox
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Selecione um usuário..."
+                        excludeUserIds={existingMemberIds}
+                        statusFilter={['active']}
                       />
                     </FormControl>
                     <FormMessage />

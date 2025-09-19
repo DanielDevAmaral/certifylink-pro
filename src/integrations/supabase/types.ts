@@ -486,6 +486,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_alert_days: {
+        Args: { document_type: string }
+        Returns: number
+      }
       get_full_names: {
         Args: { user_ids: string[] }
         Returns: {

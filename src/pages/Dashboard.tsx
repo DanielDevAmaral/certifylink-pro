@@ -159,7 +159,7 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <p className="font-medium text-foreground">{activity.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {activity.user_name} • {formatDate(activity.created_at)} • {getTypeLabel(activity.type)}
+                      {activity.user_name} • {activity.validity_date ? formatDate(activity.validity_date) : 'Sem validade'} • {getTypeLabel(activity.type)}
                     </p>
                   </div>
                   <StatusBadge status={activity.status} />

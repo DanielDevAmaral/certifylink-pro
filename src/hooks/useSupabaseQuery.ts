@@ -19,7 +19,7 @@ export interface RecentActivity {
   type: 'certification' | 'certificate' | 'document';
   title: string;
   user_name: string;
-  created_at: string;
+  validity_date: string | null;
   status: 'valid' | 'expiring' | 'expired';
 }
 
@@ -122,7 +122,7 @@ export function useRecentActivity() {
         .select(`
           id,
           name,
-          created_at,
+          validity_date,
           status,
           profiles!left(full_name)
         `)
@@ -134,7 +134,7 @@ export function useRecentActivity() {
         .select(`
           id,
           project_object,
-          created_at,
+          validity_date,
           status,
           profiles!left(full_name)
         `)
@@ -146,7 +146,7 @@ export function useRecentActivity() {
         .select(`
           id,
           document_name,
-          created_at,
+          validity_date,
           status,
           profiles!left(full_name)
         `)
@@ -171,7 +171,7 @@ export function useRecentActivity() {
           type: 'certification',
           title: cert.name,
             user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
-          created_at: cert.created_at,
+          validity_date: cert.validity_date,
           status: cert.status as any
         });
       });
@@ -183,7 +183,7 @@ export function useRecentActivity() {
           type: 'certificate',
           title: att.project_object,
             user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
-          created_at: att.created_at,
+          validity_date: att.validity_date,
           status: att.status as any
         });
       });
@@ -195,15 +195,13 @@ export function useRecentActivity() {
           type: 'document',
           title: doc.document_name,
             user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
-          created_at: doc.created_at,
+          validity_date: doc.validity_date,
           status: doc.status as any
         });
       });
 
       // Ordenar por data mais recente e limitar a 10
-      return activities
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10);
+      return activities.slice(0, 10);
     },
     enabled: !!user,
     staleTime: 2 * 60 * 1000, // 2 minutos
@@ -229,11 +227,10 @@ export function useExpiringItems() {
           id,
           name,
           validity_date,
+          status,
           profiles!left(full_name)
         `)
-        .not('validity_date', 'is', null)
-        .lte('validity_date', thirtyDaysFromNow.toISOString())
-        .gt('validity_date', now.toISOString()); // Exclude already expired
+        .in('status', ['expiring', 'expired']);
 
       let attQuery = supabase
         .from('technical_attestations')
@@ -241,11 +238,10 @@ export function useExpiringItems() {
           id,
           project_object,
           validity_date,
+          status,
           profiles!left(full_name)
         `)
-        .not('validity_date', 'is', null)
-        .lte('validity_date', thirtyDaysFromNow.toISOString())
-        .gt('validity_date', now.toISOString()); // Exclude already expired
+        .in('status', ['expiring', 'expired']);
 
       let docQuery = supabase
         .from('legal_documents')
@@ -253,11 +249,10 @@ export function useExpiringItems() {
           id,
           document_name,
           validity_date,
+          status,
           profiles!left(full_name)
         `)
-        .not('validity_date', 'is', null)
-        .lte('validity_date', thirtyDaysFromNow.toISOString())
-        .gt('validity_date', now.toISOString()); // Exclude already expired
+        .in('status', ['expiring', 'expired']);
 
       // All authenticated users can see all data (RLS handles access control)
 
@@ -273,7 +268,7 @@ export function useExpiringItems() {
       // Processar certificações
       certificationsResult.data?.forEach(cert => {
         if (cert.validity_date) {
-          const expiryDate = new Date(cert.validity_date);
+          const expiryDate = new Date(cert.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
           expiringItems.push({
@@ -282,7 +277,7 @@ export function useExpiringItems() {
             user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'certification',
-            status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'
+            status: cert.status as 'expiring' | 'expired'
           });
         }
       });
@@ -290,7 +285,7 @@ export function useExpiringItems() {
       // Processar atestados
       attestationsResult.data?.forEach(att => {
         if (att.validity_date) {
-          const expiryDate = new Date(att.validity_date);
+          const expiryDate = new Date(att.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
           expiringItems.push({
@@ -299,7 +294,7 @@ export function useExpiringItems() {
             user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'certificate',
-            status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'
+            status: att.status as 'expiring' | 'expired'
           });
         }
       });
@@ -307,7 +302,7 @@ export function useExpiringItems() {
       // Processar documentos
       documentsResult.data?.forEach(doc => {
         if (doc.validity_date) {
-          const expiryDate = new Date(doc.validity_date);
+          const expiryDate = new Date(doc.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
           expiringItems.push({
@@ -316,7 +311,7 @@ export function useExpiringItems() {
             user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
             type: 'document',
-            status: daysUntilExpiry <= 0 ? 'expired' : 'expiring'
+            status: doc.status as 'expiring' | 'expired'
           });
         }
       });

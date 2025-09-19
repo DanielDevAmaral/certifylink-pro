@@ -64,23 +64,10 @@ export function useDashboardAnalytics() {
 
       const totalDocuments = allDocuments.length;
       
-      // Use mutually exclusive categorization based on validity date priority
-      const expiredDocuments = allDocuments.filter(doc => {
-        if (!doc.validity_date) return false;
-        return new Date(doc.validity_date) <= now;
-      }).length;
-      
-      const expiringDocuments = allDocuments.filter(doc => {
-        if (!doc.validity_date) return false;
-        const validityDate = new Date(doc.validity_date);
-        return validityDate > now && validityDate <= thirtyDaysFromNow;
-      }).length;
-      
-      const validDocuments = allDocuments.filter(doc => {
-        if (!doc.validity_date) return true; // No expiry date = valid
-        const validityDate = new Date(doc.validity_date);
-        return validityDate > thirtyDaysFromNow;
-      }).length;
+      // Use database status field which is now automatically updated
+      const expiredDocuments = allDocuments.filter(doc => doc.status === 'expired').length;
+      const expiringDocuments = allDocuments.filter(doc => doc.status === 'expiring').length;
+      const validDocuments = allDocuments.filter(doc => doc.status === 'valid').length;
 
       const complianceRate = totalDocuments > 0 ? 
         Math.round((validDocuments / totalDocuments) * 100) : 0;
@@ -109,61 +96,28 @@ export function useDashboardAnalytics() {
         });
       }
 
-      // Category breakdown - using same mutually exclusive logic
+      // Category breakdown - using database status field
       const categoryBreakdown = [
         {
           category: 'Certificações',
           count: certifications.length,
-          expired: certifications.filter(c => {
-            if (!c.validity_date) return false;
-            return new Date(c.validity_date) <= now;
-          }).length,
-          expiring: certifications.filter(c => {
-            if (!c.validity_date) return false;
-            const validityDate = new Date(c.validity_date);
-            return validityDate > now && validityDate <= thirtyDaysFromNow;
-          }).length,
-          valid: certifications.filter(c => {
-            if (!c.validity_date) return true;
-            const validityDate = new Date(c.validity_date);
-            return validityDate > thirtyDaysFromNow;
-          }).length
+          expired: certifications.filter(c => c.status === 'expired').length,
+          expiring: certifications.filter(c => c.status === 'expiring').length,
+          valid: certifications.filter(c => c.status === 'valid').length
         },
         {
           category: 'Atestados',
           count: attestations.length,
-          expired: attestations.filter(a => {
-            if (!a.validity_date) return false;
-            return new Date(a.validity_date) <= now;
-          }).length,
-          expiring: attestations.filter(a => {
-            if (!a.validity_date) return false;
-            const validityDate = new Date(a.validity_date);
-            return validityDate > now && validityDate <= thirtyDaysFromNow;
-          }).length,
-          valid: attestations.filter(a => {
-            if (!a.validity_date) return true;
-            const validityDate = new Date(a.validity_date);
-            return validityDate > thirtyDaysFromNow;
-          }).length
+          expired: attestations.filter(a => a.status === 'expired').length,
+          expiring: attestations.filter(a => a.status === 'expiring').length,
+          valid: attestations.filter(a => a.status === 'valid').length
         },
         {
           category: 'Documentos',
           count: documents.length,
-          expired: documents.filter(d => {
-            if (!d.validity_date) return false;
-            return new Date(d.validity_date) <= now;
-          }).length,
-          expiring: documents.filter(d => {
-            if (!d.validity_date) return false;
-            const validityDate = new Date(d.validity_date);
-            return validityDate > now && validityDate <= thirtyDaysFromNow;
-          }).length,
-          valid: documents.filter(d => {
-            if (!d.validity_date) return true;
-            const validityDate = new Date(d.validity_date);
-            return validityDate > thirtyDaysFromNow;
-          }).length
+          expired: documents.filter(d => d.status === 'expired').length,
+          expiring: documents.filter(d => d.status === 'expiring').length,
+          valid: documents.filter(d => d.status === 'valid').length
         }
       ];
 

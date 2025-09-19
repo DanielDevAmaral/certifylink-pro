@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileDown, FileSpreadsheet, FileText } from 'lucide-react';
-import { generateReport } from '@/lib/utils/reports';
+import { FileDown, FileSpreadsheet, FileText, AlertCircle } from 'lucide-react';
+import { generateReport, getFieldMappings } from '@/lib/utils/reports';
+import { ReportConfig, ReportDataType, ReportSummary } from '@/types/reports';
 import { useToast } from '@/hooks/use-toast';
 
 interface ReportGeneratorProps {
   data: any[];
-  type: 'certifications' | 'documents' | 'attestations' | 'dashboard';
+  type: ReportDataType;
   title: string;
+  userNames?: Record<string, string>; // For including user names in reports
 }
 
-export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
+export function ReportGenerator({ data, type, title, userNames = {} }: ReportGeneratorProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -27,83 +27,63 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
     includeExpired: false,
   });
 
-  const getReportFields = () => {
-    switch (type) {
-      case 'certifications':
-        return [
-          { key: 'name', label: 'Nome da Certificação' },
-          { key: 'function', label: 'Função' },
-          { key: 'validity_date', label: 'Data de Validade', format: (date: string) => new Date(date).toLocaleDateString('pt-BR') },
-          { key: 'status', label: 'Status' },
-          { key: 'created_at', label: 'Data de Criação', format: (date: string) => new Date(date).toLocaleDateString('pt-BR') },
-        ];
-      case 'documents':
-        return [
-          { key: 'document_name', label: 'Nome do Documento' },
-          { key: 'document_type', label: 'Tipo' },
-          { key: 'document_subtype', label: 'Subtipo' },
-          { key: 'validity_date', label: 'Data de Validade', format: (date: string) => date ? new Date(date).toLocaleDateString('pt-BR') : 'N/A' },
-          { key: 'status', label: 'Status' },
-          { key: 'is_sensitive', label: 'Sensível', format: (value: boolean) => value ? 'Sim' : 'Não' },
-        ];
-      case 'attestations':
-        return [
-          { key: 'project_object', label: 'Objeto do Projeto' },
-          { key: 'client_name', label: 'Cliente' },
-          { key: 'issuer_name', label: 'Emissor' },
-          { key: 'project_period_start', label: 'Início', format: (date: string) => date ? new Date(date).toLocaleDateString('pt-BR') : 'N/A' },
-          { key: 'project_period_end', label: 'Fim', format: (date: string) => date ? new Date(date).toLocaleDateString('pt-BR') : 'N/A' },
-          { key: 'project_value', label: 'Valor', format: (value: number) => value ? `R$ ${value.toLocaleString('pt-BR')}` : 'N/A' },
-        ];
-      case 'dashboard':
-        return [
-          { key: 'title', label: 'Título' },
-          { key: 'type', label: 'Categoria', format: (type: string) => {
-            const labels = { certification: 'Certificação', certificate: 'Atestado', document: 'Documento' };
-            return labels[type as keyof typeof labels] || type;
-          }},
-          { key: 'user_name', label: 'Usuário' },
-          { key: 'status', label: 'Status' },
-          { key: 'created_at', label: 'Data', format: (date: string) => new Date(date).toLocaleDateString('pt-BR') },
-          { key: 'expires_in_days', label: 'Vence em', format: (days: number) => days !== undefined ? `${days} dias` : 'N/A' },
-        ];
-      default:
-        return [];
-    }
-  };
+  // Enhanced data processing with user names
+  const enrichedData = data.map(item => ({
+    ...item,
+    full_name: userNames[item.user_id] || 'N/A'
+  }));
 
-  const generateSummary = (filteredData: any[]) => {
-    const summary: Record<string, any> = {
-      'Total de Registros': filteredData.length,
+  const generateSummary = (filteredData: any[]): ReportSummary => {
+    const summary: ReportSummary = {
+      totalRecords: filteredData.length,
+      byStatus: {},
     };
 
-    if (type === 'certifications' || type === 'documents') {
-      const validCount = filteredData.filter(item => item.status === 'valid').length;
-      const expiredCount = filteredData.filter(item => item.status === 'expired').length;
-      const expiringSoonCount = filteredData.filter(item => item.status === 'expiring_soon').length;
+    // Count by status for all document types
+    const statusCounts = filteredData.reduce((acc, item) => {
+      const status = item.status || 'unknown';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-      summary['Válidos'] = validCount;
-      summary['Vencidos'] = expiredCount;
-      summary['Vencendo em Breve'] = expiringSoonCount;
+    summary.byStatus = {
+      'Válidos': statusCounts.valid || 0,
+      'Expirando': statusCounts.expiring || 0,
+      'Expirados': statusCounts.expired || 0,
+      'Pendentes': statusCounts.pending || 0,
+    };
+
+    // Type-specific metrics
+    if (type === 'certifications') {
+      const approvedEquivalences = filteredData.filter(item => item.approved_equivalence).length;
+      summary.additionalMetrics = {
+        'Equivalências Aprovadas': approvedEquivalences,
+        'Equivalências Pendentes': filteredData.length - approvedEquivalences,
+      };
     }
 
-    if (type === 'dashboard') {
-      const typeCount = filteredData.reduce((acc, item) => {
-        const type = item.type || 'outros';
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+    if (type === 'attestations') {
+      const withValue = filteredData.filter(item => item.project_value && item.project_value > 0);
+      const totalValue = withValue.reduce((sum, item) => sum + (item.project_value || 0), 0);
+      summary.additionalMetrics = {
+        'Projetos com Valor': withValue.length,
+        'Valor Total dos Projetos': `R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      };
+    }
 
-      summary['Certificações'] = typeCount.certification || 0;
-      summary['Atestados'] = typeCount.certificate || 0;
-      summary['Documentos'] = typeCount.document || 0;
+    if (type === 'documents') {
+      const sensitiveCount = filteredData.filter(item => item.is_sensitive).length;
+      summary.additionalMetrics = {
+        'Documentos Sensíveis': sensitiveCount,
+        'Documentos Públicos': filteredData.length - sensitiveCount,
+      };
     }
 
     return summary;
   };
 
   const filterData = () => {
-    return data.filter(item => {
+    return enrichedData.filter(item => {
       // Status filter
       if (filters.status !== 'all' && item.status !== filters.status) {
         return false;
@@ -129,28 +109,54 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
     setLoading(true);
     try {
       const filteredData = filterData();
-      const fields = getReportFields();
+      
+      if (filteredData.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Nenhum dado para exportar',
+          description: 'Aplique filtros diferentes para incluir dados no relatório.',
+        });
+        return;
+      }
+
+      // Get field mappings based on type
+      const fields = type === 'dashboard' 
+        ? [] // Dashboard uses legacy format for now
+        : getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
+
       const summary = generateSummary(filteredData);
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
 
-      generateReport(filteredData, {
+      const config: ReportConfig = {
         title: `${title} - Relatório Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
         fields,
-        summary,
+        summary: {
+          ...summary.byStatus,
+          ...summary.additionalMetrics,
+          'Total de Registros': summary.totalRecords,
+        },
         filename,
         type: format,
-      });
+        branding: {
+          subtitle: `Relatório de ${title}`,
+          company: 'Sistema de Gestão Documental'
+        }
+      };
+
+      console.log('Starting export with config:', config);
+      generateReport(filteredData, config);
 
       toast({
         title: 'Relatório gerado com sucesso!',
         description: `O arquivo ${format.toUpperCase()} foi baixado.`,
       });
     } catch (error) {
+      console.error('Export error:', error);
       toast({
         variant: 'destructive',
         title: 'Erro ao gerar relatório',
-        description: 'Ocorreu um erro ao gerar o relatório. Tente novamente.',
+        description: error instanceof Error ? error.message : 'Ocorreu um erro ao gerar o relatório. Tente novamente.',
       });
     } finally {
       setLoading(false);
@@ -305,9 +311,10 @@ export function ReportGenerator({ data, type, title }: ReportGeneratorProps) {
         </div>
 
         {filteredData.length === 0 && (
-          <div className="text-center py-6 text-muted-foreground">
-            <FileDown className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Nenhum dado encontrado com os filtros aplicados</p>
+          <div className="text-center py-8 text-muted-foreground">
+            <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium mb-1">Nenhum dado encontrado</p>
+            <p className="text-sm">Ajuste os filtros para incluir mais dados no relatório</p>
           </div>
         )}
       </div>

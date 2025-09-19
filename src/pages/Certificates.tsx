@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Eye, Download, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown } from 'lucide-react';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestationForm";
 import { SearchBar } from "@/components/common/SearchBar";
 import { FilterPanel } from "@/components/common/FilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
+import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
+import { usePublicNames } from "@/hooks/usePublicNames";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -59,6 +62,7 @@ const filterConfigs = [
 export default function Certificates() {
   const [selectedAttestation, setSelectedAttestation] = useState<TechnicalCertificate | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showReports, setShowReports] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const {
@@ -74,6 +78,13 @@ export default function Certificates() {
 
   const { attestations = [], isLoading } = useTechnicalAttestations();
   const deleteMutation = useDeleteTechnicalAttestation();
+
+  // Get unique user IDs from attestations for name lookup
+  const userIds = useMemo(() => {
+    return Array.from(new Set(attestations.map(attestation => attestation.user_id)));
+  }, [attestations]);
+
+  const { data: userNames = {} } = usePublicNames(userIds);
 
   // Handle highlighting from notifications
   useEffect(() => {
@@ -162,33 +173,58 @@ export default function Certificates() {
   }
 
   return (
-    <Layout>
-      <PageHeader
-        title="Atestados de Capacidade Técnica"
-        description="Gestão de atestados para comprovação de experiência em editais"
-      >
-        <FilterPanel
-          filterConfigs={filterConfigs}
-          activeFilters={filters}
-          onFiltersChange={setFilters}
-          onClearFilters={() => setFilters({})}
-        />
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogTrigger asChild>
-            <Button className="btn-corporate gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Atestado
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <TechnicalAttestationForm
-              attestation={selectedAttestation || undefined}
-              onSuccess={handleFormSuccess}
-              onCancel={() => setShowForm(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </PageHeader>
+    <ErrorBoundary>
+      <Layout>
+        <PageHeader
+          title="Atestados de Capacidade Técnica"
+          description="Gestão de atestados para comprovação de experiência em editais"
+        >
+          <FilterPanel
+            filterConfigs={filterConfigs}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+            onClearFilters={() => setFilters({})}
+          />
+          
+          <Button
+            variant="outline"
+            onClick={() => setShowReports(!showReports)}
+            className="gap-2"
+          >
+            <FileDown className="h-4 w-4" />
+            Relatórios
+          </Button>
+          
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button className="btn-corporate gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Atestado
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <TechnicalAttestationForm
+                attestation={selectedAttestation || undefined}
+                onSuccess={handleFormSuccess}
+                onCancel={() => setShowForm(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </PageHeader>
+
+        {/* Reports Section */}
+        <Collapsible open={showReports} onOpenChange={setShowReports}>
+          <CollapsibleContent>
+            <div className="mb-6">
+              <ReportGenerator 
+                data={filteredCertificates} 
+                type="attestations"
+                title="Atestados Técnicos"
+                userNames={userNames}
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
       {/* Search Bar */}
       <Card className="card-corporate mb-6">
@@ -345,6 +381,7 @@ export default function Certificates() {
           />
         </div>
       )}
-    </Layout>
+      </Layout>
+    </ErrorBoundary>
   );
 }

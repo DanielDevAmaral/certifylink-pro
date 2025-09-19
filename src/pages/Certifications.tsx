@@ -221,6 +221,7 @@ export default function Certifications() {
               data={filteredCertifications} 
               type="certifications"
               title="Certificações"
+              userNames={userNames}
             />
           </div>
         </CollapsibleContent>

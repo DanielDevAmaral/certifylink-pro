@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   TestTube2, 
@@ -63,6 +65,7 @@ export function TestConnectionModal({
 }: TestConnectionModalProps) {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
+  const [testModel, setTestModel] = useState(model);
   const [testHistory, setTestHistory] = useState<Array<{
     timestamp: Date;
     provider: string;
@@ -71,9 +74,9 @@ export function TestConnectionModal({
     latency?: number;
   }>>([]);
 
-  const runTest = async (testModel?: string) => {
+  const runTest = async (manualModel?: string) => {
     setTesting(true);
-    const targetModel = testModel || model;
+    const targetModel = manualModel || testModel || model;
     
     try {
       const startTime = Date.now();
@@ -160,6 +163,13 @@ export function TestConnectionModal({
   };
 
   const getSolution = (result: TestResult) => {
+    // Check for deprecation messages
+    if (result.error?.includes('decommissioned') || result.error?.includes('deprecated')) {
+      const match = result.error.match(/https:\/\/[^\s"]+/);
+      const docLink = match ? match[0] : null;
+      return `⚠️ Modelo descontinuado! ${docLink ? `Consulte: ${docLink}` : 'Verifique a documentação do provedor para modelos alternativos.'}`;
+    }
+    
     if (result.statusCode) {
       return ERROR_SOLUTIONS[result.statusCode as keyof typeof ERROR_SOLUTIONS];
     }
@@ -183,14 +193,25 @@ export function TestConnectionModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Current Configuration */}
+          {/* Test Configuration */}
           <div className="p-4 rounded-lg bg-accent/20">
-            <h4 className="font-medium mb-2">Configuração Atual</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <div><strong>Provedor:</strong> {provider}</div>
-              <div><strong>Modelo:</strong> {model}</div>
-              <div><strong>Temperature:</strong> {temperature}</div>
-              <div><strong>Max Tokens:</strong> {maxTokens}</div>
+            <h4 className="font-medium mb-3">Configuração de Teste</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="test-model">Modelo para Teste</Label>
+                <Input
+                  id="test-model"
+                  value={testModel}
+                  onChange={(e) => setTestModel(e.target.value)}
+                  placeholder="Digite o nome do modelo"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><strong>Provedor:</strong> {provider}</div>
+                <div><strong>Temperature:</strong> {temperature}</div>
+                <div><strong>Max Tokens:</strong> {maxTokens}</div>
+                <div><strong>Timeout:</strong> {timeout}s</div>
+              </div>
             </div>
           </div>
 
@@ -198,22 +219,22 @@ export function TestConnectionModal({
           <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => runTest()}
-              disabled={testing || !provider || !apiKey}
+              disabled={testing || !provider || !apiKey || !testModel}
               className="gap-2"
             >
               <TestTube2 className="h-4 w-4" />
-              {testing ? 'Testando...' : 'Testar Modelo Atual'}
+              {testing ? 'Testando...' : 'Testar Conexão'}
             </Button>
             
             <Button 
-              onClick={() => runTest()}
+              onClick={() => setTestModel(model)}
               disabled={testing}
               variant="outline" 
               size="sm"
               className="gap-1"
             >
-              <Zap className="h-3 w-3" />
-              Teste Rápido
+              <Copy className="h-3 w-3" />
+              Usar Modelo Padrão
             </Button>
           </div>
 

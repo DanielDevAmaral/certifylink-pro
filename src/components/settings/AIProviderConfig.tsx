@@ -162,38 +162,31 @@ export function AIProviderConfig({ settings, onUpdate }: AIProviderConfigProps) 
         {currentProvider && (
           <div className="space-y-2">
             <Label htmlFor="ai-model">Modelo</Label>
-            <Select value={settings.model} onValueChange={(value) => onUpdate('model', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um modelo" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(currentProvider.models).map(([key, model]: [string, any]) => (
-                  <SelectItem key={key} value={key}>
-                    <div className="flex items-center justify-between w-full">
-                      <div>
-                        <div className="font-medium">{model.name}</div>
-                        <div className="text-xs text-muted-foreground">{model.desc}</div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span title="Velocidade">{model.speed}</span>
-                        <span title="Custo">{model.cost}</span>
-                      </div>
+            <Input
+              id="ai-model"
+              type="text"
+              placeholder={`Ex: ${Object.keys(currentProvider.models)[0] || 'llama-3.1-8b-instant'}`}
+              value={settings.model}
+              onChange={(e) => onUpdate('model', e.target.value)}
+            />
+            <div className="p-3 rounded-lg bg-accent/30 text-sm">
+              <p className="font-medium text-foreground mb-2">Modelos Sugeridos:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs">
+                {Object.entries(currentProvider.models).slice(0, 6).map(([key, model]: [string, any]) => (
+                  <div key={key} className="flex items-center justify-between p-1 hover:bg-accent/20 rounded cursor-pointer"
+                       onClick={() => onUpdate('model', key)}>
+                    <span className="font-mono">{key}</span>
+                    <div className="flex items-center gap-1">
+                      <span title="Velocidade">{model.speed}</span>
+                      <span title="Custo">{model.cost}</span>
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {currentModel && (
-              <div className="p-3 rounded-lg bg-accent/50 text-sm">
-                <div className="flex items-center justify-between">
-                  <span><strong>{currentModel.name}:</strong> {currentModel.desc}</span>
-                  <div className="flex items-center gap-2">
-                    <span title="Velocidade">Velocidade: {currentModel.speed}</span>
-                    <span title="Custo">Custo: {currentModel.cost}</span>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
+              <p className="text-xs text-muted-foreground mt-2">
+                💡 Clique em um modelo sugerido ou digite manualmente o nome do modelo
+              </p>
+            </div>
           </div>
         )}
 

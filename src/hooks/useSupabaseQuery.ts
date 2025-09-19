@@ -59,29 +59,10 @@ export function useDashboardStats() {
       const attestations = attestationsResult.data || [];
       const documents = documentsResult.data || [];
 
-      const now = new Date();
-      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      // Calcular certificações vencendo (excluindo já vencidas)
-      const expiringCertifications = certifications.filter(cert => {
-        if (!cert.validity_date) return false;
-        const validityDate = new Date(cert.validity_date);
-        return validityDate <= thirtyDaysFromNow && validityDate > now;
-      }).length;
-
-      // Calcular atestados vencendo (excluindo já vencidos)
-      const expiringAttestations = attestations.filter(att => {
-        if (!att.validity_date) return false;
-        const validityDate = new Date(att.validity_date);
-        return validityDate <= thirtyDaysFromNow && validityDate > now;
-      }).length;
-
-      // Calcular documentos vencendo (excluindo já vencidos)
-      const expiringDocuments = documents.filter(doc => {
-        if (!doc.validity_date) return false;
-        const validityDate = new Date(doc.validity_date);
-        return validityDate <= thirtyDaysFromNow && validityDate > now;
-      }).length;
+      // Use database status field instead of dynamic calculation
+      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring').length;
+      const expiringAttestations = attestations.filter(att => att.status === 'expiring').length;
+      const expiringDocuments = documents.filter(doc => doc.status === 'expiring').length;
 
       const totalDocuments = certifications.length + attestations.length + documents.length;
       const validDocuments = [...certifications, ...attestations, ...documents]

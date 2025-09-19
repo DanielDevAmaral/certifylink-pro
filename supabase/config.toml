@@ -1,1 +1,4 @@
 project_id = "fxfmswnvfqqdsgrcgvhl"
+
+[functions.test-ai-provider]
+verify_jwt = false

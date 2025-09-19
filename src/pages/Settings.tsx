@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings, useUpdateSettings, useBackupSettings, useRestoreSettings } from "@/hooks/useSettings";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings as SettingsIcon, 
   Bot,
@@ -18,7 +19,8 @@ import {
   Download,
   Shield,
   Key,
-  Save
+  Save,
+  TestTube2
 } from "lucide-react";
 
 export default function Settings() {
@@ -27,6 +29,7 @@ export default function Settings() {
   const updateSettings = useUpdateSettings();
   const backupSettings = useBackupSettings();
   const restoreSettings = useRestoreSettings();
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const [localSettings, setLocalSettings] = useState({
     ai: {
@@ -112,6 +115,51 @@ export default function Settings() {
     }));
   };
 
+  const handleTestConnection = async () => {
+    if (!localSettings.ai.provider || !localSettings.ai.api_key) {
+      toast({
+        title: 'Erro',
+        description: 'Preencha o provedor e a chave da API antes de testar.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setTestingConnection(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-provider', {
+        body: {
+          provider: localSettings.ai.provider,
+          apiKey: localSettings.ai.api_key
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: 'Conexão Bem-sucedida!',
+          description: `${data.message} Modelo: ${data.model}`,
+        });
+      } else {
+        toast({
+          title: 'Falha na Conexão',
+          description: data.error,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao testar a conexão com o provedor de IA.',
+        variant: 'destructive'
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -184,15 +232,27 @@ export default function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ai-provider">Provedor de IA</Label>
-                  <Input id="ai-provider" placeholder="OpenAI, Anthropic, etc." value={localSettings.ai.provider} onChange={(e) => updateLocalSetting('ai', 'provider', e.target.value)} />
+                  <Input id="ai-provider" placeholder="Groq, OpenAI, Anthropic, etc." value={localSettings.ai.provider} onChange={(e) => updateLocalSetting('ai', 'provider', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ai-key">Chave da API</Label>
                   <div className="relative">
                     <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="ai-key" type="password" placeholder="sk-..." className="pl-10" value={localSettings.ai.api_key} onChange={(e) => updateLocalSetting('ai', 'api_key', e.target.value)} />
+                    <Input id="ai-key" type="password" placeholder="gsk_... ou sk-..." className="pl-10" value={localSettings.ai.api_key} onChange={(e) => updateLocalSetting('ai', 'api_key', e.target.value)} />
                   </div>
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleTestConnection}
+                  disabled={testingConnection || !localSettings.ai.provider || !localSettings.ai.api_key}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <TestTube2 className="h-4 w-4" />
+                  {testingConnection ? 'Testando...' : 'Testar Conexão'}
+                </Button>
               </div>
 
               <div className="space-y-2">

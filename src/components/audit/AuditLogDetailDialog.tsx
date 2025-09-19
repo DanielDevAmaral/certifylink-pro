@@ -210,50 +210,87 @@ export function AuditLogDetailDialog({ log, isOpen, onClose, userName }: AuditLo
               )}
 
               {log.action === 'UPDATE' && log.old_values && log.new_values && (
-                <div>
-                  <h4 className="font-semibold text-warning mb-3 flex items-center gap-2">
-                    <Edit className="h-4 w-4" />
-                    Alterações Realizadas
-                  </h4>
-                  <div className="space-y-4">
-                    {Object.keys(log.new_values).map(key => {
-                      const oldVal = log.old_values?.[key];
-                      const newVal = log.new_values?.[key];
-                      
-                      if (oldVal === newVal) return null;
-                      
-                      return (
-                        <div key={key} className="bg-warning/5 border border-warning/20 rounded-lg p-4">
-                          <div className="font-medium text-sm mb-2">{key}</div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <div className="text-xs font-medium text-danger mb-1">Valor Anterior:</div>
-                              <div className="bg-danger/10 border border-danger/20 rounded p-2 text-sm">
-                                {oldVal === null || oldVal === undefined ? (
+                <div className="space-y-6">
+                  {/* Context Information - Always show key fields */}
+                  <div>
+                    <h4 className="font-semibold text-primary mb-3 flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Informações do Registro Alterado
+                    </h4>
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Always show key identifying fields */}
+                        {Object.entries(log.new_values).map(([key, value]) => {
+                          // Show key fields that help identify the record
+                          const keyFields = ['id', 'user_id', 'name', 'full_name', 'email', 'document_name', 'client_name', 'project_object', 'title'];
+                          if (!keyFields.includes(key)) return null;
+                          
+                          return (
+                            <div key={`context-${key}`} className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{key}:</span>
+                              <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                {value === null || value === undefined ? (
                                   <span className="text-muted-foreground italic">null</span>
-                                ) : typeof oldVal === 'object' ? (
-                                  <pre className="text-xs overflow-x-auto">{JSON.stringify(oldVal, null, 2)}</pre>
+                                ) : typeof value === 'object' ? (
+                                  JSON.stringify(value)
                                 ) : (
-                                  <span>{String(oldVal)}</span>
+                                  String(value).length > 50 ? String(value).substring(0, 50) + '...' : String(value)
                                 )}
-                              </div>
+                              </span>
                             </div>
-                            <div>
-                              <div className="text-xs font-medium text-success mb-1">Novo Valor:</div>
-                              <div className="bg-success/10 border border-success/20 rounded p-2 text-sm">
-                                {newVal === null || newVal === undefined ? (
-                                  <span className="text-muted-foreground italic">null</span>
-                                ) : typeof newVal === 'object' ? (
-                                  <pre className="text-xs overflow-x-auto">{JSON.stringify(newVal, null, 2)}</pre>
-                                ) : (
-                                  <span>{String(newVal)}</span>
-                                )}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Changes Made */}
+                  <div>
+                    <h4 className="font-semibold text-warning mb-3 flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      Alterações Realizadas
+                    </h4>
+                    <div className="space-y-4">
+                      {Object.keys(log.new_values).map(key => {
+                        const oldVal = log.old_values?.[key];
+                        const newVal = log.new_values?.[key];
+                        
+                        // Skip if values are the same
+                        if (oldVal === newVal) return null;
+                        
+                        return (
+                          <div key={key} className="bg-warning/5 border border-warning/20 rounded-lg p-4">
+                            <div className="font-medium text-sm mb-2">{key}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-xs font-medium text-danger mb-1">Valor Anterior:</div>
+                                <div className="bg-danger/10 border border-danger/20 rounded p-2 text-sm">
+                                  {oldVal === null || oldVal === undefined ? (
+                                    <span className="text-muted-foreground italic">null</span>
+                                  ) : typeof oldVal === 'object' ? (
+                                    <pre className="text-xs overflow-x-auto">{JSON.stringify(oldVal, null, 2)}</pre>
+                                  ) : (
+                                    <span>{String(oldVal)}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-medium text-success mb-1">Novo Valor:</div>
+                                <div className="bg-success/10 border border-success/20 rounded p-2 text-sm">
+                                  {newVal === null || newVal === undefined ? (
+                                    <span className="text-muted-foreground italic">null</span>
+                                  ) : typeof newVal === 'object' ? (
+                                    <pre className="text-xs overflow-x-auto">{JSON.stringify(newVal, null, 2)}</pre>
+                                  ) : (
+                                    <span>{String(newVal)}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}

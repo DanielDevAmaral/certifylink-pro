@@ -25,6 +25,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
     dateTo: null as Date | null,
     status: 'all',
     includeExpired: false,
+    pdfStyle: 'synthetic' as 'synthetic' | 'detailed', // New PDF style option
   });
 
   // Enhanced data processing with user names
@@ -138,6 +139,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
         },
         filename,
         type: format,
+        pdfStyle: format === 'pdf' ? filters.pdfStyle : undefined, // Include PDF style for PDF exports
         branding: {
           subtitle: `Relatório de ${title}`,
           company: 'Sistema de Gestão Documental'
@@ -146,7 +148,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
 
       console.log('Starting export with config:', config);
       console.log('Filtered data sample:', filteredData.slice(0, 2)); // Log sample data
-      generateReport(filteredData, config);
+      await generateReport(filteredData, config);
 
       toast({
         title: 'Relatório gerado com sucesso!',
@@ -210,18 +212,28 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
           </div>
 
           <div className="space-y-2">
-            <Label className="invisible">Opções</Label>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeExpired"
-                checked={filters.includeExpired}
-                onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeExpired: !!checked }))}
-              />
-              <Label htmlFor="includeExpired" className="text-sm">
-                Incluir vencidos
-              </Label>
-            </div>
+            <Label>Tipo de Relatório PDF</Label>
+            <Select value={filters.pdfStyle} onValueChange={(value: 'synthetic' | 'detailed') => setFilters(prev => ({ ...prev, pdfStyle: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="synthetic">Sintético (Tabela)</SelectItem>
+                <SelectItem value="detailed">Detalhado (Com imagens)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="includeExpired"
+            checked={filters.includeExpired}
+            onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeExpired: !!checked }))}
+          />
+          <Label htmlFor="includeExpired" className="text-sm">
+            Incluir vencidos
+          </Label>
         </div>
 
         {/* Summary */}

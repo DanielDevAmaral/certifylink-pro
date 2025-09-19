@@ -26,6 +26,7 @@ export interface ReportConfig {
   summary?: Record<string, any>;
   filename: string;
   type: 'excel' | 'csv' | 'pdf';
+  pdfStyle?: 'synthetic' | 'detailed'; // New field for PDF report type
   branding?: {
     logo?: string;
     company?: string;

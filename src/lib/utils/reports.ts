@@ -297,8 +297,205 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
   }
 }
 
+// Load image from URL for PDF
+async function loadImageForPDF(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error loading image:', error);
+    return null;
+  }
+}
+
+// Generate detailed PDF with individual certification sections
+export async function generateDetailedPDF(reportData: ReportData, filename: string, rawData: any[], config?: Partial<ReportConfig>) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - 2 * margin;
+
+  // Header
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(25, 118, 210); // Primary blue
+  doc.text(reportData.title || 'Relatório Detalhado', margin, margin + 10);
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, margin + 20);
+
+  let currentY = margin + 35;
+
+  // Process each certification
+  for (let i = 0; i < rawData.length; i++) {
+    const cert = rawData[i];
+    
+    // Check if we need a new page
+    if (currentY > pageHeight - 80) {
+      doc.addPage();
+      currentY = margin;
+    }
+
+    // Certification header
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(25, 118, 210);
+    doc.text(`${i + 1}. ${cert.name || 'Certificação'}`, margin, currentY);
+    currentY += 10;
+
+    // Status badge
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const statusColor = cert.status === 'valid' ? [16, 185, 129] : cert.status === 'expired' ? [239, 68, 68] : [245, 158, 11];
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(`Status: ${cert.status?.toUpperCase() || 'N/A'}`, margin, currentY);
+    doc.setTextColor(0, 0, 0);
+    currentY += 8;
+
+    // Basic information
+    const info = [
+      ['Responsável:', cert.full_name || 'N/A'],
+      ['Função:', cert.function || 'N/A'],
+      ['Validade:', cert.validity_date ? new Date(cert.validity_date).toLocaleDateString('pt-BR') : 'N/A'],
+      ['Criado em:', cert.created_at ? new Date(cert.created_at).toLocaleDateString('pt-BR') : 'N/A'],
+    ];
+
+    info.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label, margin, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(value, margin + 30, currentY);
+      currentY += 6;
+    });
+
+    // Additional information
+    if (cert.approved_equivalence !== undefined) {
+      currentY += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Equivalência Aprovada:', margin, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(cert.approved_equivalence ? 'Sim' : 'Não', margin + 45, currentY);
+      currentY += 6;
+    }
+
+    if (cert.equivalence_services && cert.equivalence_services.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Serviços de Equivalência:', margin, currentY);
+      currentY += 6;
+      doc.setFont('helvetica', 'normal');
+      const services = Array.isArray(cert.equivalence_services) 
+        ? cert.equivalence_services.join(', ')
+        : cert.equivalence_services;
+      const lines = doc.splitTextToSize(services, contentWidth - 10);
+      doc.text(lines, margin + 5, currentY);
+      currentY += lines.length * 4 + 3;
+    }
+
+    if (cert.public_link) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Link Público:', margin, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(37, 99, 235);
+      doc.text(cert.public_link, margin + 25, currentY);
+      doc.setTextColor(0, 0, 0);
+      currentY += 8;
+    }
+
+    // Load and add certification image
+    if (cert.screenshot_url) {
+      currentY += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Imagem da Certificação:', margin, currentY);
+      currentY += 8;
+
+      try {
+        const imageData = await loadImageForPDF(cert.screenshot_url);
+        if (imageData) {
+          const maxImageWidth = contentWidth * 0.8;
+          const maxImageHeight = 60;
+          
+          // Check if we need a new page for the image
+          if (currentY + maxImageHeight > pageHeight - margin) {
+            doc.addPage();
+            currentY = margin;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Imagem da Certificação (continuação):', margin, currentY);
+            currentY += 8;
+          }
+
+          doc.addImage(imageData, 'JPEG', margin + 10, currentY, maxImageWidth, maxImageHeight);
+          currentY += maxImageHeight + 10;
+        } else {
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(150, 150, 150);
+          doc.text('(Imagem não disponível)', margin + 10, currentY);
+          doc.setTextColor(0, 0, 0);
+          currentY += 8;
+        }
+      } catch (error) {
+        console.error('Error loading image for PDF:', error);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(150, 150, 150);
+        doc.text('(Erro ao carregar imagem)', margin + 10, currentY);
+        doc.setTextColor(0, 0, 0);
+        currentY += 8;
+      }
+    }
+
+    // Separator line
+    currentY += 10;
+    if (i < rawData.length - 1) {
+      doc.setDrawColor(229, 231, 235);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 15;
+    }
+  }
+
+  // Add summary on new page
+  if (reportData.summary && Object.keys(reportData.summary).length > 0) {
+    doc.addPage();
+    currentY = margin;
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(25, 118, 210);
+    doc.text('Resumo do Relatório', margin, currentY);
+    currentY += 15;
+
+    const summaryData = Object.entries(reportData.summary).map(([key, value]) => [
+      sanitizeForPDF(key),
+      sanitizeForPDF(value)
+    ]);
+
+    autoTable(doc, {
+      head: [['Métrica', 'Valor']],
+      body: summaryData,
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [25, 118, 210] }
+    });
+  }
+
+  doc.save(`${filename}.pdf`);
+}
+
 // Enhanced generic report generator with better error handling
-export function generateReport(data: any[], config: ReportConfig) {
+export async function generateReport(data: any[], config: ReportConfig) {
   try {
     console.log('Generating report with config:', { 
       title: config.title, 
@@ -354,7 +551,11 @@ export function generateReport(data: any[], config: ReportConfig) {
         exportToCSV(reportData, config.filename);  
         break;
       case 'pdf':
-        exportToPDF(reportData, config.filename, config);
+        if (config.pdfStyle === 'detailed') {
+          await generateDetailedPDF(reportData, config.filename, data, config);
+        } else {
+          exportToPDF(reportData, config.filename, config);
+        }
         break;
       default:
         throw new Error(`Unsupported export type: ${config.type}`);

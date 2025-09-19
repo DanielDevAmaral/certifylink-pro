@@ -10,17 +10,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings, useUpdateSettings, useBackupSettings, useRestoreSettings } from "@/hooks/useSettings";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { AIProviderConfig } from "@/components/settings/AIProviderConfig";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings as SettingsIcon, 
   Bot,
   Bell,
   Download,
   Shield,
-  Key,
-  Save,
-  TestTube2
+  Save
 } from "lucide-react";
 
 export default function Settings() {
@@ -34,9 +32,13 @@ export default function Settings() {
   const [localSettings, setLocalSettings] = useState({
     ai: {
       provider: settings?.ai?.provider || '',
+      model: settings?.ai?.model || '',
       api_key: settings?.ai?.api_key || '',
       prompt_template: settings?.ai?.prompt_template || '',
-      auto_suggestions: settings?.ai?.auto_suggestions ?? false
+      auto_suggestions: settings?.ai?.auto_suggestions ?? false,
+      temperature: settings?.ai?.temperature ?? 0.7,
+      max_tokens: settings?.ai?.max_tokens ?? 1000,
+      timeout: settings?.ai?.timeout ?? 30
     },
     notifications: {
       expiration_alert_days: settings?.notifications?.expiration_alert_days ?? 30,
@@ -115,49 +117,14 @@ export default function Settings() {
     }));
   };
 
-  const handleTestConnection = async () => {
-    if (!localSettings.ai.provider || !localSettings.ai.api_key) {
-      toast({
-        title: 'Erro',
-        description: 'Preencha o provedor e a chave da API antes de testar.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setTestingConnection(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('test-ai-provider', {
-        body: {
-          provider: localSettings.ai.provider,
-          apiKey: localSettings.ai.api_key
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: 'Conexão Bem-sucedida!',
-          description: `${data.message} Modelo: ${data.model}`,
-        });
-      } else {
-        toast({
-          title: 'Falha na Conexão',
-          description: data.error,
-          variant: 'destructive'
-        });
+  const updateAISetting = (key: string, value: any) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      ai: {
+        ...prev.ai,
+        [key]: value
       }
-    } catch (error) {
-      console.error('Error testing connection:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao testar a conexão com o provedor de IA.',
-        variant: 'destructive'
-      });
-    } finally {
-      setTestingConnection(false);
-    }
+    }));
   };
 
   if (isLoading) {
@@ -215,68 +182,10 @@ export default function Settings() {
         </TabsList>
 
         <TabsContent value="ai" className="space-y-6">
-          <Card className="card-corporate">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Bot className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">Configuração de IA</h3>
-                <p className="text-sm text-muted-foreground">
-                  Configure a inteligência artificial para sugestão de equivalências
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ai-provider">Provedor de IA</Label>
-                  <Input id="ai-provider" placeholder="Groq, OpenAI, Anthropic, etc." value={localSettings.ai.provider} onChange={(e) => updateLocalSetting('ai', 'provider', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ai-key">Chave da API</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="ai-key" type="password" placeholder="gsk_... ou sk-..." className="pl-10" value={localSettings.ai.api_key} onChange={(e) => updateLocalSetting('ai', 'api_key', e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleTestConnection}
-                  disabled={testingConnection || !localSettings.ai.provider || !localSettings.ai.api_key}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <TestTube2 className="h-4 w-4" />
-                  {testingConnection ? 'Testando...' : 'Testar Conexão'}
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ai-prompt">Prompt para Equivalências</Label>
-                <Textarea
-                  id="ai-prompt"
-                  rows={4}
-                  placeholder="Baseado na certificação fornecida, sugira serviços equivalentes que podem ser executados..."
-                  value={localSettings.ai.prompt_template}
-                  onChange={(e) => updateLocalSetting('ai', 'prompt_template', e.target.value)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
-                <div>
-                  <p className="font-medium text-foreground">Ativar Sugestões Automáticas</p>
-                  <p className="text-sm text-muted-foreground">
-                    Gerar equivalências automaticamente ao cadastrar certificações
-                  </p>
-                </div>
-                <Switch checked={localSettings.ai.auto_suggestions} onCheckedChange={(val) => updateLocalSetting('ai', 'auto_suggestions', val)} />
-              </div>
-            </div>
-          </Card>
+          <AIProviderConfig 
+            settings={localSettings.ai}
+            onUpdate={updateAISetting}
+          />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">

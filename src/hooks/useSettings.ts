@@ -15,9 +15,13 @@ interface SystemSetting {
 interface SettingsGroup {
   ai: {
     provider: string;
+    model: string;
     api_key: string;
     prompt_template: string;
     auto_suggestions: boolean;
+    temperature: number;
+    max_tokens: number;
+    timeout: number;
   };
   notifications: {
     expiration_alert_days: number;
@@ -42,9 +46,13 @@ interface SettingsGroup {
 const defaultSettings: SettingsGroup = {
   ai: {
     provider: "openai",
+    model: "gpt-4o-mini",
     api_key: "",
     prompt_template: "Analise a certificação e sugira serviços equivalentes baseado na experiência e competências demonstradas.",
-    auto_suggestions: true
+    auto_suggestions: true,
+    temperature: 0.7,
+    max_tokens: 1000,
+    timeout: 30
   },
   notifications: {
     expiration_alert_days: 30,

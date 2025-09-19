@@ -1,7 +1,14 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { ReportData, ReportConfig, ReportField, ReportSummary } from '@/types/reports';
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: typeof autoTable;
+  }
+}
 
 // Enhanced report data validation
 function validateReportData(data: any[]): string[] {
@@ -182,7 +189,7 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
     );
 
     // Add main data table
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [reportData.headers],
       body: sanitizedData,
       startY: currentY,
@@ -232,7 +239,7 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
 
     // Add summary section if available
     if (reportData.summary && Object.keys(reportData.summary).length > 0) {
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      const finalY = (doc as any).lastAutoTable?.finalY || currentY + 100;
       
       // Check if we need a new page for summary
       if (finalY > doc.internal.pageSize.height - 60) {
@@ -254,7 +261,7 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
         sanitizeForPDF(value)
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: [['Métrica', 'Valor']],
         body: summaryData,
         startY: currentY,

@@ -145,6 +145,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
       };
 
       console.log('Starting export with config:', config);
+      console.log('Filtered data sample:', filteredData.slice(0, 2)); // Log sample data
       generateReport(filteredData, config);
 
       toast({

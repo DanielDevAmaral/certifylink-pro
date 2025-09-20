@@ -297,15 +297,22 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
 
     // Add summary section if available
     if (reportData.summary && Object.keys(reportData.summary).length > 0) {
-      const finalY = (doc as any).lastAutoTable?.finalY || currentY + 100;
-      
-      // Check if we need a new page for summary
-      if (finalY > doc.internal.pageSize.height - 60) {
-        doc.addPage();
-        currentY = 20;
-      } else {
-        currentY = finalY;
+      // Get the final Y position after the table with proper fallback
+      let finalY = currentY;
+      if ((doc as any).lastAutoTable?.finalY) {
+        finalY = (doc as any).lastAutoTable.finalY + 15; // Add more margin
       }
+      
+      // Check if we need a new page for the summary
+      const remainingSpace = doc.internal.pageSize.height - finalY - 20; // Leave margin for footer
+      const summaryHeight = Object.keys(reportData.summary).length * 6 + 40; // Estimate summary height
+      
+      if (remainingSpace < summaryHeight) {
+        doc.addPage();
+        finalY = 20; // Start near top of new page
+      }
+      
+      currentY = finalY;
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
@@ -812,30 +819,28 @@ export const getFieldMappings = {
 
   dashboard: (): ReportField[] => [
     { key: 'title', label: 'Título', type: 'text' },
-    { key: 'type', label: 'Tipo de Documento', type: 'text', format: (type: string) => {
-      const typeMap = {
-        'certification': 'Certificação',
-        'certificate': 'Atestado Técnico',
-        'document': 'Documento Legal'
-      };
-      return typeMap[type as keyof typeof typeMap] || type;
-    }},
     { key: 'user_name', label: 'Responsável', type: 'text' },
-    { key: 'validity_date', label: 'Data de Validade', type: 'date' },
-    { key: 'status', label: 'Status', type: 'text', format: (status: string) => {
-      const statusMap = {
-        'valid': 'Válido',
-        'expiring': 'Expirando',
-        'expired': 'Expirado',
-        'pending': 'Pendente'
+    { key: 'type', label: 'Tipo', type: 'text', format: (value: string) => {
+      const labels = {
+        certification: 'Certificação',
+        certificate: 'Atestado',
+        document: 'Documento'
       };
-      return statusMap[status as keyof typeof statusMap] || status;
+      return labels[value as keyof typeof labels] || value;
     }},
-    { key: 'expires_in_days', label: 'Dias para Vencimento', type: 'number', format: (days: number) => {
-      if (days === undefined || days === null) return 'N/A';
-      if (days <= 0) return 'Vencido';
-      if (days === 1) return '1 dia';
-      return `${days} dias`;
+    { key: 'status', label: 'Status', type: 'text', format: (value: string) => {
+      const labels = {
+        valid: 'Válido',
+        expiring: 'Vencendo',
+        expired: 'Vencido'
+      };
+      return labels[value as keyof typeof labels] || value;
+    }},
+    { key: 'validity_date', label: 'Data de Validade', type: 'date' },
+    { key: 'expires_in_days', label: 'Vence em (dias)', type: 'number', format: (value: number) => {
+      if (value === undefined || value === null) return 'N/A';
+      if (value <= 0) return 'Vencido';
+      return `${value} dias`;
     }}
   ]
 };

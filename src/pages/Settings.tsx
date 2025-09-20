@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings, useUpdateSettings, useBackupSettings, useRestoreSettings } from "@/hooks/useSettings";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { AIProviderConfig } from "@/components/settings/AIProviderConfig";
+import { LogoUpload } from "@/components/settings/LogoUpload";
 import { toast } from "@/hooks/use-toast";
 import { 
   Settings as SettingsIcon, 
@@ -304,8 +305,11 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="company-logo">Logo da Empresa (URL)</Label>
-                <Input id="company-logo" placeholder="https://exemplo.com/logo.png" value={localSettings.export.logo_url} onChange={(e) => updateLocalSetting('export', 'logo_url', e.target.value)} />
+                <Label htmlFor="company-logo">Logo da Empresa</Label>
+                <LogoUpload 
+                  currentLogo={localSettings.export.logo_url}
+                  onLogoChange={(logoUrl) => updateLocalSetting('export', 'logo_url', logoUrl)}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

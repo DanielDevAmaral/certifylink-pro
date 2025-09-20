@@ -143,17 +143,23 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
       format: 'a4'
     });
 
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
     let currentY = 20;
+    let hasLogo = false;
 
-    // Add custom logo if available
+    // Add custom logo in top-left corner (fixed position)
     if (config?.branding?.logo) {
       try {
         console.log('Loading logo for PDF:', config.branding.logo);
         const logoResult = await loadImageForPDF(config.branding.logo);
         if (logoResult?.data) {
           console.log('Logo loaded successfully, format:', logoResult.format);
-          doc.addImage(logoResult.data, logoResult.format, 20, currentY, 30, 15);
-          currentY += 20;
+          // Fixed position in top-left, with proper aspect ratio
+          const logoWidth = 25;
+          const logoHeight = 15;
+          doc.addImage(logoResult.data, logoResult.format, 20, 15, logoWidth, logoHeight);
+          hasLogo = true;
         } else {
           console.warn('Logo data not available');
         }
@@ -163,44 +169,66 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
       }
     }
 
-    // Corporate header with branding
+    // Title - Always centered regardless of logo
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(25, 118, 210); // Primary blue
-    doc.text(reportData.title || 'Relatório Corporativo', 20, currentY);
-    currentY += 10;
+    const title = reportData.title || 'Relatório Corporativo';
+    doc.text(title, pageWidth / 2, currentY + 5, { align: 'center' });
+    currentY += 15;
 
-    // Company name from settings
+    // Company name - centered
     if (config?.branding?.company) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(14);
       doc.setTextColor(60, 60, 60);
-      doc.text(config.branding.company, 20, currentY);
-      currentY += 7;
+      doc.text(config.branding.company, pageWidth / 2, currentY, { align: 'center' });
+      currentY += 8;
     }
 
-    // Subtitle and metadata
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
+    // Subtitle - centered
     if (config?.branding?.subtitle) {
-      doc.text(config.branding.subtitle, 20, currentY);
-      currentY += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(config.branding.subtitle, pageWidth / 2, currentY, { align: 'center' });
+      currentY += 8;
     }
 
-    // Generation info
+    // Header separator line
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(20, currentY, pageWidth - 20, currentY);
+    currentY += 8;
+
+    // Metadata section - left aligned but organized
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    
     const now = new Date();
-    doc.text(`Gerado em: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`, 20, currentY);
+    const metadataStartY = currentY;
+    
+    // Left column metadata
+    doc.text(`Data de geração: ${now.toLocaleDateString('pt-BR')}`, 20, currentY);
+    currentY += 5;
+    doc.text(`Hora: ${now.toLocaleTimeString('pt-BR')}`, 20, currentY);
     currentY += 5;
     
+    // Right column metadata if there's data
+    let rightColumnY = metadataStartY;
     if (reportData.metadata?.totalRecords) {
-      doc.text(`Total de registros: ${reportData.metadata.totalRecords}`, 20, currentY);
-      currentY += 8;
-    } else {
-      currentY += 3;
+      doc.text(`Total de registros: ${reportData.metadata.totalRecords}`, pageWidth / 2 + 10, rightColumnY);
+      rightColumnY += 5;
     }
-
+    
+    if (reportData.metadata?.generatedBy) {
+      doc.text(`Gerado por: ${reportData.metadata.generatedBy}`, pageWidth / 2 + 10, rightColumnY);
+      rightColumnY += 5;
+    }
+    
+    // Ensure consistent spacing regardless of metadata
+    currentY = Math.max(currentY, rightColumnY) + 5;
     // Auto Table of Contents (TOC) if enabled
     if (config?.branding?.coverTemplate === 'auto_toc' || config?.branding?.auto_toc) {
       doc.setFont('helvetica', 'bold');
@@ -224,7 +252,6 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
     }
 
     // Calculate column widths dynamically
-    const pageWidth = doc.internal.pageSize.width;
     const availableWidth = pageWidth - 40; // 20mm margin on each side
     const columnWidth = availableWidth / reportData.headers.length;
     const minColumnWidth = 25; // Minimum column width

@@ -32,13 +32,41 @@ serve(async (req) => {
     console.log('🔗 Request method:', req.method)
     console.log('📍 Request URL:', req.url)
 
-    // 📊 Check for expiring certifications in the next 30 days
+    // 📊 Fetch system settings for alert days
+    console.log('🔧 Fetching system settings for alert periods...')
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', [
+        'notifications.certification_alert_days',
+        'notifications.technical_attestation_alert_days', 
+        'notifications.legal_document_alert_days'
+      ])
+
+    if (settingsError) {
+      console.error('❌ Error fetching settings:', settingsError)
+    }
+
+    // Parse settings or use defaults
+    const certAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.certification_alert_days')?.setting_value) || 60;
+    const techAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.technical_attestation_alert_days')?.setting_value) || 45;
+    const legalAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.legal_document_alert_days')?.setting_value) || 30;
+
+    console.log(`⚙️ Alert periods - Certifications: ${certAlertDays}d, Technical: ${techAlertDays}d, Legal: ${legalAlertDays}d`)
+
+    // Calculate future dates based on settings
+    const today = new Date().toISOString().split('T')[0]
+    const certAlertDate = new Date(Date.now() + certAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const techAlertDate = new Date(Date.now() + techAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const legalAlertDate = new Date(Date.now() + legalAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    // 📊 Check for expiring certifications
     console.log('🔍 Checking for expiring certifications...')
     const { data: expiringCertifications, error: certError } = await supabase
       .from('certifications')
       .select('id, name, user_id, validity_date, status')
-      .gte('validity_date', new Date().toISOString().split('T')[0])
-      .lte('validity_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .gte('validity_date', today)
+      .lte('validity_date', certAlertDate)
 
     if (certError) {
       console.error('❌ Error fetching certifications:', certError)
@@ -46,6 +74,40 @@ serve(async (req) => {
       console.log(`📋 Found ${expiringCertifications?.length || 0} expiring certifications`)
       expiringCertifications?.forEach(cert => {
         console.log(`  - ${cert.name} (${cert.validity_date}) - Status: ${cert.status}`)
+      })
+    }
+
+    // 📊 Check for expiring technical attestations
+    console.log('🔍 Checking for expiring technical attestations...')
+    const { data: expiringTechnical, error: techError } = await supabase
+      .from('technical_attestations')
+      .select('id, project_object, user_id, validity_date, status')
+      .gte('validity_date', today)
+      .lte('validity_date', techAlertDate)
+
+    if (techError) {
+      console.error('❌ Error fetching technical attestations:', techError)
+    } else {
+      console.log(`📋 Found ${expiringTechnical?.length || 0} expiring technical attestations`)
+      expiringTechnical?.forEach(tech => {
+        console.log(`  - ${tech.project_object} (${tech.validity_date}) - Status: ${tech.status}`)
+      })
+    }
+
+    // 📊 Check for expiring legal documents
+    console.log('🔍 Checking for expiring legal documents...')
+    const { data: expiringLegal, error: legalError } = await supabase
+      .from('legal_documents')
+      .select('id, document_name, user_id, validity_date, status')
+      .gte('validity_date', today)
+      .lte('validity_date', legalAlertDate)
+
+    if (legalError) {
+      console.error('❌ Error fetching legal documents:', legalError)
+    } else {
+      console.log(`📋 Found ${expiringLegal?.length || 0} expiring legal documents`)
+      expiringLegal?.forEach(legal => {
+        console.log(`  - ${legal.document_name} (${legal.validity_date}) - Status: ${legal.status}`)
       })
     }
 
@@ -122,8 +184,12 @@ serve(async (req) => {
     console.log('📊 FINAL STATISTICS:')
     console.log(`  - Total notifications in system: ${totalNotifications || 0}`)
     console.log(`  - Total certifications in system: ${totalCertifications || 0}`)
+    console.log(`  - Expiring certifications: ${expiringCertifications?.length || 0}`)
+    console.log(`  - Expiring technical attestations: ${expiringTechnical?.length || 0}`)
+    console.log(`  - Expiring legal documents: ${expiringLegal?.length || 0}`)
     console.log(`  - Notifications created today: ${notificationCount || 0}`)
     console.log(`  - Old notifications cleaned: ${deletedCount || 0}`)
+    console.log(`  - Alert periods: Cert=${certAlertDays}d, Tech=${techAlertDays}d, Legal=${legalAlertDays}d`)
 
     const jobCompletedAt = new Date().toISOString()
     console.log('🎉 Daily notification job completed successfully at:', jobCompletedAt)
@@ -134,10 +200,17 @@ serve(async (req) => {
       timestamp: jobCompletedAt,
       statistics: {
         expiringCertifications: expiringCertifications?.length || 0,
+        expiringTechnicalAttestations: expiringTechnical?.length || 0,
+        expiringLegalDocuments: expiringLegal?.length || 0,
         notificationsToday: notificationCount || 0,
         totalNotifications: totalNotifications || 0,
         totalCertifications: totalCertifications || 0,
-        oldNotificationsDeleted: deletedCount || 0
+        oldNotificationsDeleted: deletedCount || 0,
+        alertPeriods: {
+          certifications: certAlertDays,
+          technicalAttestations: techAlertDays,
+          legalDocuments: legalAlertDays
+        }
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

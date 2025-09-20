@@ -25,6 +25,9 @@ interface SettingsGroup {
   };
   notifications: {
     expiration_alert_days: number;
+    certification_alert_days: number;
+    technical_attestation_alert_days: number;
+    legal_document_alert_days: number;
     email_notifications: boolean;
     leader_notifications: boolean;
   };
@@ -56,6 +59,9 @@ const defaultSettings: SettingsGroup = {
   },
   notifications: {
     expiration_alert_days: 30,
+    certification_alert_days: 60,
+    technical_attestation_alert_days: 45,
+    legal_document_alert_days: 30,
     email_notifications: true,
     leader_notifications: true
   },

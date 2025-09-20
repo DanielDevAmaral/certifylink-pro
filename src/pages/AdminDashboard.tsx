@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TestDataGenerator } from '@/components/admin/TestDataGenerator';
+import { DocumentStatusManager } from '@/components/admin/DocumentStatusManager';
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +172,9 @@ export default function AdminDashboard() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Document Status Manager */}
+        <DocumentStatusManager />
 
         {/* Test Data Generator */}
         <TestDataGenerator />

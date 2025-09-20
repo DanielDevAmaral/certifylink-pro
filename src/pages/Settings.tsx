@@ -42,6 +42,9 @@ export default function Settings() {
     },
     notifications: {
       expiration_alert_days: settings?.notifications?.expiration_alert_days ?? 30,
+      certification_alert_days: settings?.notifications?.certification_alert_days ?? 60,
+      technical_attestation_alert_days: settings?.notifications?.technical_attestation_alert_days ?? 45,
+      legal_document_alert_days: settings?.notifications?.legal_document_alert_days ?? 30,
       email_notifications: settings?.notifications?.email_notifications ?? true,
       leader_notifications: settings?.notifications?.leader_notifications ?? true
     },
@@ -197,20 +200,72 @@ export default function Settings() {
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Alertas de Validade</h3>
                 <p className="text-sm text-muted-foreground">
-                  Configure quando receber notificações de vencimento
+                  Configure quando receber notificações de vencimento por tipo de documento
                 </p>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="expiration-days">Dias antes do vencimento</Label>
-                <Input
-                  id="expiration-days"
-                  type="number"
-                  value={localSettings.notifications.expiration_alert_days}
-                  onChange={(e) => updateLocalSetting('notifications', 'expiration_alert_days', Number(e.target.value))}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="certification-days">Certificações (dias antes)</Label>
+                  <Input
+                    id="certification-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={localSettings.notifications.certification_alert_days}
+                    onChange={(e) => updateLocalSetting('notifications', 'certification_alert_days', Number(e.target.value))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Alerta sobre certificações que vencerão em X dias
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="technical-days">Atestados Técnicos (dias antes)</Label>
+                  <Input
+                    id="technical-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={localSettings.notifications.technical_attestation_alert_days}
+                    onChange={(e) => updateLocalSetting('notifications', 'technical_attestation_alert_days', Number(e.target.value))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Alerta sobre atestados técnicos que vencerão em X dias
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="legal-days">Documentos Legais (dias antes)</Label>
+                  <Input
+                    id="legal-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={localSettings.notifications.legal_document_alert_days}
+                    onChange={(e) => updateLocalSetting('notifications', 'legal_document_alert_days', Number(e.target.value))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Alerta sobre documentos legais que vencerão em X dias
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expiration-days">Padrão Geral (dias antes)</Label>
+                  <Input
+                    id="expiration-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={localSettings.notifications.expiration_alert_days}
+                    onChange={(e) => updateLocalSetting('notifications', 'expiration_alert_days', Number(e.target.value))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Configuração padrão para outros tipos de documentos
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -239,6 +294,18 @@ export default function Settings() {
                     onCheckedChange={(val) => updateLocalSetting('notifications', 'leader_notifications', val)}
                   />
                 </div>
+              </div>
+
+              <div className="p-4 rounded-lg border border-info/50 bg-info/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bell className="h-5 w-5 text-info" />
+                  <p className="font-medium text-info">Como funciona</p>
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Certificações:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.certification_alert_days} dias ou menos</li>
+                  <li>• <strong>Atestados Técnicos:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.technical_attestation_alert_days} dias ou menos</li>
+                  <li>• <strong>Documentos Legais:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.legal_document_alert_days} dias ou menos</li>
+                </ul>
               </div>
             </div>
           </Card>

@@ -123,9 +123,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
       }
 
       // Get field mappings based on type
-      const fields = type === 'dashboard' 
-        ? [] // Dashboard uses legacy format for now
-        : getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
+      const fields = getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
 
       const summary = generateSummary(filteredData);
       const timestamp = new Date().toISOString().split('T')[0];
@@ -147,7 +145,8 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
           company: settings?.export.company_name || 'Sistema de Gestão Documental',
           logo: settings?.export.logo_url,
           footer: settings?.export.footer_text || 'Documento gerado automaticamente pelo sistema de gestão documental',
-          coverTemplate: settings?.export.cover_template || 'standard'
+          coverTemplate: settings?.export.cover_template || 'standard',
+          auto_toc: settings?.export.auto_toc || false
         }
       };
 

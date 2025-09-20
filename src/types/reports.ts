@@ -33,6 +33,7 @@ export interface ReportConfig {
     subtitle?: string;
     footer?: string;
     coverTemplate?: string;
+    auto_toc?: boolean;
   };
 }
 

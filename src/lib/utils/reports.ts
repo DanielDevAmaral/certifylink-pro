@@ -197,6 +197,28 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
       currentY += 3;
     }
 
+    // Auto Table of Contents (TOC) if enabled
+    if (config?.branding?.coverTemplate === 'auto_toc' || config?.branding?.auto_toc) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(25, 118, 210);
+      doc.text('Índice', 20, currentY);
+      currentY += 10;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.text('1. Dados do Relatório ............................ Pág. 1', 25, currentY);
+      currentY += 6;
+      doc.text('2. Tabela de Dados ............................... Pág. 1', 25, currentY);
+      currentY += 6;
+      if (reportData.summary && Object.keys(reportData.summary).length > 0) {
+        doc.text('3. Resumo Executivo .............................. Pág. 2+', 25, currentY);
+        currentY += 6;
+      }
+      currentY += 10;
+    }
+
     // Calculate column widths dynamically
     const pageWidth = doc.internal.pageSize.width;
     const availableWidth = pageWidth - 40; // 20mm margin on each side
@@ -378,6 +400,53 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
   // Header
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(25, 118, 210);
+  doc.text(reportData.title || 'Relatório Detalhado', margin, currentY);
+  currentY += 12;
+
+  // Company name from branding
+  if (config?.branding?.company) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.setTextColor(60, 60, 60);
+    doc.text(config.branding.company, margin, currentY);
+    currentY += 8;
+  }
+
+  // Generation info
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  const now = new Date();
+  doc.text(`Gerado em: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`, margin, currentY);
+  currentY += 6;
+  if (reportData.metadata?.totalRecords) {
+    doc.text(`Total de registros: ${reportData.metadata.totalRecords}`, margin, currentY);
+  }
+  currentY += 15;
+
+  // Auto Table of Contents if enabled
+  if (config?.branding?.coverTemplate === 'auto_toc' || config?.branding?.auto_toc) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(25, 118, 210);
+    doc.text('Índice', margin, currentY);
+    currentY += 10;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    doc.text('1. Informações Gerais ............................ Pág. 1', margin + 5, currentY);
+    currentY += 6;
+    doc.text('2. Detalhes dos Documentos ....................... Pág. 2+', margin + 5, currentY);
+    currentY += 6;
+    doc.text('3. Screenshots e Evidências ..................... Pág. 2+', margin + 5, currentY);
+    currentY += 6;
+    if (reportData.summary && Object.keys(reportData.summary).length > 0) {
+      doc.text('4. Resumo Estatístico ........................... Pág. Final', margin + 5, currentY);
+      currentY += 6;
+    }
+    currentY += 15;
+  }
   doc.setTextColor(25, 118, 210); // Primary blue
   doc.text(reportData.title || 'Relatório Detalhado', margin, currentY + 10);
   
@@ -699,5 +768,34 @@ export const getFieldMappings = {
     }},
     { key: 'is_sensitive', label: 'Documento Sensível', type: 'boolean' },
     { key: 'created_at', label: 'Data de Criação', type: 'date' }
+  ],
+
+  dashboard: (): ReportField[] => [
+    { key: 'title', label: 'Título', type: 'text' },
+    { key: 'type', label: 'Tipo de Documento', type: 'text', format: (type: string) => {
+      const typeMap = {
+        'certification': 'Certificação',
+        'certificate': 'Atestado Técnico',
+        'document': 'Documento Legal'
+      };
+      return typeMap[type as keyof typeof typeMap] || type;
+    }},
+    { key: 'user_name', label: 'Responsável', type: 'text' },
+    { key: 'validity_date', label: 'Data de Validade', type: 'date' },
+    { key: 'status', label: 'Status', type: 'text', format: (status: string) => {
+      const statusMap = {
+        'valid': 'Válido',
+        'expiring': 'Expirando',
+        'expired': 'Expirado',
+        'pending': 'Pendente'
+      };
+      return statusMap[status as keyof typeof statusMap] || status;
+    }},
+    { key: 'expires_in_days', label: 'Dias para Vencimento', type: 'number', format: (days: number) => {
+      if (days === undefined || days === null) return 'N/A';
+      if (days <= 0) return 'Vencido';
+      if (days === 1) return '1 dia';
+      return `${days} dias`;
+    }}
   ]
 };

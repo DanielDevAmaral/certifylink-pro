@@ -9,6 +9,7 @@ import { FileDown, FileSpreadsheet, FileText, AlertCircle } from 'lucide-react';
 import { generateReport, getFieldMappings } from '@/lib/utils/reports';
 import { ReportConfig, ReportDataType, ReportSummary } from '@/types/reports';
 import { useToast } from '@/hooks/use-toast';
+import { useSettings } from '@/hooks/useSettings';
 
 interface ReportGeneratorProps {
   data: any[];
@@ -19,6 +20,7 @@ interface ReportGeneratorProps {
 
 export function ReportGenerator({ data, type, title, userNames = {} }: ReportGeneratorProps) {
   const { toast } = useToast();
+  const { data: settings } = useSettings();
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     dateFrom: null as Date | null,
@@ -142,7 +144,10 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
         pdfStyle: format === 'pdf' ? filters.pdfStyle : undefined, // Include PDF style for PDF exports
         branding: {
           subtitle: `Relatório de ${title}`,
-          company: 'Sistema de Gestão Documental'
+          company: settings?.export.company_name || 'Sistema de Gestão Documental',
+          logo: settings?.export.logo_url,
+          footer: settings?.export.footer_text || 'Documento gerado automaticamente pelo sistema de gestão documental',
+          coverTemplate: settings?.export.cover_template || 'standard'
         }
       };
 

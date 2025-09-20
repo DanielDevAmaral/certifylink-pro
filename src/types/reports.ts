@@ -31,6 +31,8 @@ export interface ReportConfig {
     logo?: string;
     company?: string;
     subtitle?: string;
+    footer?: string;
+    coverTemplate?: string;
   };
 }
 

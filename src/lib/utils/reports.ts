@@ -118,12 +118,13 @@ export function exportToCSV(reportData: ReportData, filename: string) {
 }
 
 // Enhanced PDF export with proper formatting and branding
-export function exportToPDF(reportData: ReportData, filename: string, config?: Partial<ReportConfig>) {
+export async function exportToPDF(reportData: ReportData, filename: string, config?: Partial<ReportConfig>) {
   try {
     console.log('Starting PDF export with data:', { 
       title: reportData.title, 
       headers: reportData.headers, 
-      dataCount: reportData.data?.length 
+      dataCount: reportData.data?.length,
+      branding: config?.branding 
     });
 
     // Validate data
@@ -144,12 +145,35 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
 
     let currentY = 20;
 
+    // Add custom logo if available
+    if (config?.branding?.logo) {
+      try {
+        const logoData = await loadImageForPDF(config.branding.logo);
+        if (logoData) {
+          doc.addImage(logoData, 'JPEG', 20, currentY, 30, 15);
+          currentY += 20;
+        }
+      } catch (error) {
+        console.warn('Error loading logo for PDF:', error);
+        // Continue without logo
+      }
+    }
+
     // Corporate header with branding
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(25, 118, 210); // Primary blue
     doc.text(reportData.title || 'Relatório Corporativo', 20, currentY);
     currentY += 10;
+
+    // Company name from settings
+    if (config?.branding?.company) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(14);
+      doc.setTextColor(60, 60, 60);
+      doc.text(config.branding.company, 20, currentY);
+      currentY += 7;
+    }
 
     // Subtitle and metadata
     doc.setFont('helvetica', 'normal');
@@ -175,8 +199,7 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
 
     // Calculate column widths dynamically
     const pageWidth = doc.internal.pageSize.width;
-    const margin = 40; // 20mm on each side
-    const availableWidth = pageWidth - margin;
+    const availableWidth = pageWidth - 40; // 20mm margin on each side
     const columnWidth = availableWidth / reportData.headers.length;
     const minColumnWidth = 25; // Minimum column width
     const maxColumnWidth = 50; // Maximum column width
@@ -222,18 +245,27 @@ export function exportToPDF(reportData: ReportData, filename: string, config?: P
         }
       },
       didDrawPage: function(data: any) {
-        // Add page numbers
+        // Page numbers and footer
         const pageCount = doc.getNumberOfPages();
         const currentPage = doc.getCurrentPageInfo().pageNumber;
+        const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
         
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
+        
+        // Page numbers
         doc.text(
           `Página ${currentPage} de ${pageCount}`,
           pageWidth - 30,
-          doc.internal.pageSize.height - 10,
+          pageHeight - 10,
           { align: 'right' }
         );
+        
+        // Custom footer text
+        if (config?.branding?.footer) {
+          doc.text(config.branding.footer, 20, pageHeight - 10);
+        }
       }
     });
 
@@ -327,18 +359,42 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
   const margin = 20;
   const contentWidth = pageWidth - 2 * margin;
 
+  let currentY = margin;
+
+  // Add custom logo if available
+  if (config?.branding?.logo) {
+    try {
+      const logoData = await loadImageForPDF(config.branding.logo);
+      if (logoData) {
+        doc.addImage(logoData, 'JPEG', margin, currentY, 30, 15);
+        currentY += 20;
+      }
+    } catch (error) {
+      console.warn('Error loading logo for detailed PDF:', error);
+      // Continue without logo
+    }
+  }
+
   // Header
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(25, 118, 210); // Primary blue
-  doc.text(reportData.title || 'Relatório Detalhado', margin, margin + 10);
+  doc.text(reportData.title || 'Relatório Detalhado', margin, currentY + 10);
+  
+  // Company name from settings
+  if (config?.branding?.company) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text(config.branding.company, margin, currentY + 22);
+  }
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, margin + 20);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, currentY + 30);
 
-  let currentY = margin + 35;
+  currentY += 45;
 
   // Process each certification
   for (let i = 0; i < rawData.length; i++) {
@@ -487,7 +543,15 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
       startY: currentY,
       margin: { left: margin, right: margin },
       styles: { fontSize: 10 },
-      headStyles: { fillColor: [25, 118, 210] }
+      headStyles: { fillColor: [25, 118, 210] },
+      didDrawPage: function(data: any) {
+        // Add custom footer to summary pages too
+        if (config?.branding?.footer) {
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(config.branding.footer, margin, pageHeight - 10);
+        }
+      }
     });
   }
 

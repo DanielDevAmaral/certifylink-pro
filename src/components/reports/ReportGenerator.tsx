@@ -130,7 +130,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
       const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
 
       const config: ReportConfig = {
-        title: `${title} - Relatório Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
+        title: title,
         fields,
         summary: {
           ...summary.byStatus,

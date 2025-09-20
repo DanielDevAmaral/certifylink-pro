@@ -148,13 +148,17 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
     // Add custom logo if available
     if (config?.branding?.logo) {
       try {
-        const logoData = await loadImageForPDF(config.branding.logo);
-        if (logoData) {
-          doc.addImage(logoData, 'JPEG', 20, currentY, 30, 15);
+        console.log('Loading logo for PDF:', config.branding.logo);
+        const logoResult = await loadImageForPDF(config.branding.logo);
+        if (logoResult?.data) {
+          console.log('Logo loaded successfully, format:', logoResult.format);
+          doc.addImage(logoResult.data, logoResult.format, 20, currentY, 30, 15);
           currentY += 20;
+        } else {
+          console.warn('Logo data not available');
         }
       } catch (error) {
-        console.warn('Error loading logo for PDF:', error);
+        console.error('Error loading logo for PDF:', error);
         // Continue without logo
       }
     }
@@ -351,15 +355,47 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
   }
 }
 
-// Load image from URL for PDF
-async function loadImageForPDF(url: string): Promise<string | null> {
+// Load image from URL for PDF with format detection
+async function loadImageForPDF(url: string): Promise<{ data: string; format: 'JPEG' | 'PNG' } | null> {
   try {
-    const response = await fetch(url);
+    console.log('Fetching image from URL:', url);
+    const response = await fetch(url, {
+      mode: 'cors',
+      headers: {
+        'Accept': 'image/*'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to fetch image:', response.status, response.statusText);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || '';
+    console.log('Image content type:', contentType);
+    
     const blob = await response.blob();
+    
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
+      reader.onload = () => {
+        const result = reader.result as string;
+        
+        // Detect format from content type or data URL
+        let format: 'JPEG' | 'PNG' = 'JPEG';
+        if (contentType.includes('png') || result.includes('data:image/png')) {
+          format = 'PNG';
+        } else if (contentType.includes('jpeg') || contentType.includes('jpg') || result.includes('data:image/jpeg')) {
+          format = 'JPEG';
+        }
+        
+        console.log('Image loaded successfully, detected format:', format);
+        resolve({ data: result, format });
+      };
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        resolve(null);
+      };
       reader.readAsDataURL(blob);
     });
   } catch (error) {
@@ -386,10 +422,14 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
   // Add custom logo if available
   if (config?.branding?.logo) {
     try {
-      const logoData = await loadImageForPDF(config.branding.logo);
-      if (logoData) {
-        doc.addImage(logoData, 'JPEG', margin, currentY, 30, 15);
+      console.log('Loading logo for detailed PDF:', config.branding.logo);
+      const logoResult = await loadImageForPDF(config.branding.logo);
+      if (logoResult?.data) {
+        console.log('Logo loaded successfully for detailed PDF, format:', logoResult.format);
+        doc.addImage(logoResult.data, logoResult.format, margin, currentY, 30, 15);
         currentY += 20;
+      } else {
+        console.warn('Logo data not available for detailed PDF');
       }
     } catch (error) {
       console.warn('Error loading logo for detailed PDF:', error);
@@ -548,8 +588,8 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
       currentY += 8;
 
       try {
-        const imageData = await loadImageForPDF(cert.screenshot_url);
-        if (imageData) {
+        const imageResult = await loadImageForPDF(cert.screenshot_url);
+        if (imageResult?.data) {
           const maxImageWidth = contentWidth * 0.8;
           const maxImageHeight = 60;
           
@@ -562,7 +602,7 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
             currentY += 8;
           }
 
-          doc.addImage(imageData, 'JPEG', margin + 10, currentY, maxImageWidth, maxImageHeight);
+          doc.addImage(imageResult.data, imageResult.format, margin + 10, currentY, maxImageWidth, maxImageHeight);
           currentY += maxImageHeight + 10;
         } else {
           doc.setFont('helvetica', 'italic');

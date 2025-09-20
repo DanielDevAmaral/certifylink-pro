@@ -44,9 +44,7 @@ export default function Settings() {
       expiration_alert_days: settings?.notifications?.expiration_alert_days ?? 30,
       certification_alert_days: settings?.notifications?.certification_alert_days ?? 60,
       technical_attestation_alert_days: settings?.notifications?.technical_attestation_alert_days ?? 45,
-      legal_document_alert_days: settings?.notifications?.legal_document_alert_days ?? 30,
-      email_notifications: settings?.notifications?.email_notifications ?? true,
-      leader_notifications: settings?.notifications?.leader_notifications ?? true
+      legal_document_alert_days: settings?.notifications?.legal_document_alert_days ?? 30
     },
     export: {
       company_name: settings?.export?.company_name || '',
@@ -268,43 +266,17 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
-                  <div>
-                    <p className="font-medium text-foreground">Notificações por Email</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receber notificações por email para vencimentos
-                    </p>
-                  </div>
-                  <Switch
-                    checked={localSettings.notifications.email_notifications}
-                    onCheckedChange={(val) => updateLocalSetting('notifications', 'email_notifications', val)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
-                  <div>
-                    <p className="font-medium text-foreground">Notificações para Líderes</p>
-                    <p className="text-sm text-muted-foreground">
-                      Líderes recebem alertas da equipe
-                    </p>
-                  </div>
-                  <Switch
-                    checked={localSettings.notifications.leader_notifications}
-                    onCheckedChange={(val) => updateLocalSetting('notifications', 'leader_notifications', val)}
-                  />
-                </div>
-              </div>
 
               <div className="p-4 rounded-lg border border-info/50 bg-info/10">
                 <div className="flex items-center gap-2 mb-2">
                   <Bell className="h-5 w-5 text-info" />
-                  <p className="font-medium text-info">Como funciona</p>
+                  <p className="font-medium text-info">Sistema de Notificações Internas</p>
                 </div>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Certificações:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.certification_alert_days} dias ou menos</li>
-                  <li>• <strong>Atestados Técnicos:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.technical_attestation_alert_days} dias ou menos</li>
-                  <li>• <strong>Documentos Legais:</strong> Status muda para "Vencendo" quando faltam {localSettings.notifications.legal_document_alert_days} dias ou menos</li>
+                  <li>• <strong>Certificações:</strong> Notificação interna criada quando faltam {localSettings.notifications.certification_alert_days} dias ou menos</li>
+                  <li>• <strong>Atestados Técnicos:</strong> Notificação interna criada quando faltam {localSettings.notifications.technical_attestation_alert_days} dias ou menos</li>
+                  <li>• <strong>Documentos Legais:</strong> Notificação interna criada quando faltam {localSettings.notifications.legal_document_alert_days} dias ou menos</li>
+                  <li>• <strong>Todas as notificações são enviadas apenas dentro da plataforma</strong> - sem emails externos</li>
                 </ul>
               </div>
             </div>

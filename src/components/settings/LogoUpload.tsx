@@ -21,7 +21,12 @@ export function LogoUpload({ currentLogo, onLogoChange }: LogoUploadProps) {
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user) {
+      console.log('LogoUpload: No file selected or user not authenticated');
+      return;
+    }
+
+    console.log('LogoUpload: Starting file upload process', { fileName: file.name, fileSize: file.size });
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -49,6 +54,7 @@ export function LogoUpload({ currentLogo, onLogoChange }: LogoUploadProps) {
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `logo_${user.id}_${Date.now()}.${fileExt}`;
+      console.log('LogoUpload: Uploading file with name:', fileName);
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -59,25 +65,47 @@ export function LogoUpload({ currentLogo, onLogoChange }: LogoUploadProps) {
         });
 
       if (error) {
-        console.error('Upload error:', error);
+        console.error('LogoUpload: Upload error:', error);
         throw error;
       }
+
+      console.log('LogoUpload: File uploaded successfully:', data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('documents')
         .getPublicUrl(`logos/${fileName}`);
 
-      setPreviewUrl(publicUrl);
-      onLogoChange(publicUrl);
+      console.log('LogoUpload: Generated public URL:', publicUrl);
 
-      toast({
-        title: "Sucesso",
-        description: "Logotipo enviado com sucesso!",
-      });
+      // Test if image can be loaded before setting preview
+      const img = new Image();
+      img.onload = () => {
+        console.log('LogoUpload: Image loaded successfully');
+        setPreviewUrl(publicUrl);
+        onLogoChange(publicUrl);
+        
+        toast({
+          title: "Sucesso",
+          description: "Logotipo enviado com sucesso!",
+        });
+      };
+      
+      img.onerror = (err) => {
+        console.error('LogoUpload: Failed to load image:', err);
+        toast({
+          title: "Aviso",
+          description: "Logotipo salvo, mas pode demorar alguns segundos para aparecer.",
+        });
+        // Still set the URL even if image doesn't load immediately
+        setPreviewUrl(publicUrl);
+        onLogoChange(publicUrl);
+      };
+      
+      img.src = publicUrl;
 
     } catch (error) {
-      console.error('Error uploading logo:', error);
+      console.error('LogoUpload: Error uploading logo:', error);
       toast({
         title: "Erro",
         description: "Erro ao enviar o logotipo. Tente novamente.",

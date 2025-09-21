@@ -73,19 +73,28 @@ export function useCreateTechnicalAttestation() {
 }
 
 export function useUpdateTechnicalAttestation() {
+  const { userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TechnicalCertificate> }) => {
-      const { data: result, error } = await supabase
+      let query = supabase
         .from('technical_attestations')
         .update(data)
-        .eq('id', id)
+        .eq('id', id);
+
+      // Only filter by user_id if not admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      }
+
+      const { data: result, error } = await query
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!result) throw new Error('Atestado técnico não encontrado ou você não tem permissão para atualizá-lo');
       return result;
     },
     onSuccess: () => {
@@ -107,17 +116,25 @@ export function useUpdateTechnicalAttestation() {
 }
 
 export function useDeleteTechnicalAttestation() {
+  const { userRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      let query = supabase
         .from('technical_attestations')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      // Only filter by user_id if not admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      }
+
+      const { error } = await query;
+
+      if (error) throw new Error('Erro ao excluir atestado técnico: você não tem permissão ou o item não foi encontrado');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technical-attestations'] });

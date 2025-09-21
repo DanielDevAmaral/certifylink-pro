@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CertificationSelectorCombobox } from '@/components/ui/certification-selector-combobox';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
+import { useCertifications } from '@/hooks/useCertifications';
 import type { TechnicalCertificate } from '@/types';
 import { X, Upload } from 'lucide-react';
 
@@ -38,12 +40,13 @@ interface TechnicalAttestationFormProps {
 }
 
 export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: TechnicalAttestationFormProps) {
-  const [newCertification, setNewCertification] = useState('');
+  const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const createMutation = useCreateTechnicalAttestation();
   const updateMutation = useUpdateTechnicalAttestation();
   const uploadMutation = useUploadFile();
+  const { data: allCertifications = [] } = useCertifications();
 
   const form = useForm<AttestationFormData>({
     resolver: zodResolver(attestationSchema),
@@ -108,16 +111,23 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   };
 
   const addCertification = () => {
-    if (newCertification.trim()) {
+    if (selectedCertificationId) {
       const currentCertifications = form.getValues('related_certifications');
-      form.setValue('related_certifications', [...currentCertifications, newCertification.trim()]);
-      setNewCertification('');
+      if (!currentCertifications.includes(selectedCertificationId)) {
+        form.setValue('related_certifications', [...currentCertifications, selectedCertificationId]);
+      }
+      setSelectedCertificationId('');
     }
   };
 
-  const removeCertification = (index: number) => {
+  const removeCertification = (certificationId: string) => {
     const currentCertifications = form.getValues('related_certifications');
-    form.setValue('related_certifications', currentCertifications.filter((_, i) => i !== index));
+    form.setValue('related_certifications', currentCertifications.filter(id => id !== certificationId));
+  };
+
+  const getCertificationDisplay = (certificationId: string) => {
+    const certification = allCertifications.find(cert => cert.id === certificationId);
+    return certification ? `${certification.name} - ${certification.function}` : certificationId;
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -296,24 +306,26 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
             <div className="space-y-4">
               <FormLabel>Certificações Relacionadas</FormLabel>
               <div className="flex gap-2">
-                <Input
-                  value={newCertification}
-                  onChange={(e) => setNewCertification(e.target.value)}
-                  placeholder="Digite o nome da certificação"
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCertification())}
-                />
-                <Button type="button" onClick={addCertification} variant="outline">
+                <div className="flex-1">
+                  <CertificationSelectorCombobox
+                    value={selectedCertificationId}
+                    onValueChange={(value) => setSelectedCertificationId(value || '')}
+                    placeholder="Selecione uma certificação existente..."
+                    excludeIds={form.watch('related_certifications')}
+                  />
+                </div>
+                <Button type="button" onClick={addCertification} variant="outline" disabled={!selectedCertificationId}>
                   Adicionar
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {form.watch('related_certifications').map((cert, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {cert}
+                {form.watch('related_certifications').map((certId) => (
+                  <Badge key={certId} variant="secondary" className="flex items-center gap-1">
+                    {getCertificationDisplay(certId)}
                     <X
                       size={14}
                       className="cursor-pointer hover:text-destructive"
-                      onClick={() => removeCertification(index)}
+                      onClick={() => removeCertification(certId)}
                     />
                   </Badge>
                 ))}

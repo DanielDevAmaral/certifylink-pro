@@ -179,23 +179,31 @@ serve(async (req) => {
           const daysLeft = getDaysUntilExpiry(cert.validity_date)
           const config = getNotificationConfig(daysLeft, cert.name)
           
-          const { error: notifError } = await supabase
+          console.log(`🔍 Debug: Cert ID = ${cert.id}, User ID = ${cert.user_id}`)
+          
+          const insertData = {
+            user_id: cert.user_id,
+            title: config.title,
+            message: config.message,
+            notification_type: config.type,
+            related_document_id: cert.id,
+            related_document_type: 'certification',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+          }
+          
+          console.log('📝 Inserting notification data:', JSON.stringify(insertData, null, 2))
+          
+          const { data: insertResult, error: notifError } = await supabase
             .from('notifications')
-            .insert({
-              user_id: cert.user_id,
-              title: config.title,
-              message: config.message,
-              notification_type: config.type,
-              related_document_id: cert.id,
-              related_document_type: 'certification',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-            })
+            .insert(insertData)
+            .select('id, related_document_id')
 
           if (notifError) {
             console.error(`❌ Error creating notification for certification ${cert.name}:`, notifError)
           } else {
             notificationsCreated++
             console.log(`✅ Notification created for certification: ${cert.name} (${daysLeft} days left)`)
+            console.log(`📊 Insert result:`, JSON.stringify(insertResult, null, 2))
           }
         } catch (error) {
           console.error(`❌ Error processing certification ${cert.name}:`, error)
@@ -217,23 +225,31 @@ serve(async (req) => {
           const daysLeft = getDaysUntilExpiry(tech.validity_date)
           const config = getNotificationConfig(daysLeft, tech.project_object)
           
-          const { error: notifError } = await supabase
+          console.log(`🔍 Debug: Tech ID = ${tech.id}, User ID = ${tech.user_id}`)
+          
+          const insertData = {
+            user_id: tech.user_id,
+            title: config.title,
+            message: config.message,
+            notification_type: config.type,
+            related_document_id: tech.id,
+            related_document_type: 'technical_attestation',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+          }
+          
+          console.log('📝 Inserting tech notification data:', JSON.stringify(insertData, null, 2))
+          
+          const { data: insertResult, error: notifError } = await supabase
             .from('notifications')
-            .insert({
-              user_id: tech.user_id,
-              title: config.title,
-              message: config.message,
-              notification_type: config.type,
-              related_document_id: tech.id,
-              related_document_type: 'technical_attestation',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-            })
+            .insert(insertData)
+            .select('id, related_document_id')
 
           if (notifError) {
             console.error(`❌ Error creating notification for technical attestation ${tech.project_object}:`, notifError)
           } else {
             notificationsCreated++
             console.log(`✅ Notification created for technical attestation: ${tech.project_object} (${daysLeft} days left)`)
+            console.log(`📊 Tech insert result:`, JSON.stringify(insertResult, null, 2))
           }
         } catch (error) {
           console.error(`❌ Error processing technical attestation ${tech.project_object}:`, error)
@@ -255,23 +271,31 @@ serve(async (req) => {
           const daysLeft = getDaysUntilExpiry(legal.validity_date)
           const config = getNotificationConfig(daysLeft, legal.document_name)
           
-          const { error: notifError } = await supabase
+          console.log(`🔍 Debug: Legal ID = ${legal.id}, User ID = ${legal.user_id}`)
+          
+          const insertData = {
+            user_id: legal.user_id,
+            title: config.title,
+            message: config.message,
+            notification_type: config.type,
+            related_document_id: legal.id,
+            related_document_type: 'legal_document',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+          }
+          
+          console.log('📝 Inserting legal notification data:', JSON.stringify(insertData, null, 2))
+          
+          const { data: insertResult, error: notifError } = await supabase
             .from('notifications')
-            .insert({
-              user_id: legal.user_id,
-              title: config.title,
-              message: config.message,
-              notification_type: config.type,
-              related_document_id: legal.id,
-              related_document_type: 'legal_document',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-            })
+            .insert(insertData)
+            .select('id, related_document_id')
 
           if (notifError) {
             console.error(`❌ Error creating notification for legal document ${legal.document_name}:`, notifError)
           } else {
             notificationsCreated++
             console.log(`✅ Notification created for legal document: ${legal.document_name} (${daysLeft} days left)`)
+            console.log(`📊 Legal insert result:`, JSON.stringify(insertResult, null, 2))
           }
         } catch (error) {
           console.error(`❌ Error processing legal document ${legal.document_name}:`, error)

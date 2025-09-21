@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { navigateToRelatedDocument } from '@/lib/utils/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
+import { NotificationFixButton } from '@/components/admin/NotificationFixButton';
 
 export default function Notifications() {
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
@@ -40,6 +41,13 @@ export default function Notifications() {
   };
 
   const handleNotificationClick = (notification: any) => {
+    console.log('🔍 Notification clicked:', {
+      id: notification.id,
+      related_document_id: notification.related_document_id,
+      related_document_type: notification.related_document_type,
+      title: notification.title
+    });
+
     // Mark as read if not already read
     if (!notification.read_at) {
       handleMarkAsRead(notification.id);
@@ -47,10 +55,18 @@ export default function Notifications() {
     
     // Navigate to related document if exists
     if (notification.related_document_id && notification.related_document_type) {
+      console.log('✅ Navigating to document:', notification.related_document_type, notification.related_document_id);
       navigateToRelatedDocument(
         notification.related_document_type,
         notification.related_document_id
       );
+    } else {
+      console.warn('⚠️ No related document found for notification:', notification.id);
+      toast({
+        title: 'Aviso',
+        description: 'Esta notificação não possui um documento relacionado para navegar.',
+        variant: 'default'
+      });
     }
   };
 
@@ -124,6 +140,8 @@ export default function Notifications() {
         description={`${notifications.length} notificações totais • ${unreadCount} não lidas`}
       >
         <div className="flex items-center gap-2">
+          <NotificationFixButton />
+          
           {selectedNotifications.length > 0 && (
             <Button
               variant="outline"

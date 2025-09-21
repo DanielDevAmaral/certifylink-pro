@@ -131,19 +131,23 @@ export function useCreateCertification() {
 // Hook para atualizar certificação
 export function useUpdateCertification() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: CertificationUpdate }): Promise<Certification> => {
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('certifications')
         .update(updates)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
+        .eq('id', id);
+
+      // Only filter by user_id if not an admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) {
         console.error('Error updating certification:', error);
@@ -177,17 +181,23 @@ export function useUpdateCertification() {
 // Hook para deletar certificação
 export function useDeleteCertification() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase
+      let query = supabase
         .from('certifications')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
+
+      // Only filter by user_id if not an admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error('Error deleting certification:', error);

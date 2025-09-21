@@ -59,6 +59,9 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
 
   const onSubmit = async (data: CertificationFormData) => {
     try {
+      // Auto-approve equivalences for admins/leaders when they add services manually
+      const shouldAutoApprove = canManageEquivalences && data.equivalence_services.length > 0;
+      
       if (certification) {
         await updateMutation.mutateAsync({
           id: certification.id,
@@ -67,6 +70,8 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
             validity_date: data.validity_date || null,
             public_link: data.public_link || null,
             screenshot_url: data.screenshot_url || null,
+            // Auto-approve if admin/leader is adding equivalences, otherwise keep existing approval status
+            approved_equivalence: shouldAutoApprove || certification.approved_equivalence,
           },
         });
       } else {
@@ -77,6 +82,8 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
           validity_date: data.validity_date || null,
           public_link: data.public_link || null,
           screenshot_url: data.screenshot_url || null,
+          // Auto-approve for admins/leaders adding equivalences
+          approved_equivalence: shouldAutoApprove,
         });
       }
       onSuccess?.();

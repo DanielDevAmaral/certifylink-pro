@@ -88,7 +88,7 @@ const DashboardCharts = memo(function DashboardCharts({ analytics }: DashboardCh
         <ChartTitleWithInfo
           title="Status dos Documentos"
           description="Distribuição por status"
-          explanation="Este gráfico circular mostra a proporção de documentos em cada status. Uma maior porcentagem de documentos válidos indica melhor conformidade corporativa."
+          explanation="Este gráfico circular mostra a proporção de documentos em cada status. Uma maior porcentagem de documentos válidos e vencendo (ainda não vencidos) indica melhor conformidade corporativa. Documentos vencendo requerem atenção proativa."
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -129,7 +129,7 @@ const DashboardCharts = memo(function DashboardCharts({ analytics }: DashboardCh
         <ChartTitleWithInfo
           title="Tendência de Compliance"
           description="Taxa de conformidade ao longo do tempo"
-          explanation="A taxa de conformidade é calculada como: (Documentos Válidos ÷ Total de Documentos) × 100. Este gráfico mostra a evolução da conformidade nos últimos 6 meses, ajudando a identificar tendências e a eficácia das políticas de gestão documental."
+          explanation="A taxa de conformidade é calculada como: (Documentos Válidos + Documentos Vencendo ÷ Total de Documentos) × 100. Documentos vencendo ainda são considerados conformes, mas requerem atenção. Este gráfico mostra a evolução da conformidade nos últimos 6 meses, ajudando a identificar tendências e a eficácia das políticas de gestão documental."
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">

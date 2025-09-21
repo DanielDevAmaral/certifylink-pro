@@ -10,6 +10,7 @@ export interface AnalyticsData {
   expiringDocuments: number;
   expiredDocuments: number;
   complianceRate: number;
+  expiringAlert: number;
   monthlyTrend: Array<{
     month: string;
     total: number;
@@ -69,8 +70,9 @@ export function useDashboardAnalytics() {
       const expiringDocuments = allDocuments.filter(doc => doc.status === 'expiring').length;
       const validDocuments = allDocuments.filter(doc => doc.status === 'valid').length;
 
+      const compliantDocuments = validDocuments + expiringDocuments; // Conformidade inclui válidos + vencendo
       const complianceRate = totalDocuments > 0 ? 
-        Math.round((validDocuments / totalDocuments) * 100) : 0;
+        Math.round((compliantDocuments / totalDocuments) * 100) : 0;
 
       // Generate monthly trend (last 6 months)
       const monthlyTrend = [];
@@ -86,8 +88,10 @@ export function useDashboardAnalytics() {
         });
 
         const monthValid = monthDocs.filter(doc => doc.status === 'valid').length;
+        const monthExpiring = monthDocs.filter(doc => doc.status === 'expiring').length;
+        const monthCompliant = monthValid + monthExpiring; // Conformidade inclui válidos + vencendo
         const monthCompliance = monthDocs.length > 0 ? 
-          Math.round((monthValid / monthDocs.length) * 100) : 0;
+          Math.round((monthCompliant / monthDocs.length) * 100) : 0;
 
         monthlyTrend.push({
           month: monthName,
@@ -127,6 +131,7 @@ export function useDashboardAnalytics() {
         expiringDocuments,
         expiredDocuments,
         complianceRate,
+        expiringAlert: expiringDocuments, // Alerta específico para documentos vencendo
         monthlyTrend,
         categoryBreakdown
       };

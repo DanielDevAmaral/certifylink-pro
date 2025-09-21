@@ -128,7 +128,7 @@ export default function Dashboard() {
             <StatsCard
               title="Taxa de Conformidade"
               value={`${stats?.completion_percentage || 0}%`}
-              description="Meta: 95% de documentos válidos"
+              description={`${stats?.expiring_alert || 0} documentos vencendo em breve`}
               icon={TrendingUp}
               trend={{ value: 3, isPositive: true }}
             />

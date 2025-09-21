@@ -12,6 +12,7 @@ export interface DashboardStats {
   expiring_documents: number;
   recent_uploads: number;
   completion_percentage: number;
+  expiring_alert: number;
 }
 
 export interface RecentActivity {
@@ -67,9 +68,13 @@ export function useDashboardStats() {
       const totalDocuments = certifications.length + attestations.length + documents.length;
       const validDocuments = [...certifications, ...attestations, ...documents]
         .filter(item => item.status === 'valid').length;
-
+      const allExpiringDocuments = [...certifications, ...attestations, ...documents]
+        .filter(item => item.status === 'expiring').length;
+      
+      // Conformidade inclui documentos válidos + vencendo (ainda não vencidos)
+      const compliantDocuments = validDocuments + allExpiringDocuments;
       const completionPercentage = totalDocuments > 0 
-        ? Math.round((validDocuments / totalDocuments) * 100) 
+        ? Math.round((compliantDocuments / totalDocuments) * 100) 
         : 0;
 
       return {
@@ -80,7 +85,8 @@ export function useDashboardStats() {
         total_documents: documents.length,
         expiring_documents: expiringDocuments,
         recent_uploads: 0, // Será implementado com auditoria
-        completion_percentage: completionPercentage
+        completion_percentage: completionPercentage,
+        expiring_alert: allExpiringDocuments // Total de documentos vencendo como alerta
       };
     },
     enabled: !!user,

@@ -6,7 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useNotifications, useMarkNotificationRead } from '@/hooks/useNotifications';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useNotifications, useMarkNotificationRead, useDeleteNotification, useDeleteMultipleNotifications } from '@/hooks/useNotifications';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -21,6 +22,8 @@ export default function Notifications() {
   
   const { data: notifications = [], isLoading } = useNotifications();
   const markAsReadMutation = useMarkNotificationRead();
+  const deleteNotificationMutation = useDeleteNotification();
+  const deleteMultipleMutation = useDeleteMultipleNotifications();
 
   const handleMarkAsRead = (notificationId: string) => {
     markAsReadMutation.mutate(notificationId);
@@ -38,6 +41,15 @@ export default function Notifications() {
       title: 'Sucesso',
       description: 'Notificações marcadas como lidas',
     });
+  };
+
+  const handleDeleteNotification = (notificationId: string) => {
+    deleteNotificationMutation.mutate(notificationId);
+  };
+
+  const handleDeleteMultiple = () => {
+    deleteMultipleMutation.mutate(selectedNotifications);
+    setSelectedNotifications([]);
   };
 
   const handleNotificationClick = (notification: any) => {
@@ -143,15 +155,41 @@ export default function Notifications() {
           <NotificationFixButton />
           
           {selectedNotifications.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkMultipleAsRead}
-              className="gap-2"
-            >
-              <CheckCheck className="h-4 w-4" />
-              Marcar como lida ({selectedNotifications.length})
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkMultipleAsRead}
+                className="gap-2"
+              >
+                <CheckCheck className="h-4 w-4" />
+                Marcar como lida ({selectedNotifications.length})
+              </Button>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Excluir ({selectedNotifications.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir {selectedNotifications.length} notificações selecionadas? 
+                      Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteMultiple}>
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
           
           <div className="flex items-center gap-1 rounded-lg border border-input p-1">
@@ -246,9 +284,38 @@ export default function Notifications() {
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatDate(notification.created_at)}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDate(notification.created_at)}</span>
+                        </div>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir esta notificação? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteNotification(notification.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                     

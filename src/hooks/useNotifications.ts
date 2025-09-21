@@ -86,6 +86,78 @@ export function useMarkNotificationRead() {
   });
 }
 
+// Hook para excluir notificação individual
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Atualiza as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['unread-notifications-count', user?.id] });
+      
+      toast({
+        title: 'Sucesso',
+        description: 'Notificação excluída com sucesso',
+        variant: 'default',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir notificação: ' + error.message,
+        variant: 'destructive',
+      });
+    }
+  });
+}
+
+// Hook para excluir múltiplas notificações
+export function useDeleteMultipleNotifications() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (notificationIds: string[]) => {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .in('id', notificationIds)
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, notificationIds) => {
+      // Atualiza as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['unread-notifications-count', user?.id] });
+      
+      toast({
+        title: 'Sucesso',
+        description: `${notificationIds.length} notificações excluídas com sucesso`,
+        variant: 'default',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir notificações: ' + error.message,
+        variant: 'destructive',
+      });
+    }
+  });
+}
+
 // Hook para admins criarem notificações (apenas para admins)
 export function useCreateSystemNotification() {
   const queryClient = useQueryClient();

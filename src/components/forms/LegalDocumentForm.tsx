@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateLegalDocument, useUpdateLegalDocument, useUploadFile } from '@/hooks/useLegalDocuments';
 import type { LegalDocument, LegalDocumentType, DocumentSubtype } from '@/types';
 import { Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const legalDocumentSchema = z.object({
   document_name: z.string().min(1, 'Nome do documento é obrigatório'),
@@ -18,8 +19,14 @@ const legalDocumentSchema = z.object({
   document_subtype: z.string().optional(),
   validity_date: z.string().optional(),
   status: z.enum(['valid', 'expiring', 'expired', 'pending']),
-  document_url: z.string().min(1, 'URL do documento é obrigatória'),
+  document_url: z.string().optional(),
   is_sensitive: z.boolean().default(false),
+}).refine((data) => {
+  // At least one of document_url or file upload is required (handled in component)
+  return true;
+}, {
+  message: "É necessário fornecer uma URL ou fazer upload de um arquivo",
+  path: ["document_url"]
 });
 
 type LegalDocumentFormData = z.infer<typeof legalDocumentSchema>;
@@ -43,6 +50,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
   const createMutation = useCreateLegalDocument();
   const updateMutation = useUpdateLegalDocument();
   const uploadMutation = useUploadFile();
+  const { toast } = useToast();
 
   const form = useForm<LegalDocumentFormData>({
     resolver: zodResolver(legalDocumentSchema),
@@ -73,6 +81,16 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
         documentUrl = uploadResult.url;
       }
 
+      // Validate that we have either a URL or a file
+      if (!documentUrl && !uploadedFile) {
+        toast({
+          title: 'Arquivo ou URL obrigatório',
+          description: 'É necessário fornecer uma URL ou fazer upload de um arquivo.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const submitData = {
         document_name: data.document_name,
         document_type: data.document_type,
@@ -95,7 +113,27 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting legal document:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Verifique os campos obrigatórios e tente novamente.',
+        variant: 'destructive'
+      });
     }
+  };
+
+  const onInvalidSubmit = (errors: any) => {
+    console.log('Form validation errors:', errors);
+    const errorCount = Object.keys(errors).length;
+    toast({
+      title: 'Campos obrigatórios',
+      description: `${errorCount} campo${errorCount > 1 ? 's' : ''} ${errorCount > 1 ? 'precisam' : 'precisa'} ser preenchido${errorCount > 1 ? 's' : ''}.`,
+      variant: 'destructive'
+    });
+    
+    // Scroll to first error
+    const firstErrorField = Object.keys(errors)[0];
+    const element = window.document.querySelector(`[name="${firstErrorField}"]`);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,14 +152,14 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="document_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome do Documento</FormLabel>
+                    <FormLabel>Nome do Documento *</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -161,7 +199,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
                 name="document_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Documento</FormLabel>
+                    <FormLabel>Tipo de Documento *</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -244,7 +282,10 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
             />
 
             <div className="space-y-4">
-              <FormLabel>Arquivo do Documento</FormLabel>
+              <FormLabel>Arquivo do Documento *</FormLabel>
+              <p className="text-xs text-muted-foreground">
+                É necessário fazer upload de um arquivo ou fornecer uma URL válida
+              </p>
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-8 w-8 text-muted-foreground" />

@@ -15,6 +15,7 @@ import { useCreateCertification, useUpdateCertification } from '@/hooks/useCerti
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Plus, X, Calendar, Award } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 const certificationSchema = z.object({
   name: z.string().min(1, 'Nome da certificação é obrigatório'),
   function: z.string().min(1, 'Função é obrigatória'),
@@ -22,7 +23,9 @@ const certificationSchema = z.object({
   status: z.enum(['valid', 'expired', 'expiring', 'pending']).default('valid'),
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
-  public_link: z.string().url('URL inválida').min(1, 'Link público é obrigatório'),
+  public_link: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success, {
+    message: 'URL inválida'
+  }),
   screenshot_url: z.string().optional()
 });
 type CertificationFormData = z.infer<typeof certificationSchema>;
@@ -39,9 +42,8 @@ export function CertificationForm({
   const [newService, setNewService] = useState('');
   const createMutation = useCreateCertification();
   const updateMutation = useUpdateCertification();
-  const {
-    userRole
-  } = useAuth();
+  const { userRole } = useAuth();
+  const { toast } = useToast();
   const form = useForm<CertificationFormData>({
     resolver: zodResolver(certificationSchema),
     defaultValues: {
@@ -87,7 +89,27 @@ export function CertificationForm({
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting certification:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Verifique os campos obrigatórios e tente novamente.',
+        variant: 'destructive'
+      });
     }
+  };
+
+  const onInvalidSubmit = (errors: any) => {
+    console.log('Form validation errors:', errors);
+    const errorCount = Object.keys(errors).length;
+    toast({
+      title: 'Campos obrigatórios',
+      description: `${errorCount} campo${errorCount > 1 ? 's' : ''} ${errorCount > 1 ? 'precisam' : 'precisa'} ser preenchido${errorCount > 1 ? 's' : ''}.`,
+      variant: 'destructive'
+    });
+    
+    // Scroll to first error
+    const firstErrorField = Object.keys(errors)[0];
+    const element = document.querySelector(`[name="${firstErrorField}"]`);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
   const addService = () => {
     if (newService.trim() && !watchedServices.includes(newService.trim())) {
@@ -111,7 +133,7 @@ export function CertificationForm({
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6">
           {/* Informações Básicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField control={form.control} name="name" render={({
@@ -140,7 +162,7 @@ export function CertificationForm({
             <FormField control={form.control} name="validity_date" render={({
             field
           }) => <FormItem>
-                  <FormLabel>Data de Validade *</FormLabel>
+                  <FormLabel>Data de Validade</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input type="date" {...field} />
@@ -174,7 +196,7 @@ export function CertificationForm({
           <FormField control={form.control} name="public_link" render={({
           field
         }) => <FormItem>
-                <FormLabel>Link Público *</FormLabel>
+                <FormLabel>Link Público</FormLabel>
                 <FormControl>
                   <Input placeholder="https://exemplo.com/certificacao" {...field} />
                 </FormControl>

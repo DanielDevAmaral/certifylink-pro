@@ -15,6 +15,7 @@ import { useUploadFile } from '@/hooks/useLegalDocuments';
 import { useCertifications } from '@/hooks/useCertifications';
 import type { TechnicalCertificate } from '@/types';
 import { X, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const attestationSchema = z.object({
   client_name: z.string().min(1, 'Nome do cliente é obrigatório'),
@@ -47,6 +48,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   const updateMutation = useUpdateTechnicalAttestation();
   const uploadMutation = useUploadFile();
   const { data: allCertifications = [] } = useCertifications();
+  const { toast } = useToast();
 
   const form = useForm<AttestationFormData>({
     resolver: zodResolver(attestationSchema),
@@ -107,7 +109,27 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting attestation:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Verifique os campos obrigatórios e tente novamente.',
+        variant: 'destructive'
+      });
     }
+  };
+
+  const onInvalidSubmit = (errors: any) => {
+    console.log('Form validation errors:', errors);
+    const errorCount = Object.keys(errors).length;
+    toast({
+      title: 'Campos obrigatórios',
+      description: `${errorCount} campo${errorCount > 1 ? 's' : ''} ${errorCount > 1 ? 'precisam' : 'precisa'} ser preenchido${errorCount > 1 ? 's' : ''}.`,
+      variant: 'destructive'
+    });
+    
+    // Scroll to first error
+    const firstErrorField = Object.keys(errors)[0];
+    const element = document.querySelector(`[name="${firstErrorField}"]`);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const addCertification = () => {
@@ -146,14 +168,14 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="client_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome do Cliente</FormLabel>
+                    <FormLabel>Nome do Cliente *</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -192,7 +214,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
               name="project_object"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Objeto do Projeto</FormLabel>
+                  <FormLabel>Objeto do Projeto *</FormLabel>
                   <FormControl>
                     <Textarea {...field} />
                   </FormControl>
@@ -251,7 +273,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                 name="issuer_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome do Emissor</FormLabel>
+                    <FormLabel>Nome do Emissor *</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>

@@ -15,7 +15,6 @@ import { useCreateCertification, useUpdateCertification } from '@/hooks/useCerti
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Plus, X, Calendar, Award } from 'lucide-react';
-
 const certificationSchema = z.object({
   name: z.string().min(1, 'Nome da certificação é obrigatório'),
   function: z.string().min(1, 'Função é obrigatória'),
@@ -24,23 +23,25 @@ const certificationSchema = z.object({
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
   public_link: z.string().url('URL inválida').min(1, 'Link público é obrigatório'),
-  screenshot_url: z.string().optional(),
+  screenshot_url: z.string().optional()
 });
-
 type CertificationFormData = z.infer<typeof certificationSchema>;
-
 interface CertificationFormProps {
   certification?: Tables<'certifications'>;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
-
-export function CertificationForm({ certification, onSuccess, onCancel }: CertificationFormProps) {
+export function CertificationForm({
+  certification,
+  onSuccess,
+  onCancel
+}: CertificationFormProps) {
   const [newService, setNewService] = useState('');
   const createMutation = useCreateCertification();
   const updateMutation = useUpdateCertification();
-  const { userRole } = useAuth();
-
+  const {
+    userRole
+  } = useAuth();
   const form = useForm<CertificationFormData>({
     resolver: zodResolver(certificationSchema),
     defaultValues: {
@@ -51,17 +52,14 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
       equivalence_services: certification?.equivalence_services || [],
       approved_equivalence: certification?.approved_equivalence || false,
       public_link: certification?.public_link || '',
-      screenshot_url: certification?.screenshot_url || '',
-    },
+      screenshot_url: certification?.screenshot_url || ''
+    }
   });
-
   const watchedServices = form.watch('equivalence_services');
-
   const onSubmit = async (data: CertificationFormData) => {
     try {
       // Auto-approve equivalences for admins/leaders when they add services manually
       const shouldAutoApprove = canManageEquivalences && data.equivalence_services.length > 0;
-      
       if (certification) {
         await updateMutation.mutateAsync({
           id: certification.id,
@@ -71,8 +69,8 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
             public_link: data.public_link || null,
             screenshot_url: data.screenshot_url || null,
             // Auto-approve if admin/leader is adding equivalences, otherwise keep existing approval status
-            approved_equivalence: shouldAutoApprove || certification.approved_equivalence,
-          },
+            approved_equivalence: shouldAutoApprove || certification.approved_equivalence
+          }
         });
       } else {
         await createMutation.mutateAsync({
@@ -83,7 +81,7 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
           public_link: data.public_link || null,
           screenshot_url: data.screenshot_url || null,
           // Auto-approve for admins/leaders adding equivalences
-          approved_equivalence: shouldAutoApprove,
+          approved_equivalence: shouldAutoApprove
         });
       }
       onSuccess?.();
@@ -91,7 +89,6 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
       console.error('Error submitting certification:', error);
     }
   };
-
   const addService = () => {
     if (newService.trim() && !watchedServices.includes(newService.trim())) {
       const currentServices = form.getValues('equivalence_services');
@@ -99,17 +96,13 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
       setNewService('');
     }
   };
-
   const removeService = (index: number) => {
     const currentServices = form.getValues('equivalence_services');
     form.setValue('equivalence_services', currentServices.filter((_, i) => i !== index));
   };
-
   const isLoading = createMutation.isPending || updateMutation.isPending;
   const canManageEquivalences = userRole === 'admin' || userRole === 'leader';
-
-  return (
-    <Card className="card-corporate">
+  return <Card className="card-corporate">
       <div className="flex items-center gap-3 mb-6">
         <Award className="h-6 w-6 text-primary" />
         <h2 className="text-xl font-semibold text-foreground">
@@ -121,69 +114,46 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Informações Básicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome da Certificação</FormLabel>
+            <FormField control={form.control} name="name" render={({
+            field
+          }) => <FormItem>
+                  <FormLabel>Nome da Certificação *</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Ex: AWS Solutions Architect" 
-                      {...field} 
-                    />
+                    <Input placeholder="Ex: AWS Solutions Architect" {...field} />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
+                </FormItem>} />
 
-            <FormField
-              control={form.control}
-              name="function"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Função</FormLabel>
+            <FormField control={form.control} name="function" render={({
+            field
+          }) => <FormItem>
+                  <FormLabel>Função *</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Ex: Arquiteto de Soluções" 
-                      {...field} 
-                    />
+                    <Input placeholder="Ex: Arquiteto de Soluções" {...field} />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
+                </FormItem>} />
           </div>
 
           {/* Data e Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="validity_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Validade</FormLabel>
+            <FormField control={form.control} name="validity_date" render={({
+            field
+          }) => <FormItem>
+                  <FormLabel>Data de Validade *</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input 
-                        type="date" 
-                        {...field} 
-                      />
+                      <Input type="date" {...field} />
                       <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
+                </FormItem>} />
 
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
+            <FormField control={form.control} name="status" render={({
+            field
+          }) => <FormItem>
+                  <FormLabel>Status *</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -197,52 +167,34 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
+                </FormItem>} />
           </div>
 
           {/* Link Público */}
-          <FormField
-            control={form.control}
-            name="public_link"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Link Público</FormLabel>
+          <FormField control={form.control} name="public_link" render={({
+          field
+        }) => <FormItem>
+                <FormLabel>Link Público *</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="https://exemplo.com/certificacao" 
-                    {...field} 
-                  />
+                  <Input placeholder="https://exemplo.com/certificacao" {...field} />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
-            )}
-          />
+              </FormItem>} />
 
           {/* Screenshot Upload */}
-          <FormField
-            control={form.control}
-            name="screenshot_url"
-            render={({ field }) => (
-              <FormItem>
+          <FormField control={form.control} name="screenshot_url" render={({
+          field
+        }) => <FormItem>
                 <FormControl>
-                  <ScreenshotUpload
-                    currentUrl={field.value || ''}
-                    onUploadComplete={(url) => field.onChange(url)}
-                    onUploadError={(error) => {
-                      console.error('Screenshot upload error:', error);
-                    }}
-                  />
+                  <ScreenshotUpload currentUrl={field.value || ''} onUploadComplete={url => field.onChange(url)} onUploadError={error => {
+              console.error('Screenshot upload error:', error);
+            }} />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
-            )}
-          />
+              </FormItem>} />
 
           {/* Serviços de Equivalência - apenas para admin e leader */}
-          {canManageEquivalences && (
-            <div className="space-y-4">
+          {canManageEquivalences && <div className="space-y-4">
               <div className="space-y-2">
                 <FormLabel>Serviços de Equivalência</FormLabel>
                 <p className="text-xs text-muted-foreground">
@@ -251,74 +203,39 @@ export function CertificationForm({ certification, onSuccess, onCancel }: Certif
               </div>
               
               {/* Lista de serviços */}
-              {watchedServices.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {watchedServices.map((service, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="flex items-center gap-2 px-3 py-1"
-                    >
+              {watchedServices.length > 0 && <div className="flex flex-wrap gap-2 mb-4">
+                  {watchedServices.map((service, index) => <Badge key={index} variant="secondary" className="flex items-center gap-2 px-3 py-1">
                       {service}
-                      <button
-                        type="button"
-                        onClick={() => removeService(index)}
-                        className="hover:text-destructive"
-                      >
+                      <button type="button" onClick={() => removeService(index)} className="hover:text-destructive">
                         <X className="h-3 w-3" />
                       </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
+                    </Badge>)}
+                </div>}
 
               {/* Adicionar novo serviço */}
               <div className="flex gap-2">
-                <Input
-                  placeholder="Ex: Datalake, Cloud Computing, Big Data..."
-                  value={newService}
-                  onChange={(e) => setNewService(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addService();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={addService}
-                  variant="outline"
-                  size="icon"
-                >
+                <Input placeholder="Ex: Datalake, Cloud Computing, Big Data..." value={newService} onChange={e => setNewService(e.target.value)} onKeyPress={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addService();
+              }
+            }} />
+                <Button type="button" onClick={addService} variant="outline" size="icon">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Ações do Formulário */}
           <div className="flex justify-end gap-3 pt-6 border-t border-border">
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isLoading}
-              >
+            {onCancel && <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
                 Cancelar
-              </Button>
-            )}
-            <Button
-              type="submit"
-              className="btn-corporate"
-              disabled={isLoading}
-            >
+              </Button>}
+            <Button type="submit" className="btn-corporate" disabled={isLoading}>
               {isLoading ? 'Salvando...' : certification ? 'Atualizar' : 'Criar'}
             </Button>
           </div>
         </form>
       </Form>
-    </Card>
-  );
+    </Card>;
 }

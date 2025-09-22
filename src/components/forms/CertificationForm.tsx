@@ -19,14 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 const certificationSchema = z.object({
   name: z.string().min(1, 'Nome da certificação é obrigatório'),
   function: z.string().min(1, 'Função é obrigatória'),
-  validity_date: z.string().optional(),
+  validity_date: z.string().min(1, 'Data de validade é obrigatória'),
   status: z.enum(['valid', 'expired', 'expiring', 'pending']).default('valid'),
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
-  public_link: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success, {
-    message: 'URL inválida'
-  }),
-  screenshot_url: z.string().optional()
+  public_link: z.string().min(1, 'Link público é obrigatório').url('URL inválida'),
+  screenshot_url: z.string().min(1, 'Screenshot é obrigatório')
 });
 type CertificationFormData = z.infer<typeof certificationSchema>;
 interface CertificationFormProps {
@@ -67,9 +65,6 @@ export function CertificationForm({
           id: certification.id,
           updates: {
             ...data,
-            validity_date: data.validity_date || null,
-            public_link: data.public_link || null,
-            screenshot_url: data.screenshot_url || null,
             // Auto-approve if admin/leader is adding equivalences, otherwise keep existing approval status
             approved_equivalence: shouldAutoApprove || certification.approved_equivalence
           }
@@ -79,9 +74,6 @@ export function CertificationForm({
           name: data.name,
           function: data.function,
           ...data,
-          validity_date: data.validity_date || null,
-          public_link: data.public_link || null,
-          screenshot_url: data.screenshot_url || null,
           // Auto-approve for admins/leaders adding equivalences
           approved_equivalence: shouldAutoApprove
         });
@@ -162,7 +154,7 @@ export function CertificationForm({
             <FormField control={form.control} name="validity_date" render={({
             field
           }) => <FormItem>
-                  <FormLabel>Data de Validade</FormLabel>
+                  <FormLabel>Data de Validade *</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input type="date" {...field} />
@@ -196,7 +188,7 @@ export function CertificationForm({
           <FormField control={form.control} name="public_link" render={({
           field
         }) => <FormItem>
-                <FormLabel>Link Público</FormLabel>
+                <FormLabel>Link Público *</FormLabel>
                 <FormControl>
                   <Input placeholder="https://exemplo.com/certificacao" {...field} />
                 </FormControl>

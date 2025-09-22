@@ -28,6 +28,7 @@ interface SmartFilterPanelProps {
   onClearFilters: () => void;
   className?: string;
   availableFunctions?: string[];
+  userNames?: Record<string, string>;
 }
 
 export function SmartFilterPanel({
@@ -36,7 +37,8 @@ export function SmartFilterPanel({
   onFiltersChange,
   onClearFilters,
   className = "",
-  availableFunctions = []
+  availableFunctions = [],
+  userNames = {}
 }: SmartFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -96,7 +98,7 @@ export function SmartFilterPanel({
       return format(new Date(value), "dd/MM/yyyy", { locale: ptBR });
     }
     if (filter.type === 'user') {
-      return value; // UserSelectorCombobox handles display name
+      return userNames[value] || 'Usuário não encontrado';
     }
     return value;
   };

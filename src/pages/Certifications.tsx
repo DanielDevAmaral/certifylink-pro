@@ -236,6 +236,7 @@ export default function Certifications() {
         onFiltersChange={handleFiltersChange}
         onClearFilters={() => handleFiltersChange({})}
         availableFunctions={availableFunctions}
+        userNames={userNames}
         className="mb-6"
       />
 

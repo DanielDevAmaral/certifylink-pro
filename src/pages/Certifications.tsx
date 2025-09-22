@@ -6,16 +6,16 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { CertificationForm } from "@/components/forms/CertificationForm";
-import { SearchBar } from "@/components/common/SearchBar";
-import { FilterPanel } from "@/components/common/FilterPanel";
+import { AdvancedSearchBar } from "@/components/common/AdvancedSearchBar";
+import { SmartFilterPanel } from "@/components/common/SmartFilterPanel";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { SkeletonList } from "@/components/common/SkeletonCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
-import { useCertifications, useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
+import { useCertificationSearchEngine, useCertificationFilterOptions, type SearchEngineFilters } from "@/hooks/useCertificationSearchEngine";
+import { useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
 import { usePublicNames } from "@/hooks/usePublicNames";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
@@ -30,11 +30,12 @@ import {
   Edit,
   Trash2,
   FileDown,
-  ChevronDown
+  ChevronDown,
+  BarChart3
 } from "lucide-react";
 
-// Filter configurations for certifications
-const filterConfigs = [
+// Smart filter configurations for certifications
+const smartFilterConfigs = [
   {
     key: 'status',
     label: 'Status',
@@ -42,8 +43,10 @@ const filterConfigs = [
     options: [
       { value: 'valid', label: 'Válidas' },
       { value: 'expiring', label: 'Expirando' },
-      { value: 'expired', label: 'Expiradas' }
-    ]
+      { value: 'expired', label: 'Expiradas' },
+      { value: 'pending', label: 'Pendentes' }
+    ],
+    placeholder: 'Selecione o status...'
   },
   {
     key: 'approved_equivalence',
@@ -52,13 +55,26 @@ const filterConfigs = [
     options: [
       { value: 'true', label: 'Aprovada' },
       { value: 'false', label: 'Pendente' }
-    ]
+    ],
+    placeholder: 'Status da equivalência...'
+  },
+  {
+    key: 'function',
+    label: 'Função',
+    type: 'function' as const,
+    placeholder: 'Selecione uma função...'
+  },
+  {
+    key: 'user_id',
+    label: 'Responsável',
+    type: 'user' as const,
+    placeholder: 'Selecione um responsável...'
   },
   {
     key: 'validity_date',
-    label: 'Validade',
-    type: 'dateRange' as const,
-    options: []
+    label: 'Data de Validade',
+    type: 'date' as const,
+    placeholder: 'Selecione uma data...'
   }
 ];
 
@@ -67,24 +83,27 @@ export default function Certifications() {
   const [showForm, setShowForm] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<SearchEngineFilters>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  const {
+  // Use the new search engine
+  const { data: searchResults, isLoading } = useCertificationSearchEngine({
     searchTerm,
-    setSearchTerm,
-    filters,
-    setFilters,
-    currentPage,
-    setCurrentPage,
-    itemsPerPage,
-    setItemsPerPage,
-    sortBy,
-    setSortBy,
-    sortOrder,
-    setSortOrder
-  } = useAdvancedSearch();
+    ...filters,
+    sortBy: filters.sortBy || 'created_at',
+    sortOrder: filters.sortOrder || 'desc'
+  });
 
-  const { data: certifications = [], isLoading } = useCertifications(searchTerm);
+  const { data: filterOptions } = useCertificationFilterOptions();
   const deleteMutation = useDeleteCertification();
+
+  // Extract data from search results
+  const certifications = searchResults?.data || [];
+  const totalItems = searchResults?.totalCount || 0;
+  const statusCounts = searchResults?.statusCounts || { valid: 0, expiring: 0, expired: 0, pending: 0 };
+  const availableFunctions = searchResults?.functions || [];
 
   // Get unique user IDs from certifications for name lookup
   const userIds = useMemo(() => {
@@ -106,42 +125,20 @@ export default function Certifications() {
     }
   }, []);
 
-  // Apply filters and pagination
-  let filteredCertifications = certifications.filter(cert => {
-    const statusFilter = filters.status;
-    const equivalenceFilter = filters.approved_equivalence;
-    const dateFilter = filters.validity_date;
-
-    if (statusFilter && cert.status !== statusFilter) return false;
-    if (equivalenceFilter !== undefined && cert.approved_equivalence.toString() !== equivalenceFilter) return false;
-    if (dateFilter?.from || dateFilter?.to) {
-      const certDate = new Date(cert.validity_date || '');
-      if (dateFilter.from && certDate < dateFilter.from) return false;
-      if (dateFilter.to && certDate > dateFilter.to) return false;
-    }
-
-    return true;
-  });
-
-  // Apply sorting
-  filteredCertifications = filteredCertifications.sort((a, b) => {
-    const factor = sortOrder === 'desc' ? -1 : 1;
-    switch (sortBy) {
-      case 'name':
-        return factor * a.name.localeCompare(b.name);
-      case 'validity_date':
-        return factor * (new Date(a.validity_date || '').getTime() - new Date(b.validity_date || '').getTime());
-      case 'created_at':
-        return factor * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      default:
-        return 0;
-    }
-  });
-
-  const totalItems = filteredCertifications.length;
+  // Apply pagination to search results
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCertifications = filteredCertifications.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedCertifications = certifications.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleFiltersChange = (newFilters: Record<string, any>) => {
+    setFilters(newFilters as SearchEngineFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const handleSearchChange = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
 
   const handleEdit = (certification: CertificationWithProfile) => {
     setSelectedCertification(certification);
@@ -180,21 +177,26 @@ export default function Certifications() {
         title="Gestão de Certificações"
         description="Controle de certificações profissionais e equivalências de serviços"
       >
-        <FilterPanel
-          filterConfigs={filterConfigs}
-          activeFilters={filters}
-          onFiltersChange={setFilters}
-          onClearFilters={() => setFilters({})}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowReports(!showReports)}
+            className="gap-2"
+          >
+            <FileDown className="h-4 w-4" />
+            Relatórios
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="gap-2"
+            title="Estatísticas"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Estatísticas</span>
+          </Button>
+        </div>
         
-        <Button
-          variant="outline"
-          onClick={() => setShowReports(!showReports)}
-          className="gap-2"
-        >
-          <FileDown className="h-4 w-4" />
-          Relatórios
-        </Button>
         
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
@@ -218,7 +220,7 @@ export default function Certifications() {
         <CollapsibleContent>
           <div className="mb-6">
             <ReportGenerator 
-              data={filteredCertifications} 
+              data={certifications} 
               type="certifications"
               title="Certificações"
               userNames={userNames}
@@ -227,20 +229,45 @@ export default function Certifications() {
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Smart Filters */}
+      <SmartFilterPanel
+        filterConfigs={smartFilterConfigs}
+        activeFilters={filters}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={() => handleFiltersChange({})}
+        availableFunctions={availableFunctions}
+        className="mb-6"
+      />
+
       {/* Search and Status */}
       <Card className="card-corporate mb-6">
-        <div className="flex items-center gap-4">
-          <SearchBar
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <AdvancedSearchBar
             placeholder="Buscar por nome, função ou responsável..."
             value={searchTerm}
-            onChange={setSearchTerm}
+            onChange={handleSearchChange}
             className="flex-1"
+            showAdvancedButton={false}
           />
-          <div className="flex items-center gap-2">
-            <StatusBadge status="valid" />
-            <span className="text-sm text-muted-foreground">
-              {filteredCertifications.filter(c => c.status === 'valid').length} válidas
-            </span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <StatusBadge status="valid" />
+              <span className="text-sm text-muted-foreground">
+                {statusCounts.valid} válidas
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status="expiring" />
+              <span className="text-sm text-muted-foreground">
+                {statusCounts.expiring} expirando
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status="expired" />
+              <span className="text-sm text-muted-foreground">
+                {statusCounts.expired} expiradas
+              </span>
+            </div>
           </div>
         </div>
       </Card>

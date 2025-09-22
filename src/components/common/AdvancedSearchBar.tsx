@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X, Filter } from "lucide-react";
@@ -15,7 +15,7 @@ interface AdvancedSearchBarProps {
   showAdvancedButton?: boolean;
 }
 
-export function AdvancedSearchBar({
+const AdvancedSearchBar = memo(function AdvancedSearchBar({
   placeholder = "Buscar...",
   value = "",
   onChange,
@@ -125,4 +125,6 @@ export function AdvancedSearchBar({
       )}
     </div>
   );
-}
+});
+
+export { AdvancedSearchBar };

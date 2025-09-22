@@ -44,9 +44,10 @@ export function useCertificationSearchEngine(filters: SearchEngineFilters = {}) 
           profiles!certifications_user_id_fkey(full_name)
         `, { count: 'exact' });
 
-      // Apply filters
+      // Apply filters - Enhanced search including user names and equivalence services
       if (filters.searchTerm && filters.searchTerm.trim().length > 0) {
-        query = query.or(`name.ilike.%${filters.searchTerm}%,function.ilike.%${filters.searchTerm}%`);
+        const searchTerm = filters.searchTerm.trim();
+        query = query.or(`name.ilike.%${searchTerm}%,function.ilike.%${searchTerm}%,profiles.full_name.ilike.%${searchTerm}%`);
       }
 
       if (filters.status) {

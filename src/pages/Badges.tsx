@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AdvancedSearchBar } from "@/components/common/AdvancedSearchBar";
 import { SmartFilterPanel } from "@/components/common/SmartFilterPanel";
@@ -86,29 +87,33 @@ export default function Badges() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <PageHeader 
-          title="Controle de Badges" 
-          description="Gerencie e visualize todos os badges conquistados"
-        />
-        <LoadingSpinner />
-      </div>
+      <Layout>
+        <div className="space-y-6">
+          <PageHeader 
+            title="Controle de Badges" 
+            description="Gerencie e visualize todos os badges conquistados"
+          />
+          <LoadingSpinner />
+        </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <PageHeader 
-          title="Controle de Badges" 
-          description="Gerencie e visualize todos os badges conquistados"
-        />
-        <EmptyState
-          icon={Award}
-          title="Erro ao carregar badges"
-          description="Ocorreu um erro ao carregar os badges. Tente recarregar a página."
-        />
-      </div>
+      <Layout>
+        <div className="space-y-6">
+          <PageHeader 
+            title="Controle de Badges" 
+            description="Gerencie e visualize todos os badges conquistados"
+          />
+          <EmptyState
+            icon={Award}
+            title="Erro ao carregar badges"
+            description="Ocorreu um erro ao carregar os badges. Tente recarregar a página."
+          />
+        </div>
+      </Layout>
     );
   }
 
@@ -116,16 +121,17 @@ export default function Badges() {
   const showNoResults = !currentItems.length && (searchTerm || Object.keys(filters).length > 0);
 
   return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Controle de Badges" 
-        description="Gerencie e visualize todos os badges conquistados"
-      >
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Badge
-        </Button>
-      </PageHeader>
+    <Layout>
+      <div className="space-y-6">
+        <PageHeader 
+          title="Controle de Badges" 
+          description="Gerencie e visualize todos os badges conquistados"
+        >
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Badge
+          </Button>
+        </PageHeader>
 
       {/* Stats Cards */}
       {searchResult && (
@@ -251,6 +257,7 @@ export default function Badges() {
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
       />
-    </div>
+      </div>
+    </Layout>
   );
 }

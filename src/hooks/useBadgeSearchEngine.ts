@@ -35,7 +35,7 @@ export function useBadgeSearchEngine(filters: BadgeSearchEngineFilters = {}) {
         .from('badges')
         .select(`
           *,
-          profiles!badges_user_id_fkey(full_name)
+          profiles!inner(full_name)
         `, { count: 'exact' });
 
       // Apply filters - Enhanced search including user names
@@ -107,7 +107,7 @@ export function useBadgeFilterOptions() {
     queryFn: async () => {
       const { data: badges, error } = await supabase
         .from('badges')
-        .select('category, user_id, profiles!badges_user_id_fkey(full_name)');
+        .select('category, user_id, profiles!inner(full_name)');
 
       if (error) throw error;
 

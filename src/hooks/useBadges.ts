@@ -126,7 +126,19 @@ export function useCreateBadge() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (newBadge) => {
+      // Optimistic update for immediate visibility
+      queryClient.setQueryData(['badges-search-engine'], (oldData: any) => {
+        if (oldData && oldData.data) {
+          return {
+            ...oldData,
+            data: [newBadge, ...oldData.data],
+            totalCount: oldData.totalCount + 1
+          };
+        }
+        return oldData;
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['badges'] });
       queryClient.invalidateQueries({ queryKey: ['badges-search-engine'] });
       queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });

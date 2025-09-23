@@ -79,12 +79,14 @@ export default function Badges() {
 
   const { userRole } = useAuth();
 
-  // Use the badge search engine
+  // Use the badge search engine with pagination
   const { data: searchResults, isLoading } = useBadgeSearchEngine({
     searchTerm,
     ...filters,
-    sortBy: filters.sortBy || 'issued_date',
-    sortOrder: filters.sortOrder || 'desc'
+    sortBy: filters.sortBy || 'created_at',
+    sortOrder: filters.sortOrder || 'desc',
+    page: currentPage,
+    pageSize: itemsPerPage
   });
 
   const { data: filterOptions } = useBadgeFilterOptions();
@@ -103,10 +105,9 @@ export default function Badges() {
 
   const { data: userNames = {} } = usePublicNames(userIds);
 
-  // Apply pagination to search results
+  // Server-side pagination - no client-side slicing needed
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBadges = badges.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedBadges = badges; // Data is already paginated from server
 
   const handleFiltersChange = (newFilters: Record<string, any>) => {
     setFilters(newFilters as BadgeSearchEngineFilters);

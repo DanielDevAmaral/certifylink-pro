@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Certifications from "./pages/Certifications";
 import Certificates from "./pages/Certificates";
 import Documents from "./pages/Documents";
+import Badges from "./pages/Badges";
 import Notifications from "./pages/Notifications";
 import Team from "./pages/Team";
 import TeamDetail from "./pages/TeamDetail";
@@ -64,6 +65,11 @@ const App = () => (
               <Route path="/documents" element={
                 <ProtectedRoute>
                   <Documents />
+                </ProtectedRoute>
+              } />
+              <Route path="/badges" element={
+                <ProtectedRoute>
+                  <Badges />
                 </ProtectedRoute>
               } />
               <Route path="/notifications" element={

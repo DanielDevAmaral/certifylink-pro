@@ -53,6 +53,66 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          expiry_date: string | null
+          icon_url: string | null
+          id: string
+          image_url: string | null
+          issued_date: string
+          issuer_logo_url: string | null
+          issuer_name: string | null
+          metadata: Json | null
+          name: string
+          public_link: string | null
+          status: Database["public"]["Enums"]["document_status"]
+          updated_at: string
+          user_id: string
+          verification_code: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          expiry_date?: string | null
+          icon_url?: string | null
+          id?: string
+          image_url?: string | null
+          issued_date: string
+          issuer_logo_url?: string | null
+          issuer_name?: string | null
+          metadata?: Json | null
+          name: string
+          public_link?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id: string
+          verification_code?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          expiry_date?: string | null
+          icon_url?: string | null
+          id?: string
+          image_url?: string | null
+          issued_date?: string
+          issuer_logo_url?: string | null
+          issuer_name?: string | null
+          metadata?: Json | null
+          name?: string
+          public_link?: string | null
+          status?: Database["public"]["Enums"]["document_status"]
+          updated_at?: string
+          user_id?: string
+          verification_code?: string | null
+        }
+        Relationships: []
+      }
       certifications: {
         Row: {
           ai_suggested_services: string[] | null

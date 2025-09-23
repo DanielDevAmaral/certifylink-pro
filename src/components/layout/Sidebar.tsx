@@ -10,7 +10,8 @@ import {
   Users,
   LogOut,
   Database,
-  Shield
+  Shield,
+  Medal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,12 @@ export function Sidebar() {
       href: "/documents",
       icon: Scale, 
       description: "Habilitação jurídica e fiscal"
+    },
+    {
+      name: "Badges",
+      href: "/badges",
+      icon: Medal,
+      description: "Controle de badges conquistados"
     },
     {
       name: "Equipe",

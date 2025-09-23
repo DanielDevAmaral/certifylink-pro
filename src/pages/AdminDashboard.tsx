@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { TestDataGenerator } from '@/components/admin/TestDataGenerator';
 import { DocumentStatusManager } from '@/components/admin/DocumentStatusManager';
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
+import { CertificationManagement } from '@/components/admin/CertificationManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -172,6 +173,9 @@ export default function AdminDashboard() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Certification Management */}
+        <CertificationManagement />
 
         {/* Document Status Manager */}
         <DocumentStatusManager />

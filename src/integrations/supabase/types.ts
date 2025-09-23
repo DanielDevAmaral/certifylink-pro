@@ -113,6 +113,111 @@ export type Database = {
         }
         Relationships: []
       }
+      certification_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      certification_platforms: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      certification_types: {
+        Row: {
+          aliases: string[] | null
+          category_id: string | null
+          created_at: string
+          full_name: string
+          function: string | null
+          id: string
+          is_active: boolean
+          name: string
+          platform_id: string
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[] | null
+          category_id?: string | null
+          created_at?: string
+          full_name: string
+          function?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          platform_id: string
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[] | null
+          category_id?: string | null
+          created_at?: string
+          full_name?: string
+          function?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          platform_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_types_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "certification_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_types_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "certification_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certifications: {
         Row: {
           ai_suggested_services: string[] | null

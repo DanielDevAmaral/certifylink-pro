@@ -29,60 +29,146 @@ export function DataMigration() {
   const { data: certifications = [] } = useCertifications();
   const { data: types = [] } = useCertificationTypes();
 
+  // Helper function to calculate Levenshtein distance
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
+  };
+
+  // Helper function to normalize text for comparison
+  const normalizeText = (text: string): string => {
+    return text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Helper function to calculate similarity score (0-100)
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const norm1 = normalizeText(str1);
+    const norm2 = normalizeText(str2);
+    
+    if (norm1 === norm2) return 100;
+    
+    const maxLen = Math.max(norm1.length, norm2.length);
+    if (maxLen === 0) return 100;
+    
+    const distance = levenshteinDistance(norm1, norm2);
+    return Math.round(((maxLen - distance) / maxLen) * 100);
+  };
+
   const analyzeDuplicates = () => {
     setIsAnalyzing(true);
     
     // Simulate analysis delay
     setTimeout(() => {
-      // Group certifications by similar names
-      const nameGroups: { [key: string]: any[] } = {};
+      const duplicateGroups: DuplicateGroup[] = [];
+      const processedCerts = new Set<string>();
+      const SIMILARITY_THRESHOLD = 70; // Minimum similarity to group certifications
       
-      certifications.forEach(cert => {
-        const normalizedName = cert.name.toLowerCase()
-          .replace(/certificação|certification|certified|professional/gi, '')
-          .trim();
+      certifications.forEach((cert, index) => {
+        if (processedCerts.has(cert.id)) return;
         
-        const existingKey = Object.keys(nameGroups).find(key => 
-          key.includes(normalizedName) || normalizedName.includes(key)
-        );
+        const similarCerts = [cert];
+        const certKey = `${cert.name}|${cert.function}`.toLowerCase();
         
-        if (existingKey) {
-          nameGroups[existingKey].push(cert);
-        } else {
-          nameGroups[normalizedName] = [cert];
-        }
-      });
-
-      // Filter only groups with duplicates
-      const duplicateGroups: DuplicateGroup[] = Object.entries(nameGroups)
-        .filter(([_, certs]) => certs.length > 1)
-        .map(([_, certs]) => {
-          const names = [...new Set(certs.map(c => c.name))];
+        // Find similar certifications
+        certifications.slice(index + 1).forEach(otherCert => {
+          if (processedCerts.has(otherCert.id)) return;
+          
+          const otherKey = `${otherCert.name}|${otherCert.function}`.toLowerCase();
+          
+          // Skip if they are exactly the same
+          if (certKey === otherKey) return;
+          
+          // Calculate similarity for both name and function
+          const nameSimilarity = calculateSimilarity(cert.name, otherCert.name);
+          const functionSimilarity = calculateSimilarity(cert.function, otherCert.function);
+          
+          // Consider similar if either name or function is similar enough
+          const overallSimilarity = Math.max(nameSimilarity, functionSimilarity);
+          
+          if (overallSimilarity >= SIMILARITY_THRESHOLD) {
+            similarCerts.push(otherCert);
+            processedCerts.add(otherCert.id);
+          }
+        });
+        
+        processedCerts.add(cert.id);
+        
+        // Only create group if there are actually different variations
+        if (similarCerts.length > 1) {
+          const names = [...new Set(similarCerts.map(c => c.name))];
+          const functions = [...new Set(similarCerts.map(c => c.function))];
+          
+          // Skip if all certifications have the same name AND function
+          if (names.length === 1 && functions.length === 1) return;
+          
+          // Find the most common name/function combination
+          const nameFreq: { [key: string]: number } = {};
+          const functionFreq: { [key: string]: number } = {};
+          
+          similarCerts.forEach(c => {
+            nameFreq[c.name] = (nameFreq[c.name] || 0) + 1;
+            functionFreq[c.function] = (functionFreq[c.function] || 0) + 1;
+          });
+          
+          const mostCommonName = Object.keys(nameFreq).reduce((a, b) => 
+            nameFreq[a] > nameFreq[b] ? a : b
+          );
+          const mostCommonFunction = Object.keys(functionFreq).reduce((a, b) => 
+            functionFreq[a] > functionFreq[b] ? a : b
+          );
           
           // Try to find a matching standardized type
-          const suggestedType = types.find(type => 
-            names.some(name => 
-              type.aliases?.some(alias => 
-                name.toLowerCase().includes(alias.toLowerCase()) ||
-                alias.toLowerCase().includes(name.toLowerCase())
-              ) ||
-              name.toLowerCase().includes(type.name.toLowerCase()) ||
-              type.name.toLowerCase().includes(name.toLowerCase())
-            )
-          );
-
-          return {
+          const suggestedType = types.find(type => {
+            // Check exact matches first
+            if (type.name.toLowerCase() === mostCommonName.toLowerCase() ||
+                type.full_name?.toLowerCase() === mostCommonName.toLowerCase()) {
+              return true;
+            }
+            
+            // Check aliases
+            if (type.aliases?.some(alias => 
+              alias.toLowerCase() === mostCommonName.toLowerCase() ||
+              calculateSimilarity(alias, mostCommonName) > 85
+            )) {
+              return true;
+            }
+            
+            // Check similarity with type name
+            return calculateSimilarity(type.name, mostCommonName) > 85 ||
+                   (type.full_name && calculateSimilarity(type.full_name, mostCommonName) > 85);
+          });
+          
+          duplicateGroups.push({
             names,
-            certifications: certs,
+            certifications: similarCerts,
             suggestedType
-          };
-        });
+          });
+        }
+      });
 
       setDuplicates(duplicateGroups);
       setAnalysisComplete(true);
       setIsAnalyzing(false);
       
-      toast.success(`Análise concluída! Encontrados ${duplicateGroups.length} grupos com duplicações.`);
+      toast.success(`Análise concluída! Encontrados ${duplicateGroups.length} grupos com variações similares.`);
     }, 2000);
   };
 

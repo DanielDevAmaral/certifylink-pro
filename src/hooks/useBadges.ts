@@ -41,7 +41,7 @@ export function useBadges(searchTerm?: string) {
         .from('badges')
         .select(`
           *,
-          profiles!inner(full_name)
+          profiles(full_name)
         `)
         .order('issued_date', { ascending: false });
 
@@ -59,7 +59,7 @@ export function useBadges(searchTerm?: string) {
 
       return (data || []).map(badge => ({
         ...badge,
-        creator_name: (badge.profiles as any)?.full_name
+        creator_name: (badge.profiles as any)?.full_name || 'Usuário'
       }));
     },
     enabled: !!user,
@@ -80,7 +80,7 @@ export function useBadge(id: string) {
         .from('badges')
         .select(`
           *,
-          profiles!inner(full_name)
+          profiles(full_name)
         `)
         .eq('id', id)
         .maybeSingle();
@@ -94,7 +94,7 @@ export function useBadge(id: string) {
 
       return {
         ...data,
-        creator_name: (data.profiles as any)?.full_name
+        creator_name: (data.profiles as any)?.full_name || 'Usuário'
       };
     },
     enabled: !!user && !!id,
@@ -128,6 +128,8 @@ export function useCreateBadge() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['badges-search-engine'] });
+      queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: "Sucesso",
@@ -176,6 +178,8 @@ export function useUpdateBadge() {
     onSuccess: (_, badge) => {
       queryClient.invalidateQueries({ queryKey: ['badge', badge.id] });
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['badges-search-engine'] });
+      queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: "Sucesso",
@@ -221,6 +225,8 @@ export function useDeleteBadge() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['badges-search-engine'] });
+      queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: "Sucesso",

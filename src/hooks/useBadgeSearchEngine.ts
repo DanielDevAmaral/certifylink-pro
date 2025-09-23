@@ -35,7 +35,7 @@ export function useBadgeSearchEngine(filters: BadgeSearchEngineFilters = {}) {
         .from('badges')
         .select(`
           *,
-          profiles!inner(full_name)
+          profiles(full_name)
         `, { count: 'exact' });
 
       // Apply filters - Enhanced search including user names
@@ -73,7 +73,7 @@ export function useBadgeSearchEngine(filters: BadgeSearchEngineFilters = {}) {
 
       const badges = (data || []).map(badge => ({
         ...badge,
-        creator_name: (badge.profiles as any)?.full_name
+        creator_name: (badge.profiles as any)?.full_name || 'Usuário'
       })) as BadgeWithProfile[];
 
       // Get unique categories for filter options
@@ -107,7 +107,7 @@ export function useBadgeFilterOptions() {
     queryFn: async () => {
       const { data: badges, error } = await supabase
         .from('badges')
-        .select('category, user_id, profiles!inner(full_name)');
+        .select('category, user_id, profiles(full_name)');
 
       if (error) throw error;
 
@@ -116,12 +116,11 @@ export function useBadgeFilterOptions() {
       const users = Array.from(
         new Map(
           badges
-            ?.filter(badge => badge.profiles)
-            .map(badge => [
+            ?.map(badge => [
               badge.user_id, 
               {
                 id: badge.user_id,
-                name: (badge.profiles as any)?.full_name || 'Usuário Desconhecido'
+                name: (badge.profiles as any)?.full_name || 'Usuário'
               }
             ]) || []
         ).values()

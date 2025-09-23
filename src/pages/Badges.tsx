@@ -224,6 +224,7 @@ export default function Badges() {
           availableFunctions={availableCategories}
           userNames={userNames}
           className="mb-6"
+          entityType="badge"
         />
 
         {/* Search and Status */}

@@ -7,11 +7,13 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FilterPresets } from "./FilterPresets";
+import { FilterPresets, FilterPreset } from "./FilterPresets";
 import { UserSelectorCombobox } from "@/components/ui/user-selector-combobox";
 import { CalendarIcon, Filter, X, Settings, RotateCcw } from "lucide-react";
 import { format, subDays, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
+import { Clock, AlertTriangle, CheckCircle, User, FileX, Award } from "lucide-react";
 
 export interface SmartFilterConfig {
   key: string;
@@ -29,6 +31,7 @@ interface SmartFilterPanelProps {
   className?: string;
   availableFunctions?: string[];
   userNames?: Record<string, string>;
+  entityType?: 'certification' | 'badge';
 }
 
 export function SmartFilterPanel({
@@ -38,9 +41,54 @@ export function SmartFilterPanel({
   onClearFilters,
   className = "",
   availableFunctions = [],
-  userNames = {}
+  userNames = {},
+  entityType = 'certification'
 }: SmartFilterPanelProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  const getBadgePresets = (): FilterPreset[] => [
+    {
+      id: 'my_badges',
+      label: 'Minhas Badges',
+      icon: User,
+      description: 'Badges que você cadastrou',
+      variant: 'outline',
+      filters: {
+        user_id: user?.id
+      }
+    },
+    {
+      id: 'valid_badges',
+      label: 'Válidas',
+      icon: CheckCircle,
+      description: 'Badges atualmente válidas',
+      variant: 'default',
+      filters: {
+        status: 'valid'
+      }
+    },
+    {
+      id: 'expiring_badges',
+      label: 'Expirando',
+      icon: AlertTriangle,
+      description: 'Badges próximas do vencimento',
+      variant: 'destructive',
+      filters: {
+        status: 'expiring'
+      }
+    },
+    {
+      id: 'expired_badges',
+      label: 'Expiradas',
+      icon: FileX,
+      description: 'Badges já expiradas',
+      variant: 'secondary',
+      filters: {
+        status: 'expired'
+      }
+    }
+  ];
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hasActiveFilters = useMemo(() => 
@@ -206,6 +254,7 @@ export function SmartFilterPanel({
         <FilterPresets
           onPresetSelect={handlePresetSelect}
           activeFilters={activeFilters}
+          presets={entityType === 'badge' ? getBadgePresets() : undefined}
         />
       </div>
 

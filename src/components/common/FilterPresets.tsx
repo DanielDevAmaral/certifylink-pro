@@ -16,12 +16,13 @@ interface FilterPresetsProps {
   onPresetSelect: (filters: Record<string, any>) => void;
   activeFilters: Record<string, any>;
   className?: string;
+  presets?: FilterPreset[];
 }
 
-export function FilterPresets({ onPresetSelect, activeFilters, className = "" }: FilterPresetsProps) {
+export function FilterPresets({ onPresetSelect, activeFilters, className = "", presets: customPresets }: FilterPresetsProps) {
   const { user } = useAuth();
 
-  const presets: FilterPreset[] = [
+  const defaultPresets: FilterPreset[] = [
     {
       id: 'expiring_soon',
       label: 'Expirando em 30 dias',
@@ -74,6 +75,8 @@ export function FilterPresets({ onPresetSelect, activeFilters, className = "" }:
       }
     }
   ];
+
+  const presets = customPresets || defaultPresets;
 
   const isPresetActive = (preset: FilterPreset) => {
     return Object.entries(preset.filters).every(([key, value]) => 

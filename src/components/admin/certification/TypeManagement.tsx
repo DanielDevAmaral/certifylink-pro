@@ -87,9 +87,11 @@ export function TypeManagement() {
     setEditingType(null);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    resetForm();
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      resetForm();
+    }
   };
 
   const addAlias = () => {
@@ -120,7 +122,7 @@ export function TypeManagement() {
             Gerencie os tipos específicos de certificação por plataforma
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -240,7 +242,7 @@ export function TypeManagement() {
               </div>
               
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={handleDialogClose}>
+                <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
                   Cancelar
                 </Button>
                 <Button 

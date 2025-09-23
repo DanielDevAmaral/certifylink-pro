@@ -61,9 +61,11 @@ export function CategoryManagement() {
     setEditingCategory(null);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    resetForm();
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      resetForm();
+    }
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -77,7 +79,7 @@ export function CategoryManagement() {
             Gerencie as categorias funcionais das certificações
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -115,7 +117,7 @@ export function CategoryManagement() {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={handleDialogClose}>
+                <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
                   Cancelar
                 </Button>
                 <Button 

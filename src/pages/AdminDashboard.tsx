@@ -4,6 +4,7 @@ import { TestDataGenerator } from '@/components/admin/TestDataGenerator';
 import { DocumentStatusManager } from '@/components/admin/DocumentStatusManager';
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
 import { CertificationManagement } from '@/components/admin/CertificationManagement';
+import { NotificationSystemCard } from '@/components/admin/NotificationSystemCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,11 +43,6 @@ export default function AdminDashboard() {
       item: 'Cron Jobs', 
       status: 'active', 
       description: 'Agendamento automático às 6h e 7h UTC'
-    },
-    { 
-      item: 'Notificações', 
-      status: 'warning', 
-      description: 'Sistema configurado, aguardando teste'
     },
     { 
       item: 'Leaked Password Protection', 
@@ -120,6 +116,9 @@ export default function AdminDashboard() {
                 'Edge Functions Ativas'
               ]}
             />
+
+            {/* Notification System Status */}
+            <NotificationSystemCard />
 
             {/* System Status */}
             <Card>

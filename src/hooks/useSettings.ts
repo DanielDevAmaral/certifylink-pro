@@ -28,6 +28,7 @@ interface SettingsGroup {
     certification_alert_days: number;
     technical_attestation_alert_days: number;
     legal_document_alert_days: number;
+    badge_alert_days: number;
   };
   export: {
     company_name: string;
@@ -59,7 +60,8 @@ const defaultSettings: SettingsGroup = {
     expiration_alert_days: 30,
     certification_alert_days: 60,
     technical_attestation_alert_days: 45,
-    legal_document_alert_days: 30
+    legal_document_alert_days: 30,
+    badge_alert_days: 30
   },
   export: {
     company_name: "Minha Empresa",

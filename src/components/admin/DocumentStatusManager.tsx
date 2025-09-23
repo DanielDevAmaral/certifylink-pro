@@ -36,7 +36,8 @@ export function DocumentStatusManager() {
   const currentSettings = {
     certifications: settings?.notifications?.certification_alert_days || 60,
     technicalAttestations: settings?.notifications?.technical_attestation_alert_days || 45,
-    legalDocuments: settings?.notifications?.legal_document_alert_days || 30
+    legalDocuments: settings?.notifications?.legal_document_alert_days || 30,
+    badges: settings?.notifications?.badge_alert_days || 30
   };
 
   return (
@@ -54,7 +55,7 @@ export function DocumentStatusManager() {
       </div>
 
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 rounded-lg bg-accent/20 border">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Certificações</span>
@@ -82,6 +83,16 @@ export function DocumentStatusManager() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Status "Vencendo" quando faltam {currentSettings.legalDocuments} dias ou menos
+            </p>
+          </div>
+
+          <div className="p-4 rounded-lg bg-accent/20 border">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Badges</span>
+              <Badge variant="secondary">{currentSettings.badges} dias</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status "Vencendo" quando faltam {currentSettings.badges} dias ou menos
             </p>
           </div>
         </div>

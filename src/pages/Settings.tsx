@@ -45,7 +45,8 @@ export default function Settings() {
       expiration_alert_days: settings?.notifications?.expiration_alert_days ?? 30,
       certification_alert_days: settings?.notifications?.certification_alert_days ?? 60,
       technical_attestation_alert_days: settings?.notifications?.technical_attestation_alert_days ?? 45,
-      legal_document_alert_days: settings?.notifications?.legal_document_alert_days ?? 30
+      legal_document_alert_days: settings?.notifications?.legal_document_alert_days ?? 30,
+      badge_alert_days: settings?.notifications?.badge_alert_days ?? 30
     },
     export: {
       company_name: settings?.export?.company_name || '',

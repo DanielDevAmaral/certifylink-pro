@@ -80,9 +80,6 @@ export function BadgeForm({
   });
 
   const onSubmit = async (data: BadgeFormData) => {
-    console.log('Form submission data:', data);
-    console.log('Current badge:', badge);
-    
     try {
       if (badge) {
         // Filter only valid Badge properties, exclude extra properties like creator_name
@@ -106,7 +103,6 @@ export function BadgeForm({
           updated_at: new Date().toISOString()
         };
         
-        console.log('Sending update data:', validBadgeData);
         await updateMutation.mutateAsync(validBadgeData);
       } else {
         await createMutation.mutateAsync({
@@ -119,7 +115,6 @@ export function BadgeForm({
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting badge:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       
       let errorMessage = 'Verifique os campos obrigatórios e tente novamente.';
       

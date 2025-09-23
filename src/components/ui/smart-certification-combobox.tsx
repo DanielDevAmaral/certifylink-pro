@@ -29,13 +29,13 @@ export function SmartCertificationCombobox({
 }: SmartCertificationComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
   const [customMode, setCustomMode] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customFunctionField, setCustomFunctionField] = useState("");
 
   const { data: searchResults = [] } = useSearchCertificationTypes(searchTerm);
-  const { data: platformTypes = [] } = useCertificationTypes(selectedPlatform);
+  const { data: platformTypes = [] } = useCertificationTypes(selectedPlatform === "all" ? undefined : selectedPlatform);
   const { data: platforms = [] } = useCertificationPlatforms();
 
   const allSuggestions = searchTerm ? searchResults : platformTypes;
@@ -111,7 +111,7 @@ export function SmartCertificationCombobox({
                         <SelectValue placeholder="Filtrar por plataforma" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todas as plataformas</SelectItem>
+                        <SelectItem value="all">Todas as plataformas</SelectItem>
                         {platforms.map((platform) => (
                           <SelectItem key={platform.id} value={platform.id}>
                             {platform.name}

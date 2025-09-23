@@ -19,7 +19,6 @@ const badgeSchema = z.object({
   category: z.string().min(1, 'Categoria é obrigatória'),
   issued_date: z.string().min(1, 'Data de emissão é obrigatória'),
   expiry_date: z.string().optional(),
-  status: z.enum(['valid', 'expired', 'expiring', 'pending']).default('valid'),
   public_link: z.string().optional().or(z.literal('')),
   verification_code: z.string().optional(),
   issuer_name: z.string().optional(),
@@ -68,7 +67,6 @@ export function BadgeForm({
       category: badge?.category || '',
       issued_date: badge?.issued_date || '',
       expiry_date: badge?.expiry_date || '',
-      status: badge?.status || 'valid',
       public_link: badge?.public_link || '',
       verification_code: badge?.verification_code || '',
       issuer_name: badge?.issuer_name || '',
@@ -93,7 +91,7 @@ export function BadgeForm({
           image_url: data.image_url,
           issued_date: data.issued_date,
           expiry_date: data.expiry_date,
-          status: data.status,
+          status: 'valid' as const, // Trigger will calculate the correct status based on expiry_date
           public_link: data.public_link,
           verification_code: data.verification_code,
           issuer_name: data.issuer_name,
@@ -107,6 +105,7 @@ export function BadgeForm({
       } else {
         await createMutation.mutateAsync({
           ...data,
+          status: 'valid' as const, // Trigger will calculate the correct status based on expiry_date
           user_id: '', // Will be filled by the hook
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -219,8 +218,8 @@ export function BadgeForm({
             )}
           />
 
-          {/* Datas e Status */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Datas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="issued_date"
@@ -251,30 +250,9 @@ export function BadgeForm({
                     </div>
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="valid">Válido</SelectItem>
-                      <SelectItem value="expiring">Expirando</SelectItem>
-                      <SelectItem value="expired">Expirado</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O status será calculado automaticamente baseado nesta data
+                  </p>
                 </FormItem>
               )}
             />

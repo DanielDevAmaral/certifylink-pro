@@ -107,7 +107,10 @@ export default function Badges() {
 
   // Server-side pagination - no client-side slicing needed
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const paginatedBadges = badges; // Data is already paginated from server
+  const paginatedBadges = badges.map(badge => ({
+    ...badge,
+    creator_name: userNames[badge.user_id] || 'Usuário'
+  }));
 
   const handleFiltersChange = (newFilters: Record<string, any>) => {
     setFilters(newFilters as BadgeSearchEngineFilters);

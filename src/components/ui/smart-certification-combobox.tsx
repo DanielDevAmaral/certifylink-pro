@@ -10,17 +10,18 @@ import { cn } from "@/lib/utils";
 import { useSearchCertificationTypes, useCertificationTypes } from "@/hooks/useCertificationTypes";
 import { useCertificationPlatforms } from "@/hooks/useCertificationPlatforms";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 interface SmartCertificationComboboxProps {
   value?: {
     name: string;
     functionField: string;
   };
-  onValueChange: (value: { name: string; functionField: string }) => void;
+  onValueChange: (value: {
+    name: string;
+    functionField: string;
+  }) => void;
   onCustomEntry?: (name: string, functionField: string) => void;
   placeholder?: string;
 }
-
 export function SmartCertificationCombobox({
   value,
   onValueChange,
@@ -33,11 +34,15 @@ export function SmartCertificationCombobox({
   const [customMode, setCustomMode] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customFunctionField, setCustomFunctionField] = useState("");
-
-  const { data: searchResults = [] } = useSearchCertificationTypes(searchTerm);
-  const { data: platformTypes = [] } = useCertificationTypes(selectedPlatform === "all" ? undefined : selectedPlatform);
-  const { data: platforms = [] } = useCertificationPlatforms();
-
+  const {
+    data: searchResults = []
+  } = useSearchCertificationTypes(searchTerm);
+  const {
+    data: platformTypes = []
+  } = useCertificationTypes(selectedPlatform === "all" ? undefined : selectedPlatform);
+  const {
+    data: platforms = []
+  } = useCertificationPlatforms();
   const allSuggestions = searchTerm ? searchResults : platformTypes;
 
   // Reset custom mode when closing
@@ -48,7 +53,6 @@ export function SmartCertificationCombobox({
       setCustomFunctionField("");
     }
   }, [open]);
-
   const handleSelect = (certificationType: any) => {
     onValueChange({
       name: certificationType.full_name,
@@ -57,37 +61,26 @@ export function SmartCertificationCombobox({
     setOpen(false);
     setSearchTerm("");
   };
-
   const handleCustomSubmit = () => {
     if (customName.trim() && customFunctionField.trim()) {
       onValueChange({
         name: customName.trim(),
         functionField: customFunctionField.trim()
       });
-      
       if (onCustomEntry) {
         onCustomEntry(customName.trim(), customFunctionField.trim());
       }
-      
       setOpen(false);
       setCustomMode(false);
       setCustomName("");
       setCustomFunctionField("");
     }
   };
-
   const displayValue = value ? `${value.name} - ${value.functionField}` : "";
-
-  return (
-    <div className="space-y-2">
+  return <div className="space-y-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between text-left font-normal"
-          >
+          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between text-left font-normal">
             <span className="truncate">
               {displayValue || placeholder}
             </span>
@@ -97,13 +90,8 @@ export function SmartCertificationCombobox({
         <PopoverContent className="w-full p-0" align="start">
           <Command shouldFilter={false}>
             <div className="p-2 space-y-2">
-              {!customMode && (
-                <>
-                  <CommandInput
-                    placeholder="Digite para buscar certificações..."
-                    value={searchTerm}
-                    onValueChange={setSearchTerm}
-                  />
+              {!customMode && <>
+                  <CommandInput placeholder="Digite para buscar certificações..." value={searchTerm} onValueChange={setSearchTerm} />
                   
                   <div className="flex gap-2">
                     <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
@@ -112,130 +100,71 @@ export function SmartCertificationCombobox({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas as plataformas</SelectItem>
-                        {platforms.map((platform) => (
-                          <SelectItem key={platform.id} value={platform.id}>
+                        {platforms.map(platform => <SelectItem key={platform.id} value={platform.id}>
                             {platform.name}
-                          </SelectItem>
-                        ))}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
                     
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setCustomMode(true)}
-                      className="h-8"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Personalizar
-                    </Button>
+                    
                   </div>
-                </>
-              )}
+                </>}
 
-              {customMode && (
-                <div className="space-y-3 p-2">
+              {customMode && <div className="space-y-3 p-2">
                   <div>
                     <Label htmlFor="custom-name" className="text-xs">Nome da Certificação</Label>
-                    <Input
-                      id="custom-name"
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="ex: Google Cloud Professional Cloud Architect"
-                      className="h-8"
-                    />
+                    <Input id="custom-name" value={customName} onChange={e => setCustomName(e.target.value)} placeholder="ex: Google Cloud Professional Cloud Architect" className="h-8" />
                   </div>
                   <div>
                     <Label htmlFor="custom-function" className="text-xs">Função</Label>
-                    <Input
-                      id="custom-function"
-                      value={customFunctionField}
-                      onChange={(e) => setCustomFunctionField(e.target.value)}
-                      placeholder="ex: Arquitetura de Soluções em Nuvem"
-                      className="h-8"
-                    />
+                    <Input id="custom-function" value={customFunctionField} onChange={e => setCustomFunctionField(e.target.value)} placeholder="ex: Arquitetura de Soluções em Nuvem" className="h-8" />
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleCustomSubmit}
-                      disabled={!customName.trim() || !customFunctionField.trim()}
-                      className="h-7"
-                    >
+                    <Button size="sm" onClick={handleCustomSubmit} disabled={!customName.trim() || !customFunctionField.trim()} className="h-7">
                       Confirmar
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setCustomMode(false)}
-                      className="h-7"
-                    >
+                    <Button size="sm" variant="outline" onClick={() => setCustomMode(false)} className="h-7">
                       Cancelar
                     </Button>
                   </div>
-                </div>
-              )}
+                </div>}
             </div>
 
-            {!customMode && (
-              <CommandList>
+            {!customMode && <CommandList>
                 <CommandEmpty>
-                  {searchTerm ? (
-                    <div className="text-center py-4">
+                  {searchTerm ? <div className="text-center py-4">
                       <p className="text-sm text-muted-foreground mb-2">
                         Nenhuma certificação encontrada para "{searchTerm}"
                       </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setCustomName(searchTerm);
-                          setCustomMode(true);
-                        }}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => {
+                  setCustomName(searchTerm);
+                  setCustomMode(true);
+                }}>
                         <Plus className="h-3 w-3 mr-1" />
                         Criar certificação personalizada
                       </Button>
-                    </div>
-                  ) : (
-                    "Nenhuma certificação encontrada"
-                  )}
+                    </div> : "Nenhuma certificação encontrada"}
                 </CommandEmpty>
                 
                 <CommandGroup>
-                  {allSuggestions.map((type) => (
-                    <CommandItem
-                      key={type.id}
-                      onSelect={() => handleSelect(type)}
-                      className="cursor-pointer"
-                    >
+                  {allSuggestions.map(type => <CommandItem key={type.id} onSelect={() => handleSelect(type)} className="cursor-pointer">
                       <div className="flex items-center space-x-2 w-full">
-                        <Check
-                          className={cn(
-                            "h-4 w-4",
-                            value?.name === type.full_name ? "opacity-100" : "opacity-0"
-                          )}
-                        />
+                        <Check className={cn("h-4 w-4", value?.name === type.full_name ? "opacity-100" : "opacity-0")} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{type.full_name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <Badge variant="outline" className="text-xs py-0">
                               {type.platform?.name}
                             </Badge>
-                            {type.function && (
-                              <span className="truncate">{type.function}</span>
-                            )}
+                            {type.function && <span className="truncate">{type.function}</span>}
                           </div>
                         </div>
                       </div>
-                    </CommandItem>
-                  ))}
+                    </CommandItem>)}
                 </CommandGroup>
-              </CommandList>
-            )}
+              </CommandList>}
           </Command>
         </PopoverContent>
       </Popover>
-    </div>
-  );
+    </div>;
 }

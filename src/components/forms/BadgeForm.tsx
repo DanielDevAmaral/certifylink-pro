@@ -80,13 +80,34 @@ export function BadgeForm({
   });
 
   const onSubmit = async (data: BadgeFormData) => {
+    console.log('Form submission data:', data);
+    console.log('Current badge:', badge);
+    
     try {
       if (badge) {
-        await updateMutation.mutateAsync({
-          ...badge,
-          ...data,
+        // Filter only valid Badge properties, exclude extra properties like creator_name
+        const validBadgeData = {
+          id: badge.id,
+          user_id: badge.user_id,
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          icon_url: data.icon_url,
+          image_url: data.image_url,
+          issued_date: data.issued_date,
+          expiry_date: data.expiry_date,
+          status: data.status,
+          public_link: data.public_link,
+          verification_code: data.verification_code,
+          issuer_name: data.issuer_name,
+          issuer_logo_url: data.issuer_logo_url,
+          metadata: data.metadata,
+          created_at: badge.created_at,
           updated_at: new Date().toISOString()
-        });
+        };
+        
+        console.log('Sending update data:', validBadgeData);
+        await updateMutation.mutateAsync(validBadgeData);
       } else {
         await createMutation.mutateAsync({
           ...data,
@@ -98,9 +119,17 @@ export function BadgeForm({
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting badge:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      let errorMessage = 'Verifique os campos obrigatórios e tente novamente.';
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as any).message;
+      }
+      
       toast({
         title: 'Erro ao salvar',
-        description: 'Verifique os campos obrigatórios e tente novamente.',
+        description: errorMessage,
         variant: 'destructive'
       });
     }
@@ -156,7 +185,7 @@ export function BadgeForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma categoria" />
@@ -237,7 +266,7 @@ export function BadgeForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o status" />

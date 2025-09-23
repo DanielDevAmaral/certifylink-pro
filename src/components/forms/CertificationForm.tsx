@@ -11,7 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScreenshotUpload } from '@/components/forms/ScreenshotUpload';
+import { SmartCertificationCombobox } from '@/components/ui/smart-certification-combobox';
 import { useCreateCertification, useUpdateCertification } from '@/hooks/useCertifications';
+import { useCreateCertificationType } from '@/hooks/useCertificationTypes';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Plus, X, Calendar, Award } from 'lucide-react';
@@ -40,6 +42,7 @@ export function CertificationForm({
   const [newService, setNewService] = useState('');
   const createMutation = useCreateCertification();
   const updateMutation = useUpdateCertification();
+  const createTypeMutation = useCreateCertificationType();
   const { userRole } = useAuth();
   const { toast } = useToast();
   const form = useForm<CertificationFormData>({
@@ -55,7 +58,27 @@ export function CertificationForm({
       screenshot_url: certification?.screenshot_url || ''
     }
   });
+
+  const handleCertificationSelect = (value: { name: string; functionField: string }) => {
+    form.setValue('name', value.name);
+    form.setValue('function', value.functionField);
+  };
+
+  const handleCustomEntry = (name: string, functionField: string) => {
+    if (userRole === 'admin') {
+      // Could create new certification type for standardization in the future
+      toast({
+        title: 'Certificação personalizada',
+        description: 'Certificação adicionada com sucesso.',
+      });
+    }
+
+    // Set the form values
+    form.setValue('name', name);
+    form.setValue('function', functionField);
+  };
   const watchedServices = form.watch('equivalence_services');
+  const certificationName = form.watch('name');
   const onSubmit = async (data: CertificationFormData) => {
     try {
       // Auto-approve equivalences for admins/leaders when they add services manually
@@ -133,7 +156,12 @@ export function CertificationForm({
           }) => <FormItem>
                   <FormLabel>Nome da Certificação *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: AWS Solutions Architect" {...field} />
+                    <SmartCertificationCombobox
+                      value={{ name: field.value, functionField: form.watch('function') }}
+                      onValueChange={handleCertificationSelect}
+                      onCustomEntry={handleCustomEntry}
+                      placeholder="Busque ou digite uma certificação..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>} />

@@ -869,5 +869,27 @@ export const getFieldMappings = {
       if (value <= 0) return 'Vencido';
       return `${value} dias`;
     }}
+  ],
+
+  badges: (): ReportField[] => [
+    { key: 'name', label: 'Nome do Badge', type: 'text' },
+    { key: 'description', label: 'Descrição', type: 'text' },
+    { key: 'category', label: 'Categoria', type: 'text' },
+    { key: 'full_name', label: 'Responsável', type: 'text' },
+    { key: 'issuer_name', label: 'Emissor', type: 'text' },
+    { key: 'issued_date', label: 'Data de Emissão', type: 'date' },
+    { key: 'expiry_date', label: 'Data de Expiração', type: 'date' },
+    { key: 'status', label: 'Status', type: 'text', format: (status: string) => {
+      const statusMap = {
+        'valid': 'Válido',
+        'expiring': 'Expirando',
+        'expired': 'Expirado',
+        'pending': 'Pendente'
+      };
+      return statusMap[status as keyof typeof statusMap] || status;
+    }},
+    { key: 'verification_code', label: 'Código de Verificação', type: 'text' },
+    { key: 'public_link', label: 'Link Público', type: 'text' },
+    { key: 'created_at', label: 'Data de Criação', type: 'date' }
   ]
 };

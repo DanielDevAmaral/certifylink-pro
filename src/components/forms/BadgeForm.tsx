@@ -26,7 +26,7 @@ const badgeSchema = z.object({
   issuer_logo_url: z.string().optional(),
   icon_url: z.string().optional(),
   image_url: z.string().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 type BadgeFormData = z.infer<typeof badgeSchema>;
@@ -58,7 +58,6 @@ export function BadgeForm({
 }: BadgeFormProps) {
   const createMutation = useCreateBadge();
   const updateMutation = useUpdateBadge();
-  const { toast } = useToast();
   const { toast } = useToast();
 
   const form = useForm<BadgeFormData>({

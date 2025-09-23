@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 export interface Badge {
   id: string;
@@ -27,19 +28,29 @@ export interface BadgeWithProfile extends Badge {
   creator_name?: string;
 }
 
-export function useBadges() {
-  const { user } = useAuth();
+// Hook para listar badges
+export function useBadges(searchTerm?: string) {
+  const { user, userRole } = useAuth();
 
   return useQuery({
-    queryKey: ['badges', user?.id],
+    queryKey: ['badges', user?.id, userRole, searchTerm],
     queryFn: async (): Promise<BadgeWithProfile[]> => {
-      const { data, error } = await supabase
+      if (!user) throw new Error('User not authenticated');
+
+      let query = supabase
         .from('badges')
         .select(`
           *,
-          profiles!badges_user_id_fkey(full_name)
+          profiles!inner(full_name)
         `)
         .order('issued_date', { ascending: false });
+
+      // Apply search filter if provided
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching badges:', error);
@@ -52,37 +63,82 @@ export function useBadges() {
       }));
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+// Hook para buscar um badge específico
+export function useBadge(id: string) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['badge', id],
+    queryFn: async (): Promise<BadgeWithProfile | null> => {
+      if (!user || !id) return null;
+
+      const { data, error } = await supabase
+        .from('badges')
+        .select(`
+          *,
+          profiles!inner(full_name)
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching badge:', error);
+        throw error;
+      }
+
+      if (!data) return null;
+
+      return {
+        ...data,
+        creator_name: (data.profiles as any)?.full_name
+      };
+    },
+    enabled: !!user && !!id,
   });
 }
 
 export function useCreateBadge() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (badge: Omit<Badge, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (badge: Omit<Badge, 'id'>): Promise<Badge> => {
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('badges')
-        .insert([badge])
+        .insert([{
+          ...badge,
+          user_id: user.id,
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating badge:', error);
+        throw error;
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
-        title: "Badge criado com sucesso!",
-        description: "O badge foi adicionado ao sistema.",
+        title: "Sucesso",
+        description: "Badge criado com sucesso!",
       });
     },
     onError: (error) => {
       console.error('Error creating badge:', error);
       toast({
-        title: "Erro ao criar badge",
-        description: "Ocorreu um erro ao criar o badge. Tente novamente.",
+        title: "Erro",
+        description: "Erro ao criar badge. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -91,32 +147,46 @@ export function useCreateBadge() {
 
 export function useUpdateBadge() {
   const queryClient = useQueryClient();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Badge> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('badges')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+    mutationFn: async (badge: Badge): Promise<Badge> => {
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) throw error;
+      let query = supabase
+        .from('badges')
+        .update(badge)
+        .eq('id', badge.id);
+
+      // Only filter by user_id if not an admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.select().single();
+
+      if (error) {
+        console.error('Error updating badge:', error);
+        throw error;
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, badge) => {
+      queryClient.invalidateQueries({ queryKey: ['badge', badge.id] });
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
-        title: "Badge atualizado com sucesso!",
-        description: "As alterações foram salvas.",
+        title: "Sucesso",
+        description: "Badge atualizado com sucesso!",
       });
     },
     onError: (error) => {
       console.error('Error updating badge:', error);
       toast({
-        title: "Erro ao atualizar badge",
-        description: "Ocorreu um erro ao atualizar o badge. Tente novamente.",
+        title: "Erro",
+        description: "Erro ao atualizar badge. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -125,29 +195,43 @@ export function useUpdateBadge() {
 
 export function useDeleteBadge() {
   const queryClient = useQueryClient();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
+    mutationFn: async (id: string): Promise<void> => {
+      if (!user) throw new Error('User not authenticated');
+
+      let query = supabase
         .from('badges')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      // Only filter by user_id if not an admin
+      if (userRole !== 'admin') {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { error } = await query;
+
+      if (error) {
+        console.error('Error deleting badge:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['badges'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
-        title: "Badge excluído com sucesso!",
-        description: "O badge foi removido do sistema.",
+        title: "Sucesso",
+        description: "Badge removido com sucesso!",
       });
     },
     onError: (error) => {
       console.error('Error deleting badge:', error);
       toast({
-        title: "Erro ao excluir badge",
-        description: "Ocorreu um erro ao excluir o badge. Tente novamente.",
+        title: "Erro",
+        description: "Erro ao remover badge. Tente novamente.",
         variant: "destructive",
       });
     },

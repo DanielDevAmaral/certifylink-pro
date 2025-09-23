@@ -1,22 +1,37 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { BadgeForm } from "@/components/forms/BadgeForm";
 import { AdvancedSearchBar } from "@/components/common/AdvancedSearchBar";
 import { SmartFilterPanel } from "@/components/common/SmartFilterPanel";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { EmptyState } from "@/components/common/EmptyState";
 import { PaginationControls } from "@/components/common/PaginationControls";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SkeletonList } from "@/components/common/SkeletonCard";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { ReportGenerator } from "@/components/reports/ReportGenerator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { BadgeCard } from "@/components/badges/BadgeCard";
 import { BadgeDetailDialog } from "@/components/badges/BadgeDetailDialog";
-import { useBadgeSearchEngine, useBadgeFilterOptions } from "@/hooks/useBadgeSearchEngine";
+import { useBadgeSearchEngine, useBadgeFilterOptions, type BadgeSearchEngineFilters } from "@/hooks/useBadgeSearchEngine";
+import { useDeleteBadge, type BadgeWithProfile, type Badge } from "@/hooks/useBadges";
+import { usePublicNames } from "@/hooks/usePublicNames";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Award } from "lucide-react";
-import type { BadgeWithProfile } from "@/hooks/useBadges";
-
-const ITEMS_PER_PAGE = 12;
+import { toast } from '@/hooks/use-toast';
+import { 
+  Award, 
+  Plus, 
+  Filter, 
+  TrendingUp, 
+  Users, 
+  AlertTriangle,
+  FileDown,
+  BarChart3,
+  ChevronDown
+} from "lucide-react";
 
 // Smart filter configurations for badges
 const smartFilterConfigs = [
@@ -25,239 +40,270 @@ const smartFilterConfigs = [
     label: 'Status',
     type: 'select' as const,
     options: [
-      { value: 'valid', label: 'Válido' },
-      { value: 'expiring', label: 'Vencendo' },
-      { value: 'expired', label: 'Vencido' },
-      { value: 'pending', label: 'Pendente' }
-    ]
+      { value: 'valid', label: 'Válidos' },
+      { value: 'expiring', label: 'Expirando' },
+      { value: 'expired', label: 'Expirados' },
+      { value: 'pending', label: 'Pendentes' }
+    ],
+    placeholder: 'Selecione o status...'
   },
   {
     key: 'category',
     label: 'Categoria',
     type: 'function' as const,
+    placeholder: 'Selecione uma categoria...'
   },
   {
     key: 'user_id',
     label: 'Responsável',
     type: 'user' as const,
+    placeholder: 'Selecione um responsável...'
+  },
+  {
+    key: 'issued_date',
+    label: 'Data de Emissão',
+    type: 'date' as const,
+    placeholder: 'Selecione uma data...'
   }
 ];
 
 export default function Badges() {
-  const { userRole } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState<Record<string, any>>({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE);
   const [selectedBadge, setSelectedBadge] = useState<BadgeWithProfile | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showReports, setShowReports] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<BadgeSearchEngineFilters>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Build search engine filters
-  const searchEngineFilters = useMemo(() => ({
-    searchTerm: searchTerm.trim() || undefined,
+  const { userRole } = useAuth();
+
+  // Use the badge search engine
+  const { data: searchResults, isLoading } = useBadgeSearchEngine({
+    searchTerm,
     ...filters,
-    sortBy: 'issued_date',
-    sortOrder: 'desc' as const,
-  }), [searchTerm, filters]);
+    sortBy: filters.sortBy || 'issued_date',
+    sortOrder: filters.sortOrder || 'desc'
+  });
 
-  const { data: searchResult, isLoading, error } = useBadgeSearchEngine(searchEngineFilters);
   const { data: filterOptions } = useBadgeFilterOptions();
+  const deleteMutation = useDeleteBadge();
 
-  // Calculate pagination
-  const totalItems = searchResult?.totalCount || 0;
+  // Extract data from search results
+  const badges = searchResults?.data || [];
+  const totalItems = searchResults?.totalCount || 0;
+  const statusCounts = searchResults?.statusCounts || { valid: 0, expiring: 0, expired: 0, pending: 0 };
+  const availableCategories = searchResults?.categories || [];
+
+  // Get unique user IDs from badges for name lookup
+  const userIds = useMemo(() => {
+    return Array.from(new Set(badges.map(badge => badge.user_id)));
+  }, [badges]);
+
+  const { data: userNames = {} } = usePublicNames(userIds);
+
+  // Apply pagination to search results
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentItems = searchResult?.data.slice(startIndex, endIndex) || [];
+  const paginatedBadges = badges.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleFiltersChange = (newFilters: Record<string, any>) => {
+    setFilters(newFilters as BadgeSearchEngineFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const handleSearchChange = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  const handleEdit = (badge: BadgeWithProfile) => {
+    setSelectedBadge(badge);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este badge?')) {
+      await deleteMutation.mutateAsync(id);
+    }
+  };
 
   const handleViewDetails = (badge: BadgeWithProfile) => {
     setSelectedBadge(badge);
     setShowDetailDialog(true);
   };
 
-  const handleFilterChange = (newFilters: Record<string, any>) => {
-    setFilters(newFilters);
-    setCurrentPage(1);
-  };
-
-  const handleClearFilters = () => {
-    setFilters({});
-    setCurrentPage(1);
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setSelectedBadge(null);
   };
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="space-y-6">
-          <PageHeader 
-            title="Controle de Badges" 
+      <ErrorBoundary>
+        <Layout>
+          <PageHeader
+            title="Controle de Badges"
             description="Gerencie e visualize todos os badges conquistados"
           />
-          <LoadingSpinner />
-        </div>
-      </Layout>
+          <SkeletonList count={6} />
+        </Layout>
+      </ErrorBoundary>
     );
   }
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="space-y-6">
-          <PageHeader 
-            title="Controle de Badges" 
-            description="Gerencie e visualize todos os badges conquistados"
-          />
-          <EmptyState
-            icon={Award}
-            title="Erro ao carregar badges"
-            description="Ocorreu um erro ao carregar os badges. Tente recarregar a página."
-          />
-        </div>
-      </Layout>
-    );
-  }
-
-  const showEmptyState = !currentItems.length && !searchTerm && Object.keys(filters).length === 0;
-  const showNoResults = !currentItems.length && (searchTerm || Object.keys(filters).length > 0);
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <PageHeader 
-          title="Controle de Badges" 
+    <ErrorBoundary>
+      <Layout>
+        <PageHeader
+          title="Controle de Badges"
           description="Gerencie e visualize todos os badges conquistados"
         >
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Badge
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowReports(!showReports)}
+              className="gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Relatórios
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="gap-2"
+              title="Estatísticas"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Estatísticas</span>
+            </Button>
+          </div>
+          
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button className="btn-corporate gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Badge
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <BadgeForm
+                badge={selectedBadge || undefined}
+                onSuccess={handleFormSuccess}
+                onCancel={() => setShowForm(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </PageHeader>
 
-      {/* Stats Cards */}
-      {searchResult && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Badges</CardTitle>
-              <Award className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{searchResult.totalCount}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Válidos</CardTitle>
-              <Badge className="bg-success/10 text-success">
-                {searchResult.statusCounts.valid}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">
-                {searchResult.statusCounts.valid}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Reports Section */}
+        <Collapsible open={showReports} onOpenChange={setShowReports}>
+          <CollapsibleContent>
+            <div className="mb-6">
+              <ReportGenerator 
+                data={badges} 
+                type="badges"
+                title="Badges"
+                userNames={userNames}
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vencendo</CardTitle>
-              <Badge className="bg-warning/10 text-warning">
-                {searchResult.statusCounts.expiring}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">
-                {searchResult.statusCounts.expiring}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vencidos</CardTitle>
-              <Badge className="bg-destructive/10 text-destructive">
-                {searchResult.statusCounts.expired}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
-                {searchResult.statusCounts.expired}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Filters and Search */}
-      <div className="space-y-4">
+        {/* Smart Filters */}
         <SmartFilterPanel
           filterConfigs={smartFilterConfigs}
-          availableFunctions={searchResult?.categories || []}
-          userNames={filterOptions?.users.reduce((acc, user) => ({ ...acc, [user.id]: user.name }), {}) || {}}
-          onFiltersChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
           activeFilters={filters}
+          onFiltersChange={handleFiltersChange}
+          onClearFilters={() => handleFiltersChange({})}
+          availableFunctions={availableCategories}
+          userNames={userNames}
+          className="mb-6"
         />
-        
-        <AdvancedSearchBar
-          placeholder="Buscar por nome, descrição, categoria ou responsável..."
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
-      </div>
 
-      {/* Content */}
-      {showEmptyState ? (
-        <EmptyState
-          icon={Award}
-          title="Nenhum badge encontrado"
-          description="Ainda não há badges cadastrados no sistema."
-          actionLabel="Adicionar Primeiro Badge"
-          onAction={() => console.log('Add badge')}
-        />
-      ) : showNoResults ? (
-        <EmptyState
-          icon={Award}
-          title="Nenhum badge encontrado"
-          description="Não foram encontrados badges com os filtros aplicados."
-        />
-      ) : (
-        <>
-          {/* Badges Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {currentItems.map((badge) => (
-              <BadgeCard
-                key={badge.id}
-                badge={badge}
-                onViewDetails={handleViewDetails}
-                userRole={userRole}
-              />
-            ))}
+        {/* Search and Status */}
+        <Card className="card-corporate mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <AdvancedSearchBar
+              placeholder="Buscar por nome, descrição, categoria ou responsável..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="flex-1"
+              showAdvancedButton={false}
+            />
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <StatusBadge status="valid" />
+                <span className="text-sm text-muted-foreground">
+                  {statusCounts.valid} válidos
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status="expiring" />
+                <span className="text-sm text-muted-foreground">
+                  {statusCounts.expiring} expirando
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status="expired" />
+                <span className="text-sm text-muted-foreground">
+                  {statusCounts.expired} expirados
+                </span>
+              </div>
+            </div>
           </div>
+        </Card>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={setItemsPerPage}
+        {/* Badges Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {paginatedBadges.map((badge) => (
+            <BadgeCard
+              key={badge.id}
+              badge={badge}
+              onViewDetails={handleViewDetails}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              userRole={userRole}
+            />
+          ))}
+        </div>
+
+        {paginatedBadges.length === 0 && (
+          <EmptyState
+            icon={Award}
+            title="Nenhum badge encontrado"
+            description={
+              searchTerm || Object.keys(filters).length > 0 
+                ? 'Ajuste os filtros ou termos de busca.' 
+                : 'Cadastre o primeiro badge para começar a gestão de conquistas.'
+            }
+            actionLabel="Novo Badge"
+            onAction={() => setShowForm(true)}
           />
-          )}
-        </>
-      )}
+        )}
 
-      {/* Detail Dialog */}
-      <BadgeDetailDialog
-        badge={selectedBadge}
-        open={showDetailDialog}
-        onOpenChange={setShowDetailDialog}
-      />
-      </div>
-    </Layout>
+        {/* Pagination */}
+        {totalItems > 0 && (
+          <div className="mt-6">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </div>
+        )}
+
+        {/* Badge Detail Dialog */}
+        <BadgeDetailDialog
+          badge={selectedBadge}
+          open={showDetailDialog}
+          onOpenChange={setShowDetailDialog}
+        />
+      </Layout>
+    </ErrorBoundary>
   );
 }

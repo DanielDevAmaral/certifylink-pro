@@ -87,7 +87,7 @@ export interface LegalDocumentReportData {
   full_name?: string;
 }
 
-export type ReportDataType = 'certifications' | 'attestations' | 'documents' | 'dashboard';
+export type ReportDataType = 'certifications' | 'attestations' | 'documents' | 'dashboard' | 'badges';
 
 export interface ReportFilters {
   dateFrom?: Date;

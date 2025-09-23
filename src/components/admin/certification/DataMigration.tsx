@@ -29,54 +29,119 @@ export function DataMigration() {
   const { data: certifications = [] } = useCertifications();
   const { data: types = [] } = useCertificationTypes();
 
+  // Função para calcular similaridade usando Levenshtein distance
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + cost
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
+  };
+
+  // Função para normalizar nomes para comparação
+  const normalizeForComparison = (name: string): string => {
+    return name.toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s]/g, '')
+      .trim();
+  };
+
+  // Função para verificar se dois nomes são similares (não idênticos)
+  const areSimilar = (name1: string, name2: string): boolean => {
+    const normalized1 = normalizeForComparison(name1);
+    const normalized2 = normalizeForComparison(name2);
+    
+    // Se são idênticos após normalização, não são "similares" para nossos propósitos
+    if (normalized1 === normalized2) return false;
+    
+    const maxLength = Math.max(normalized1.length, normalized2.length);
+    const distance = levenshteinDistance(normalized1, normalized2);
+    const similarity = (maxLength - distance) / maxLength;
+    
+    // Considera similar se a similaridade for maior que 80% mas não 100%
+    return similarity > 0.8 && similarity < 1.0;
+  };
+
   const analyzeDuplicates = () => {
     setIsAnalyzing(true);
     
     // Simulate analysis delay
     setTimeout(() => {
-      // Group certifications by similar names
-      const nameGroups: { [key: string]: any[] } = {};
+      const potentialGroups: DuplicateGroup[] = [];
+      const processedCerts = new Set<string>();
       
-      certifications.forEach(cert => {
-        const normalizedName = cert.name.toLowerCase()
-          .replace(/certificação|certification|certified|professional/gi, '')
-          .trim();
+      // Procurar por certificações similares
+      certifications.forEach((cert, index) => {
+        if (processedCerts.has(cert.id)) return;
         
-        const existingKey = Object.keys(nameGroups).find(key => 
-          key.includes(normalizedName) || normalizedName.includes(key)
-        );
+        const similarCerts = [cert];
+        processedCerts.add(cert.id);
         
-        if (existingKey) {
-          nameGroups[existingKey].push(cert);
-        } else {
-          nameGroups[normalizedName] = [cert];
+        // Comparar com todas as outras certificações
+        certifications.slice(index + 1).forEach(otherCert => {
+          if (processedCerts.has(otherCert.id)) return;
+          
+          // Verificar similaridade considerando name e function
+          const namesSimilar = areSimilar(cert.name, otherCert.name);
+          const functionsMatch = normalizeForComparison(cert.function || '') === 
+                                normalizeForComparison(otherCert.function || '');
+          
+          if (namesSimilar && functionsMatch) {
+            similarCerts.push(otherCert);
+            processedCerts.add(otherCert.id);
+          }
+        });
+        
+        // Só adicionar se houver certificações similares (não idênticas)
+        if (similarCerts.length > 1) {
+          const names = [...new Set(similarCerts.map(c => c.name))];
+          
+          // Verificar se realmente há nomes diferentes
+          if (names.length > 1) {
+            // Procurar tipo sugerido baseado na função mais comum
+            const functionCounts = similarCerts.reduce((acc, cert) => {
+              acc[cert.function] = (acc[cert.function] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            const mostCommonFunction = Object.entries(functionCounts)
+              .sort(([,a], [,b]) => b - a)[0]?.[0];
+            
+            // Tentar encontrar tipo correspondente
+            const suggestedType = types.find(type => {
+              const typeFullName = `${type.name} - ${type.function}`;
+              const certFullName = `${names[0]} - ${mostCommonFunction}`;
+              
+              return type.aliases?.some(alias => 
+                normalizeForComparison(alias).includes(normalizeForComparison(names[0])) ||
+                normalizeForComparison(names[0]).includes(normalizeForComparison(alias))
+              ) ||
+              normalizeForComparison(typeFullName).includes(normalizeForComparison(certFullName)) ||
+              normalizeForComparison(certFullName).includes(normalizeForComparison(typeFullName));
+            });
+            
+            potentialGroups.push({
+              names,
+              certifications: similarCerts,
+              suggestedType
+            });
+          }
         }
       });
 
-      // Filter only groups with duplicates
-      const duplicateGroups: DuplicateGroup[] = Object.entries(nameGroups)
-        .filter(([_, certs]) => certs.length > 1)
-        .map(([_, certs]) => {
-          const names = [...new Set(certs.map(c => c.name))];
-          
-          // Try to find a matching standardized type
-          const suggestedType = types.find(type => 
-            names.some(name => 
-              type.aliases?.some(alias => 
-                name.toLowerCase().includes(alias.toLowerCase()) ||
-                alias.toLowerCase().includes(name.toLowerCase())
-              ) ||
-              name.toLowerCase().includes(type.name.toLowerCase()) ||
-              type.name.toLowerCase().includes(name.toLowerCase())
-            )
-          );
-
-          return {
-            names,
-            certifications: certs,
-            suggestedType
-          };
-        });
+      const duplicateGroups = potentialGroups;
 
       setDuplicates(duplicateGroups);
       setAnalysisComplete(true);

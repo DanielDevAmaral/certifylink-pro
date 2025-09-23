@@ -4,11 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { CheckCircle, AlertCircle, RefreshCw, Eye, X } from "lucide-react";
 import { useCertifications } from "@/hooks/useCertifications";
 import { useCertificationTypes } from "@/hooks/useCertificationTypes";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { toast } from "sonner";
+import { MigrationDetailDialog } from "./MigrationDetailDialog";
+import { StandardizationApplyDialog } from "./StandardizationApplyDialog";
+import { EditableTypeSelector } from "./EditableTypeSelector";
 
 interface DuplicateGroup {
   names: string[];
@@ -20,6 +23,8 @@ export function DataMigration() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [selectedDetailGroup, setSelectedDetailGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
+  const [selectedApplyGroup, setSelectedApplyGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
 
   const { data: certifications = [] } = useCertifications();
   const { data: types = [] } = useCertificationTypes();
@@ -79,6 +84,59 @@ export function DataMigration() {
       
       toast.success(`Análise concluída! Encontrados ${duplicateGroups.length} grupos com duplicações.`);
     }, 2000);
+  };
+
+  const handleRemoveName = (groupIndex: number, nameToRemove: string) => {
+    setDuplicates(prev => prev.map((group, index) => {
+      if (index === groupIndex) {
+        const updatedNames = group.names.filter(name => name !== nameToRemove);
+        
+        // Remove certifications with this name
+        const updatedCertifications = group.certifications.filter(cert => cert.name !== nameToRemove);
+        
+        // If less than 2 names remain, mark for removal by returning null
+        if (updatedNames.length < 2) {
+          toast.success(`Grupo ${index + 1} removido (menos de 2 nomes restantes)`);
+          return null;
+        }
+        
+        toast.success(`Nome "${nameToRemove}" removido do grupo ${index + 1}`);
+        return {
+          ...group,
+          names: updatedNames,
+          certifications: updatedCertifications
+        };
+      }
+      return group;
+    }).filter(Boolean) as DuplicateGroup[]);
+  };
+
+  const handleTypeChange = (groupIndex: number, newType: any) => {
+    setDuplicates(prev => prev.map((group, index) => {
+      if (index === groupIndex) {
+        return {
+          ...group,
+          suggestedType: newType
+        };
+      }
+      return group;
+    }));
+    toast.success(`Tipo padronizado atualizado para o grupo ${groupIndex + 1}`);
+  };
+
+  const handleViewDetails = (group: DuplicateGroup, index: number) => {
+    setSelectedDetailGroup({ group, index });
+  };
+
+  const handleApplyStandardization = (group: DuplicateGroup, index: number) => {
+    setSelectedApplyGroup({ group, index });
+  };
+
+  const handleStandardizationSuccess = () => {
+    // Re-run analysis to update the data
+    setTimeout(() => {
+      analyzeDuplicates();
+    }, 1000);
   };
 
   const getStats = () => {
@@ -201,48 +259,41 @@ export function DataMigration() {
                   <h4 className="font-medium mb-2">Nomes encontrados:</h4>
                   <div className="flex flex-wrap gap-2">
                     {group.names.map((name, nameIndex) => (
-                      <Badge key={nameIndex} variant="secondary">
+                      <Badge key={nameIndex} variant="secondary" className="relative group">
                         {name}
+                        <button
+                          onClick={() => handleRemoveName(index, name)}
+                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remover este nome"
+                        >
+                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </button>
                       </Badge>
                     ))}
                   </div>
                 </div>
                 
-                {group.suggestedType && (
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-green-800">Tipo Padronizado Sugerido:</span>
-                    </div>
-                    <p className="text-green-700">
-                      <strong>{group.suggestedType.full_name}</strong>
-                    </p>
-                    <p className="text-sm text-green-600">
-                      Plataforma: {group.suggestedType.platform?.name} | 
-                      Função: {group.suggestedType.function}
-                    </p>
-                  </div>
-                )}
-                
-                {!group.suggestedType && (
-                  <div className="bg-yellow-50 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <span className="font-medium text-yellow-800">Ação Necessária:</span>
-                    </div>
-                    <p className="text-yellow-700">
-                      Nenhum tipo padronizado encontrado. Considere criar um novo tipo ou 
-                      adicionar aliases aos tipos existentes.
-                    </p>
-                  </div>
-                )}
+                <EditableTypeSelector
+                  suggestedType={group.suggestedType}
+                  onTypeChange={(newType) => handleTypeChange(index, newType)}
+                  groupNames={group.names}
+                />
                 
                 <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleViewDetails(group, index)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
                     Ver Detalhes
                   </Button>
                   {group.suggestedType && (
-                    <Button size="sm">
+                    <Button 
+                      size="sm"
+                      onClick={() => handleApplyStandardization(group, index)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
                       Aplicar Padronização
                     </Button>
                   )}
@@ -264,6 +315,22 @@ export function DataMigration() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialogs */}
+      <MigrationDetailDialog
+        open={!!selectedDetailGroup}
+        onOpenChange={(open) => !open && setSelectedDetailGroup(null)}
+        group={selectedDetailGroup?.group || null}
+        groupIndex={selectedDetailGroup?.index || 0}
+      />
+
+      <StandardizationApplyDialog
+        open={!!selectedApplyGroup}
+        onOpenChange={(open) => !open && setSelectedApplyGroup(null)}
+        group={selectedApplyGroup?.group || null}
+        groupIndex={selectedApplyGroup?.index || 0}
+        onSuccess={handleStandardizationSuccess}
+      />
     </div>
   );
 }

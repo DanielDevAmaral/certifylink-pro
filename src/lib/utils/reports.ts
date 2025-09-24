@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { PDFDocument } from 'pdf-lib';
+import * as mammoth from 'mammoth';
 import { ReportData, ReportConfig, ReportField, ReportSummary } from '@/types/reports';
 
 // Extend jsPDF type to include autoTable
@@ -389,6 +391,95 @@ export async function exportToPDF(reportData: ReportData, filename: string, conf
   }
 }
 
+// Detect file type from URL
+function getFileTypeFromUrl(url: string): 'pdf' | 'docx' | 'image' | 'unknown' {
+  const extension = url.toLowerCase().split('.').pop() || '';
+  if (['pdf'].includes(extension)) return 'pdf';
+  if (['docx', 'doc'].includes(extension)) return 'docx';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'image';
+  return 'unknown';
+}
+
+// Convert PDF to images for embedding in report
+async function convertPdfToImages(pdfUrl: string): Promise<string[]> {
+  try {
+    console.log('Converting PDF to images:', pdfUrl);
+    const response = await fetch(pdfUrl, { mode: 'cors' });
+    if (!response.ok) {
+      console.error('Failed to fetch PDF:', response.status);
+      return [];
+    }
+    
+    const pdfArrayBuffer = await response.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(pdfArrayBuffer);
+    const pageCount = pdfDoc.getPageCount();
+    const images: string[] = [];
+    
+    console.log(`PDF has ${pageCount} pages`);
+    
+    // For now, we'll create a simple text representation since PDF to image conversion
+    // requires additional libraries not easily available in browser
+    // In a real implementation, you'd use pdf2pic or similar
+    return [`data:text/plain;base64,${btoa(`PDF Document (${pageCount} pages)\nOriginal URL: ${pdfUrl}`)}`];
+    
+  } catch (error) {
+    console.error('Error converting PDF:', error);
+    return [];
+  }
+}
+
+// Convert DOCX to HTML for embedding
+async function convertDocxToHtml(docxUrl: string): Promise<string | null> {
+  try {
+    console.log('Converting DOCX to HTML:', docxUrl);
+    const response = await fetch(docxUrl, { mode: 'cors' });
+    if (!response.ok) {
+      console.error('Failed to fetch DOCX:', response.status);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    console.log('DOCX converted successfully');
+    return result.value;
+    
+  } catch (error) {
+    console.error('Error converting DOCX:', error);
+    return null;
+  }
+}
+
+// Process attachment based on file type
+async function processAttachment(documentUrl: string): Promise<{
+  type: 'pdf' | 'docx' | 'image' | 'unknown';
+  content?: string | string[];
+  error?: string;
+}> {
+  const fileType = getFileTypeFromUrl(documentUrl);
+  
+  try {
+    switch (fileType) {
+      case 'pdf':
+        const pdfPages = await convertPdfToImages(documentUrl);
+        return { type: 'pdf', content: pdfPages };
+        
+      case 'docx':
+        const htmlContent = await convertDocxToHtml(documentUrl);
+        return { type: 'docx', content: htmlContent || undefined };
+        
+      case 'image':
+        // For images, we'll return the URL to be processed by existing image loading
+        return { type: 'image', content: documentUrl };
+        
+      default:
+        return { type: 'unknown', error: 'Tipo de arquivo não suportado' };
+    }
+  } catch (error) {
+    console.error('Error processing attachment:', error);
+    return { type: fileType, error: 'Erro ao processar anexo' };
+  }
+}
+
 // Load image from URL for PDF with format detection
 async function loadImageForPDF(url: string): Promise<{ data: string; format: 'JPEG' | 'PNG' } | null> {
   try {
@@ -539,9 +630,10 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
 
   currentY += 45;
 
-  // Process each certification
+  // Process each record (certification or technical attestation)
   for (let i = 0; i < rawData.length; i++) {
-    const cert = rawData[i];
+    const record = rawData[i];
+    const isAttestation = 'client_name' in record; // Technical attestations have client_name
     
     // Check if we need a new page
     if (currentY > pageHeight - 80) {
@@ -549,107 +641,213 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
       currentY = margin;
     }
 
-    // Certification header
+    // Record header
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(25, 118, 210);
-    doc.text(`${i + 1}. ${cert.name || 'Certificação'}`, margin, currentY);
+    const title = isAttestation 
+      ? `${i + 1}. Atestado: ${record.client_name || 'N/A'} - ${record.project_object || 'N/A'}`
+      : `${i + 1}. ${record.name || 'Certificação'}`;
+    doc.text(title, margin, currentY);
     currentY += 10;
 
     // Status badge
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const statusColor = cert.status === 'valid' ? [16, 185, 129] : cert.status === 'expired' ? [239, 68, 68] : [245, 158, 11];
+    const statusColor = record.status === 'valid' ? [16, 185, 129] : record.status === 'expired' ? [239, 68, 68] : [245, 158, 11];
     doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-    doc.text(`Status: ${cert.status?.toUpperCase() || 'N/A'}`, margin, currentY);
+    doc.text(`Status: ${record.status?.toUpperCase() || 'N/A'}`, margin, currentY);
     doc.setTextColor(0, 0, 0);
     currentY += 8;
 
-    // Basic information
-    const info = [
-      ['Responsável:', cert.full_name || 'N/A'],
-      ['Função:', cert.function || 'N/A'],
-      ['Validade:', cert.validity_date ? new Date(cert.validity_date).toLocaleDateString('pt-BR') : 'N/A'],
-      ['Criado em:', cert.created_at ? new Date(cert.created_at).toLocaleDateString('pt-BR') : 'N/A'],
-    ];
+    // Basic information based on record type
+    let info = [];
+    if (isAttestation) {
+      info = [
+        ['Responsável:', record.full_name || 'N/A'],
+        ['Cliente:', record.client_name || 'N/A'],
+        ['Objeto do Projeto:', record.project_object || 'N/A'],
+        ['Emissor:', record.issuer_name || 'N/A'],
+        ['Cargo do Emissor:', record.issuer_position || 'N/A'],
+        ['Período:', `${record.project_period_start ? new Date(record.project_period_start).toLocaleDateString('pt-BR') : 'N/A'} - ${record.project_period_end ? new Date(record.project_period_end).toLocaleDateString('pt-BR') : 'N/A'}`],
+        ['Valor do Projeto:', record.project_value ? `R$ ${record.project_value.toLocaleString('pt-BR')}` : 'N/A'],
+        ['Validade:', record.validity_date ? new Date(record.validity_date).toLocaleDateString('pt-BR') : 'N/A'],
+        ['Criado em:', record.created_at ? new Date(record.created_at).toLocaleDateString('pt-BR') : 'N/A'],
+      ];
+    } else {
+      info = [
+        ['Responsável:', record.full_name || 'N/A'],
+        ['Função:', record.function || 'N/A'],
+        ['Validade:', record.validity_date ? new Date(record.validity_date).toLocaleDateString('pt-BR') : 'N/A'],
+        ['Criado em:', record.created_at ? new Date(record.created_at).toLocaleDateString('pt-BR') : 'N/A'],
+      ];
+    }
 
     info.forEach(([label, value]) => {
       doc.setFont('helvetica', 'bold');
       doc.text(label, margin, currentY);
       doc.setFont('helvetica', 'normal');
-      doc.text(value, margin + 30, currentY);
-      currentY += 6;
+      // Handle long text by splitting into multiple lines
+      const maxWidth = contentWidth - 35;
+      const splitText = doc.splitTextToSize(value, maxWidth);
+      doc.text(splitText, margin + 35, currentY);
+      currentY += splitText.length * 4 + 2;
     });
 
-    // Additional information
-    if (cert.approved_equivalence !== undefined) {
-      currentY += 3;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Equivalência Aprovada:', margin, currentY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(cert.approved_equivalence ? 'Sim' : 'Não', margin + 45, currentY);
-      currentY += 6;
+    // Additional information for certifications
+    if (!isAttestation) {
+      if (record.approved_equivalence !== undefined) {
+        currentY += 3;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Equivalência Aprovada:', margin, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(record.approved_equivalence ? 'Sim' : 'Não', margin + 45, currentY);
+        currentY += 6;
+      }
+
+      if (record.equivalence_services && record.equivalence_services.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Serviços de Equivalência:', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        const services = Array.isArray(record.equivalence_services) 
+          ? record.equivalence_services.join(', ')
+          : record.equivalence_services;
+        const lines = doc.splitTextToSize(services, contentWidth - 10);
+        doc.text(lines, margin + 5, currentY);
+        currentY += lines.length * 4 + 3;
+      }
+
+      if (record.public_link) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Link Público:', margin, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(37, 99, 235);
+        doc.text(record.public_link, margin + 25, currentY);
+        doc.setTextColor(0, 0, 0);
+        currentY += 8;
+      }
     }
 
-    if (cert.equivalence_services && cert.equivalence_services.length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Serviços de Equivalência:', margin, currentY);
-      currentY += 6;
-      doc.setFont('helvetica', 'normal');
-      const services = Array.isArray(cert.equivalence_services) 
-        ? cert.equivalence_services.join(', ')
-        : cert.equivalence_services;
-      const lines = doc.splitTextToSize(services, contentWidth - 10);
-      doc.text(lines, margin + 5, currentY);
-      currentY += lines.length * 4 + 3;
+    // Additional information for technical attestations
+    if (isAttestation) {
+      if (record.issuer_contact) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Contato do Emissor:', margin, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(record.issuer_contact, margin + 35, currentY);
+        currentY += 6;
+      }
+
+      if (record.related_certifications && record.related_certifications.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Certificações Relacionadas:', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        const certs = Array.isArray(record.related_certifications) 
+          ? record.related_certifications.join(', ')
+          : record.related_certifications;
+        const lines = doc.splitTextToSize(certs, contentWidth - 10);
+        doc.text(lines, margin + 5, currentY);
+        currentY += lines.length * 4 + 3;
+      }
     }
 
-    if (cert.public_link) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Link Público:', margin, currentY);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(37, 99, 235);
-      doc.text(cert.public_link, margin + 25, currentY);
-      doc.setTextColor(0, 0, 0);
-      currentY += 8;
-    }
-
-    // Load and add certification image
-    if (cert.screenshot_url) {
+    // Process attachments/images
+    const documentUrl = isAttestation ? record.document_url : record.screenshot_url;
+    if (documentUrl) {
       currentY += 5;
       doc.setFont('helvetica', 'bold');
-      doc.text('Imagem da Certificação:', margin, currentY);
+      const attachmentLabel = isAttestation ? 'Documento Anexo:' : 'Imagem da Certificação:';
+      doc.text(attachmentLabel, margin, currentY);
       currentY += 8;
 
       try {
-        const imageResult = await loadImageForPDF(cert.screenshot_url);
-        if (imageResult?.data) {
-          const maxImageWidth = contentWidth * 0.8;
-          const maxImageHeight = 60;
+        if (isAttestation) {
+          // Process technical attestation attachments
+          const attachment = await processAttachment(documentUrl);
           
-          // Check if we need a new page for the image
-          if (currentY + maxImageHeight > pageHeight - margin) {
-            doc.addPage();
-            currentY = margin;
-            doc.setFont('helvetica', 'bold');
-            doc.text('Imagem da Certificação (continuação):', margin, currentY);
+          if (attachment.error) {
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(239, 68, 68);
+            doc.text(`(${attachment.error})`, margin + 10, currentY);
+            doc.setTextColor(0, 0, 0);
+            currentY += 8;
+          } else if (attachment.type === 'image' && attachment.content) {
+            // Handle image attachments
+            const imageResult = await loadImageForPDF(attachment.content as string);
+            if (imageResult?.data) {
+              const maxImageWidth = contentWidth * 0.8;
+              const maxImageHeight = 60;
+              
+              if (currentY + maxImageHeight > pageHeight - margin) {
+                doc.addPage();
+                currentY = margin;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Documento Anexo (continuação):', margin, currentY);
+                currentY += 8;
+              }
+
+              doc.addImage(imageResult.data, imageResult.format, margin + 10, currentY, maxImageWidth, maxImageHeight);
+              currentY += maxImageHeight + 10;
+            }
+          } else if (attachment.type === 'pdf' && attachment.content) {
+            // Handle PDF attachments
+            doc.setFont('helvetica', 'normal');
+            doc.text('📄 Documento PDF anexado:', margin + 10, currentY);
+            currentY += 6;
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Arquivo: ${documentUrl.split('/').pop()}`, margin + 15, currentY);
+            doc.setTextColor(0, 0, 0);
+            currentY += 8;
+          } else if (attachment.type === 'docx' && attachment.content) {
+            // Handle DOCX attachments
+            doc.setFont('helvetica', 'normal');
+            doc.text('📄 Documento Word anexado:', margin + 10, currentY);
+            currentY += 6;
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Arquivo: ${documentUrl.split('/').pop()}`, margin + 15, currentY);
+            doc.setTextColor(0, 0, 0);
+            currentY += 8;
+          } else {
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(150, 150, 150);
+            doc.text('(Tipo de anexo não suportado para visualização)', margin + 10, currentY);
+            doc.setTextColor(0, 0, 0);
             currentY += 8;
           }
-
-          doc.addImage(imageResult.data, imageResult.format, margin + 10, currentY, maxImageWidth, maxImageHeight);
-          currentY += maxImageHeight + 10;
         } else {
-          doc.setFont('helvetica', 'italic');
-          doc.setTextColor(150, 150, 150);
-          doc.text('(Imagem não disponível)', margin + 10, currentY);
-          doc.setTextColor(0, 0, 0);
-          currentY += 8;
+          // Handle certification screenshots (existing logic)
+          const imageResult = await loadImageForPDF(documentUrl);
+          if (imageResult?.data) {
+            const maxImageWidth = contentWidth * 0.8;
+            const maxImageHeight = 60;
+            
+            if (currentY + maxImageHeight > pageHeight - margin) {
+              doc.addPage();
+              currentY = margin;
+              doc.setFont('helvetica', 'bold');
+              doc.text('Imagem da Certificação (continuação):', margin, currentY);
+              currentY += 8;
+            }
+
+            doc.addImage(imageResult.data, imageResult.format, margin + 10, currentY, maxImageWidth, maxImageHeight);
+            currentY += maxImageHeight + 10;
+          } else {
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(150, 150, 150);
+            doc.text('(Imagem não disponível)', margin + 10, currentY);
+            doc.setTextColor(0, 0, 0);
+            currentY += 8;
+          }
         }
       } catch (error) {
-        console.error('Error loading image for PDF:', error);
+        console.error('Error processing attachment/image:', error);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(150, 150, 150);
-        doc.text('(Erro ao carregar imagem)', margin + 10, currentY);
+        doc.text('(Erro ao processar anexo)', margin + 10, currentY);
         doc.setTextColor(0, 0, 0);
         currentY += 8;
       }

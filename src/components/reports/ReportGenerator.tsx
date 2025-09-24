@@ -223,7 +223,9 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="synthetic">Sintético (Tabela)</SelectItem>
-                <SelectItem value="detailed">Detalhado (Com imagens)</SelectItem>
+                <SelectItem value="detailed">
+                  Detalhado (Com imagens{type === 'attestations' ? ' e anexos' : ''})
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

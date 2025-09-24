@@ -65,10 +65,10 @@ export function useDashboardStats() {
       const attestations = attestationsResult.data || [];
       const documents = documentsResult.data || [];
 
-      // Use database status field instead of dynamic calculation
-      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring' || cert.status === 'expired').length;
-      const expiringAttestations = attestations.filter(att => att.status === 'expiring' || att.status === 'expired').length;
-      const expiringDocuments = documents.filter(doc => doc.status === 'expiring' || doc.status === 'expired').length;
+      // Count only 'expiring' items for "vencendo em breve" - exclude already expired items
+      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring').length;
+      const expiringAttestations = attestations.filter(att => att.status === 'expiring').length;
+      const expiringDocuments = documents.filter(doc => doc.status === 'expiring').length;
 
       const totalDocuments = certifications.length + attestations.length + documents.length;
       const validDocuments = [...certifications, ...attestations, ...documents]
@@ -325,15 +325,15 @@ export function useExpiringItems() {
           const expiryDate = new Date(cert.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          // Only include if expired OR expiring within 30 days AND status is expiring/expired
-          if ((daysUntilExpiry <= 30) && (cert.status === 'expiring' || cert.status === 'expired')) {
+          // Only include expiring items (within 30 days), show expired separately if needed
+          if ((daysUntilExpiry <= 30) && cert.status === 'expiring') {
             expiringItems.push({
               id: cert.id,
               title: cert.name,
               user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
               expires_in_days: Math.max(0, daysUntilExpiry), // Don't show negative days
               type: 'certification',
-              status: cert.status as 'expiring' | 'expired'
+              status: 'expiring' as const
             });
           }
         });
@@ -347,14 +347,14 @@ export function useExpiringItems() {
           const expiryDate = new Date(att.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          if ((daysUntilExpiry <= 30) && (att.status === 'expiring' || att.status === 'expired')) {
+          if ((daysUntilExpiry <= 30) && att.status === 'expiring') {
             expiringItems.push({
               id: att.id,
               title: att.project_object,
               user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
               expires_in_days: Math.max(0, daysUntilExpiry),
               type: 'technical_attestation',
-              status: att.status as 'expiring' | 'expired'
+              status: 'expiring' as const
             });
           }
         });
@@ -368,14 +368,14 @@ export function useExpiringItems() {
           const expiryDate = new Date(doc.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          if ((daysUntilExpiry <= 30) && (doc.status === 'expiring' || doc.status === 'expired')) {
+          if ((daysUntilExpiry <= 30) && doc.status === 'expiring') {
             expiringItems.push({
               id: doc.id,
               title: doc.document_name,
               user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
               expires_in_days: Math.max(0, daysUntilExpiry),
               type: 'legal_document',
-              status: doc.status as 'expiring' | 'expired'
+              status: 'expiring' as const
             });
           }
         });
@@ -389,14 +389,14 @@ export function useExpiringItems() {
           const expiryDate = new Date(badge.expiry_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          if ((daysUntilExpiry <= 30) && (badge.status === 'expiring' || badge.status === 'expired')) {
+          if ((daysUntilExpiry <= 30) && badge.status === 'expiring') {
             expiringItems.push({
               id: badge.id,
               title: badge.name,
               user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
               expires_in_days: Math.max(0, daysUntilExpiry),
               type: 'badge',
-              status: badge.status as 'expiring' | 'expired'
+              status: 'expiring' as const
             });
           }
         });

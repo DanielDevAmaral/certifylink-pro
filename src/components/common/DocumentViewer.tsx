@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Download, ExternalLink, Eye, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { downloadDocument } from '@/lib/utils/documentUtils';
 
 interface DocumentViewerProps {
   open: boolean;
@@ -33,26 +34,9 @@ export function DocumentViewer({
 
     try {
       setIsLoading(true);
-      
-      // Create a temporary link to download the file
-      const link = document.createElement('a');
-      link.href = documentUrl;
-      link.download = documentName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: 'Download iniciado',
-        description: 'O arquivo está sendo baixado'
-      });
+      await downloadDocument(documentUrl, documentName);
     } catch (error) {
-      toast({
-        title: 'Erro no download',
-        description: 'Não foi possível baixar o arquivo',
-        variant: 'destructive'
-      });
+      console.error('Error in DocumentViewer download:', error);
     } finally {
       setIsLoading(false);
     }

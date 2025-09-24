@@ -14,7 +14,7 @@ import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
 import { useCertifications } from '@/hooks/useCertifications';
-import { downloadDocument, formatDocumentName, isValidDocumentUrl } from '@/lib/utils/documentUtils';
+import { downloadDocument, formatDocumentName, isValidDocumentUrl, getFilenameFromUrl } from '@/lib/utils/documentUtils';
 import type { TechnicalCertificate } from '@/types';
 import { X, Upload, FileText, Download, Eye, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -391,7 +391,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                       <FileText className="h-5 w-5 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
-                          {formatDocumentName(attestation?.document_url)}
+                          {formatDocumentName(getFilenameFromUrl(attestation?.document_url || '') || undefined)}
                         </p>
                         <p className="text-xs text-muted-foreground">Documento atual</p>
                       </div>

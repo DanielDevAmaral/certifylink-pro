@@ -25,6 +25,7 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
   return useQuery({
     queryKey: ['recent-additions', user?.id, type, days],
     queryFn: async (): Promise<RecentAddition[]> => {
+      console.log('[Recent Additions] Fetching with filters:', { type, days });
       if (!user) throw new Error('User not authenticated');
 
       const cutoffDate = new Date();
@@ -39,10 +40,19 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
       const shouldFetchDocuments = !type || type === 'legal_document';
       const shouldFetchBadges = !type || type === 'badge';
 
-      const queries = [];
+      console.log('[Recent Additions] Will fetch:', {
+        certifications: shouldFetchCertifications,
+        attestations: shouldFetchAttestations,
+        documents: shouldFetchDocuments,
+        badges: shouldFetchBadges
+      });
 
+      // Execute queries individually to avoid index confusion
+      const promises = [];
+
+      // Certifications
       if (shouldFetchCertifications) {
-        queries.push(
+        promises.push(
           supabase
             .from('certifications')
             .select(`
@@ -55,11 +65,13 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
             `)
             .gte('created_at', cutoffISOString)
             .order('created_at', { ascending: false })
+            .then(result => ({ type: 'certifications', data: result.data, error: result.error }))
         );
       }
 
+      // Technical attestations
       if (shouldFetchAttestations) {
-        queries.push(
+        promises.push(
           supabase
             .from('technical_attestations')
             .select(`
@@ -72,11 +84,13 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
             `)
             .gte('created_at', cutoffISOString)
             .order('created_at', { ascending: false })
+            .then(result => ({ type: 'attestations', data: result.data, error: result.error }))
         );
       }
 
+      // Legal documents
       if (shouldFetchDocuments) {
-        queries.push(
+        promises.push(
           supabase
             .from('legal_documents')
             .select(`
@@ -89,11 +103,13 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
             `)
             .gte('created_at', cutoffISOString)
             .order('created_at', { ascending: false })
+            .then(result => ({ type: 'documents', data: result.data, error: result.error }))
         );
       }
 
+      // Badges
       if (shouldFetchBadges) {
-        queries.push(
+        promises.push(
           supabase
             .from('badges')
             .select(`
@@ -106,76 +122,89 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
             `)
             .gte('created_at', cutoffISOString)
             .order('created_at', { ascending: false })
+            .then(result => ({ type: 'badges', data: result.data, error: result.error }))
         );
       }
 
-      // Execute queries in parallel
-      const results = await Promise.all(queries);
-      let resultIndex = 0;
+      // Execute all queries in parallel
+      const results = await Promise.all(promises);
 
-      // Process certifications
-      if (shouldFetchCertifications) {
-        const certificationsResult = results[resultIndex++];
-        certificationsResult.data?.forEach(cert => {
-          additions.push({
-            id: cert.id,
-            type: 'certification',
-            title: cert.name,
-            user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
-            created_at: cert.created_at,
-            validity_date: cert.validity_date,
-            status: cert.status as any
-          });
-        });
-      }
+      // Process results by type
+      results.forEach(result => {
+        if (result.error) {
+          console.error(`[Recent Additions] Error fetching ${result.type}:`, result.error);
+          return;
+        }
 
-      // Process technical attestations
-      if (shouldFetchAttestations) {
-        const attestationsResult = results[resultIndex++];
-        attestationsResult.data?.forEach(att => {
-          additions.push({
-            id: att.id,
-            type: 'technical_attestation',
-            title: att.project_object,
-            user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
-            created_at: att.created_at,
-            validity_date: att.validity_date,
-            status: att.status as any
-          });
-        });
-      }
+        const data = result.data || [];
+        console.log(`[Recent Additions] Found ${data.length} ${result.type}`);
 
-      // Process legal documents
-      if (shouldFetchDocuments) {
-        const documentsResult = results[resultIndex++];
-        documentsResult.data?.forEach(doc => {
-          additions.push({
-            id: doc.id,
-            type: 'legal_document',
-            title: doc.document_name,
-            user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
-            created_at: doc.created_at,
-            validity_date: doc.validity_date,
-            status: doc.status as any
-          });
-        });
-      }
+        switch (result.type) {
+          case 'certifications':
+            data.forEach(cert => {
+              additions.push({
+                id: cert.id,
+                type: 'certification',
+                title: cert.name,
+                user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
+                created_at: cert.created_at,
+                validity_date: cert.validity_date,
+                status: cert.status as any
+              });
+            });
+            break;
 
-      // Process badges
-      if (shouldFetchBadges) {
-        const badgesResult = results[resultIndex++];
-        badgesResult.data?.forEach(badge => {
-          additions.push({
-            id: badge.id,
-            type: 'badge',
-            title: badge.name,
-            user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
-            created_at: badge.created_at,
-            expiry_date: badge.expiry_date,
-            status: badge.status as any
-          });
-        });
-      }
+          case 'attestations':
+            data.forEach(att => {
+              additions.push({
+                id: att.id,
+                type: 'technical_attestation',
+                title: att.project_object,
+                user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
+                created_at: att.created_at,
+                validity_date: att.validity_date,
+                status: att.status as any
+              });
+            });
+            break;
+
+          case 'documents':
+            data.forEach(doc => {
+              additions.push({
+                id: doc.id,
+                type: 'legal_document',
+                title: doc.document_name,
+                user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
+                created_at: doc.created_at,
+                validity_date: doc.validity_date,
+                status: doc.status as any
+              });
+            });
+            break;
+
+          case 'badges':
+            data.forEach(badge => {
+              additions.push({
+                id: badge.id,
+                type: 'badge',
+                title: badge.name,
+                user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
+                created_at: badge.created_at,
+                expiry_date: badge.expiry_date,
+                status: badge.status as any
+              });
+            });
+            break;
+        }
+      });
+
+      console.log(`[Recent Additions] Total items found: ${additions.length}`);
+      console.log('[Recent Additions] Items by type:', {
+        certifications: additions.filter(a => a.type === 'certification').length,
+        attestations: additions.filter(a => a.type === 'technical_attestation').length,
+        documents: additions.filter(a => a.type === 'legal_document').length,
+        badges: additions.filter(a => a.type === 'badge').length
+      });
 
       // Sort by creation date (most recent first)
       return additions.sort((a, b) => 
@@ -183,6 +212,8 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
       );
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute for better refresh
+    refetchOnWindowFocus: true, // Enable refresh on focus
+    refetchOnMount: true, // Enable refresh on mount
   });
 }

@@ -28,6 +28,7 @@ export interface SearchEngineResult {
     expiring: number;
     expired: number;
     pending: number;
+    deactivated: number;
   };
 }
 
@@ -51,7 +52,7 @@ export function useCertificationSearchEngine(filters: SearchEngineFilters = {}) 
       }
 
       if (filters.status) {
-        const validStatuses = ['valid', 'expiring', 'expired', 'pending'] as const;
+        const validStatuses = ['valid', 'expiring', 'expired', 'pending', 'deactivated'] as const;
         if (validStatuses.includes(filters.status as any)) {
           query = query.eq('status', filters.status as typeof validStatuses[number]);
         }
@@ -111,7 +112,7 @@ export function useCertificationSearchEngine(filters: SearchEngineFilters = {}) 
       const statusCounts = certifications.reduce((acc, cert) => {
         acc[cert.status as keyof typeof acc] = (acc[cert.status as keyof typeof acc] || 0) + 1;
         return acc;
-      }, { valid: 0, expiring: 0, expired: 0, pending: 0 });
+      }, { valid: 0, expiring: 0, expired: 0, pending: 0, deactivated: 0 });
 
       return {
         data: certifications,

@@ -44,7 +44,8 @@ const smartFilterConfigs = [
       { value: 'valid', label: 'Válidas' },
       { value: 'expiring', label: 'Expirando' },
       { value: 'expired', label: 'Expiradas' },
-      { value: 'pending', label: 'Pendentes' }
+      { value: 'pending', label: 'Pendentes' },
+      { value: 'deactivated', label: 'Desativadas' }
     ],
     placeholder: 'Selecione o status...'
   },
@@ -102,7 +103,7 @@ export default function Certifications() {
   // Extract data from search results
   const certifications = searchResults?.data || [];
   const totalItems = searchResults?.totalCount || 0;
-  const statusCounts = searchResults?.statusCounts || { valid: 0, expiring: 0, expired: 0, pending: 0 };
+  const statusCounts = searchResults?.statusCounts || { valid: 0, expiring: 0, expired: 0, pending: 0, deactivated: 0 };
   const availableFunctions = searchResults?.functions || [];
 
   // Get unique user IDs from certifications for name lookup
@@ -288,6 +289,12 @@ export default function Certifications() {
               <StatusBadge status="expired" />
               <span className="text-sm text-muted-foreground">
                 {statusCounts.expired} expiradas
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status="deactivated" />
+              <span className="text-sm text-muted-foreground">
+                {statusCounts.deactivated} desativadas
               </span>
             </div>
           </div>

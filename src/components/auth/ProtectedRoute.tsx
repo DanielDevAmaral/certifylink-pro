@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { BlockedUser } from '@/components/auth/BlockedUser';
 import type { UserRole } from '@/types';
 import type { ReactNode } from 'react';
 
@@ -9,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, loading, isBlocked, blockReason } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,6 +23,10 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (isBlocked) {
+    return <BlockedUser reason={blockReason} />;
   }
 
   if (requiredRole && userRole !== requiredRole && userRole !== 'admin') {

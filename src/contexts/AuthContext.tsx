@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +15,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
+  isBlocked: boolean;
+  blockReason: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,7 +39,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState<string | null>(null);
   const isPageVisible = usePageVisibility();
+
+  const checkUserStatus = useCallback((profileData: any) => {
+    if (!profileData) return true;
+
+    const status = profileData.status;
+    if (status === 'inactive' || status === 'suspended' || status === 'terminated') {
+      const reasons = {
+        inactive: 'Sua conta foi desativada.',
+        suspended: 'Sua conta foi suspensa.',
+        terminated: 'Sua conta foi desligada.'
+      };
+      
+      setIsBlocked(true);
+      setBlockReason(reasons[status as keyof typeof reasons]);
+      
+      toast.error(`Acesso negado: ${reasons[status as keyof typeof reasons]}`, {
+        duration: 5000
+      });
+      
+      // Desconectar usuário após 2 segundos
+      setTimeout(() => {
+        supabase.auth.signOut();
+      }, 2000);
+      
+      return false;
+    }
+    
+    setIsBlocked(false);
+    setBlockReason(null);
+    return true;
+  }, []);
 
   const fetchUserData = useCallback(async (userId: string) => {
     console.log('🔍 AuthContext: Fetching user data for:', userId);
@@ -64,11 +100,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (profileData) {
         console.log('📄 AuthContext: User profile fetched');
         setProfile(profileData);
+        
+        // Verificar status do usuário
+        checkUserStatus(profileData);
       }
     } catch (error) {
       console.error('❌ AuthContext: Error fetching user data:', error);
     }
-  }, []);
+  }, [checkUserStatus]);
 
   useEffect(() => {
     console.log('🚀 AuthContext: Setting up auth state listener');
@@ -90,11 +129,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('🚪 AuthContext: User signed out or page not visible');
           setUserRole(null);
           setProfile(null);
+          setIsBlocked(false);
+          setBlockReason(null);
         }
         
         setLoading(false);
       }
     );
+
+    // Set up realtime listener for profile changes
+    let profileChannel: any = null;
+    if (user?.id) {
+      profileChannel = supabase
+        .channel('profile-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('📱 AuthContext: Profile updated in real-time', payload);
+            const newProfile = payload.new as any;
+            setProfile(newProfile);
+            
+            // Verificar se o status mudou para inativo
+            if (newProfile && !checkUserStatus(newProfile)) {
+              console.log('🚫 AuthContext: User status changed to inactive, signing out');
+            }
+          }
+        )
+        .subscribe();
+    }
 
     // Check for existing session only once
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -115,8 +183,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       console.log('🧹 AuthContext: Cleaning up auth listener');
       subscription.unsubscribe();
+      if (profileChannel) {
+        supabase.removeChannel(profileChannel);
+      }
     };
-  }, [fetchUserData, isPageVisible]);
+  }, [fetchUserData, isPageVisible, user?.id, checkUserStatus]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -135,10 +206,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password
     });
+    
+    // Verificar status do usuário após login bem-sucedido
+    if (!error && data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('user_id', data.user.id)
+        .single();
+        
+      if (profileData && !checkUserStatus(profileData)) {
+        // Se usuário está inativo, fazer logout imediatamente
+        await supabase.auth.signOut();
+        return { error: { message: 'Acesso negado devido ao status da conta.' } };
+      }
+    }
+    
     return { error };
   };
 
@@ -165,7 +252,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signInWithGoogle,
     signOut,
-    loading
+    loading,
+    isBlocked,
+    blockReason
   };
 
   return (

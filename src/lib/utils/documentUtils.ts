@@ -1,7 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 
 /**
- * Download a document from a URL
+ * Download a document from a URL using fetch + blob for better cross-origin support
  */
 export async function downloadDocument(url: string, filename?: string) {
   try {
@@ -9,29 +9,74 @@ export async function downloadDocument(url: string, filename?: string) {
       throw new Error('URL do documento não encontrada');
     }
 
-    // Create a temporary link to download the file
-    const link = document.createElement('a');
-    link.href = url;
-    if (filename) {
-      link.download = filename;
+    // Show loading toast
+    const loadingToast = toast({
+      title: 'Iniciando download...',
+      description: 'Preparando o arquivo para download'
+    });
+
+    // Try to download using fetch + blob approach
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status}`);
     }
-    link.target = '_blank';
+
+    // Get the blob data
+    const blob = await response.blob();
+    
+    // Generate filename if not provided
+    const finalFilename = filename || getFilenameFromUrl(url) || 'documento.pdf';
+    
+    // Create blob URL and download
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = finalFilename;
     
     // Trigger download
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Clean up blob URL
+    URL.revokeObjectURL(blobUrl);
 
+    // Dismiss loading toast and show success
+    loadingToast.dismiss();
     toast({
-      title: 'Download iniciado',
-      description: 'O arquivo está sendo baixado'
+      title: 'Download concluído',
+      description: `Arquivo ${finalFilename} baixado com sucesso`
     });
+
   } catch (error) {
-    toast({
-      title: 'Erro no download',
-      description: error instanceof Error ? error.message : 'Não foi possível baixar o arquivo',
-      variant: 'destructive'
-    });
+    console.error('Download error:', error);
+    
+    // Fallback to simple link method if fetch fails
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      if (filename) {
+        link.download = filename;
+      }
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: 'Download via navegador',
+        description: 'Arquivo aberto em nova aba - use Ctrl+S para salvar'
+      });
+    } catch (fallbackError) {
+      toast({
+        title: 'Erro no download',
+        description: error instanceof Error ? error.message : 'Não foi possível baixar o arquivo',
+        variant: 'destructive'
+      });
+    }
   }
 }
 
@@ -88,6 +133,20 @@ export function isPDFFile(url?: string): boolean {
 export function isImageFile(url?: string): boolean {
   const extension = getFileExtension(url);
   return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '');
+}
+
+/**
+ * Get filename from URL path
+ */
+export function getFilenameFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const filename = pathname.split('/').pop();
+    return filename && filename.includes('.') ? filename : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -17,7 +17,7 @@ export interface DashboardStats {
 
 export interface RecentActivity {
   id: string;
-  type: 'certification' | 'certificate' | 'document';
+  type: 'certification' | 'technical_attestation' | 'legal_document' | 'badge';
   title: string;
   user_name: string;
   validity_date: string | null;
@@ -29,7 +29,7 @@ export interface ExpiringItem {
   title: string;
   user_name: string;
   expires_in_days: number;
-  type: 'certification' | 'certificate' | 'document';
+  type: 'certification' | 'technical_attestation' | 'legal_document' | 'badge';
   status: 'expiring' | 'expired';
 }
 
@@ -167,7 +167,7 @@ export function useRecentActivity() {
       attestationsResult.data?.forEach(att => {
         activities.push({
           id: att.id,
-          type: 'certificate',
+          type: 'technical_attestation',
           title: att.project_object,
             user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
           validity_date: att.validity_date,
@@ -179,7 +179,7 @@ export function useRecentActivity() {
       documentsResult.data?.forEach(doc => {
         activities.push({
           id: doc.id,
-          type: 'document',
+          type: 'legal_document',
           title: doc.document_name,
             user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
           validity_date: doc.validity_date,
@@ -280,7 +280,7 @@ export function useExpiringItems() {
             title: att.project_object,
             user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
-            type: 'certificate',
+            type: 'technical_attestation',
             status: att.status as 'expiring' | 'expired'
           });
         }
@@ -297,7 +297,7 @@ export function useExpiringItems() {
             title: doc.document_name,
             user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
             expires_in_days: daysUntilExpiry,
-            type: 'document',
+            type: 'legal_document',
             status: doc.status as 'expiring' | 'expired'
           });
         }

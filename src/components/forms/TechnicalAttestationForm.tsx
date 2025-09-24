@@ -29,7 +29,7 @@ const attestationSchema = z.object({
   issuer_position: z.string().optional(),
   issuer_contact: z.string().optional(),
   validity_date: z.string().optional(),
-  status: z.enum(['valid', 'expiring', 'expired', 'pending']),
+  status: z.enum(['valid', 'expiring', 'expired', 'pending', 'deactivated']),
   document_url: z.string().optional(),
   related_certifications: z.array(z.string()).default([]),
 });

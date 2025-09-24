@@ -722,7 +722,12 @@ export type Database = {
         | "certification"
         | "technical_attestation"
         | "legal_document"
-      document_status: "valid" | "expiring" | "expired" | "pending"
+      document_status:
+        | "valid"
+        | "expiring"
+        | "expired"
+        | "pending"
+        | "deactivated"
       legal_document_type:
         | "legal_qualification"
         | "fiscal_regularity"
@@ -861,7 +866,13 @@ export const Constants = {
         "technical_attestation",
         "legal_document",
       ],
-      document_status: ["valid", "expiring", "expired", "pending"],
+      document_status: [
+        "valid",
+        "expiring",
+        "expired",
+        "pending",
+        "deactivated",
+      ],
       legal_document_type: [
         "legal_qualification",
         "fiscal_regularity",

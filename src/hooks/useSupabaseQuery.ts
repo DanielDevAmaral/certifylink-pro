@@ -47,12 +47,17 @@ export function useDashboardStats() {
       // Force status update before fetching
       await supabase.rpc('update_document_status');
 
-      // Build queries based on user role
+      // Build queries based on user role - filter deactivated documents for regular users
       let certQuery = supabase.from('certifications').select('status, validity_date');
       let attQuery = supabase.from('technical_attestations').select('status, validity_date');
       let docQuery = supabase.from('legal_documents').select('status, validity_date');
 
-      // All authenticated users can see all data (RLS handles access control)
+      // Filter out deactivated documents for regular users
+      if (userRole !== 'admin' && userRole !== 'leader') {
+        certQuery = certQuery.neq('status', 'deactivated');
+        attQuery = attQuery.neq('status', 'deactivated');
+        docQuery = docQuery.neq('status', 'deactivated');
+      }
 
       // Query paralela para todas as estatísticas
       const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
@@ -65,15 +70,20 @@ export function useDashboardStats() {
       const attestations = attestationsResult.data || [];
       const documents = documentsResult.data || [];
 
-      // Count only 'expiring' items for "vencendo em breve" - exclude already expired items
-      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring').length;
-      const expiringAttestations = attestations.filter(att => att.status === 'expiring').length;
-      const expiringDocuments = documents.filter(doc => doc.status === 'expiring').length;
+      // Filter out deactivated documents from statistics (should already be filtered by query for regular users)
+      const activeCertifications = certifications.filter(cert => cert.status !== 'deactivated');
+      const activeAttestations = attestations.filter(att => att.status !== 'deactivated');
+      const activeDocuments = documents.filter(doc => doc.status !== 'deactivated');
 
-      const totalDocuments = certifications.length + attestations.length + documents.length;
-      const validDocuments = [...certifications, ...attestations, ...documents]
+      // Count only 'expiring' items for "vencendo em breve" - exclude already expired items and deactivated ones
+      const expiringCertifications = activeCertifications.filter(cert => cert.status === 'expiring').length;
+      const expiringAttestations = activeAttestations.filter(att => att.status === 'expiring').length;
+      const expiringDocuments = activeDocuments.filter(doc => doc.status === 'expiring').length;
+
+      const totalDocuments = activeCertifications.length + activeAttestations.length + activeDocuments.length;
+      const validDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments]
         .filter(item => item.status === 'valid').length;
-      const allExpiringDocuments = [...certifications, ...attestations, ...documents]
+      const allExpiringDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments]
         .filter(item => item.status === 'expiring').length;
       
       // Conformidade inclui documentos válidos + vencendo (ainda não vencidos)
@@ -93,11 +103,11 @@ export function useDashboardStats() {
       });
 
       return {
-        total_certifications: certifications.length,
+        total_certifications: activeCertifications.length,
         expiring_certifications: expiringCertifications,
-        total_certificates: attestations.length,
+        total_certificates: activeAttestations.length,
         expiring_certificates: expiringAttestations,
-        total_documents: documents.length,
+        total_documents: activeDocuments.length,
         expiring_documents: expiringDocuments,
         recent_uploads: 0, // Será implementado com auditoria
         completion_percentage: completionPercentage,
@@ -175,7 +185,13 @@ export function useRecentActivity() {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      // All authenticated users can see all data (RLS handles access control)
+      // Filter out deactivated documents for regular users in recent activity
+      if (userRole !== 'admin' && userRole !== 'leader') {
+        certQuery = certQuery.neq('status', 'deactivated');
+        attQuery = attQuery.neq('status', 'deactivated');
+        docQuery = docQuery.neq('status', 'deactivated');
+        badgeQuery = badgeQuery.neq('status', 'deactivated');
+      }
 
       // Buscar atividades recentes de diferentes tabelas
       const [certificationsResult, attestationsResult, documentsResult, badgesResult] = await Promise.all([
@@ -317,9 +333,18 @@ export function useExpiringItems() {
           .order('expiry_date', { ascending: true, nullsFirst: false })
       ]);
 
+      // Filter out deactivated documents from expiring items for regular users
+      const filterResults = (data: any[]) => {
+        if (userRole !== 'admin' && userRole !== 'leader') {
+          return data?.filter(item => item.status !== 'deactivated') || [];
+        }
+        return data || [];
+      };
+
       // Process certifications - only include items that are actually expiring/expired
-      if (certResult.data) {
-        certResult.data.forEach(cert => {
+      const filteredCertifications = filterResults(certResult.data);
+      if (filteredCertifications.length > 0) {
+        filteredCertifications.forEach(cert => {
           if (!cert.validity_date) return; // Skip items without expiry date
           
           const expiryDate = new Date(cert.validity_date + 'T00:00:00');
@@ -340,8 +365,9 @@ export function useExpiringItems() {
       }
 
       // Process technical attestations
-      if (attResult.data) {
-        attResult.data.forEach(att => {
+      const filteredAttestations = filterResults(attResult.data);
+      if (filteredAttestations.length > 0) {
+        filteredAttestations.forEach(att => {
           if (!att.validity_date) return;
           
           const expiryDate = new Date(att.validity_date + 'T00:00:00');
@@ -361,8 +387,9 @@ export function useExpiringItems() {
       }
 
       // Process legal documents
-      if (docResult.data) {
-        docResult.data.forEach(doc => {
+      const filteredDocuments = filterResults(docResult.data);
+      if (filteredDocuments.length > 0) {
+        filteredDocuments.forEach(doc => {
           if (!doc.validity_date) return;
           
           const expiryDate = new Date(doc.validity_date + 'T00:00:00');
@@ -382,8 +409,9 @@ export function useExpiringItems() {
       }
 
       // Process badges
-      if (badgeResult.data) {
-        badgeResult.data.forEach(badge => {
+      const filteredBadges = filterResults(badgeResult.data);
+      if (filteredBadges.length > 0) {
+        filteredBadges.forEach(badge => {
           if (!badge.expiry_date) return;
           
           const expiryDate = new Date(badge.expiry_date + 'T00:00:00');

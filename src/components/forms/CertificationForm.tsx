@@ -22,7 +22,7 @@ const certificationSchema = z.object({
   name: z.string().min(1, 'Nome da certificação é obrigatório'),
   function: z.string().min(1, 'Função é obrigatória'),
   validity_date: z.string().min(1, 'Data de validade é obrigatória'),
-  status: z.enum(['valid', 'expired', 'expiring', 'pending']).default('valid'),
+  status: z.enum(['valid', 'expired', 'expiring', 'pending', 'deactivated']).default('valid'),
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
   public_link: z.string().min(1, 'Link público é obrigatório').url('URL inválida'),

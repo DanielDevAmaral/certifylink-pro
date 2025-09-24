@@ -26,14 +26,14 @@ export interface AnalyticsData {
 }
 
 export function useDashboardAnalytics() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const isPageVisible = usePageVisibility();
 
   const currentDate = useMemo(() => new Date(), []);
   const sixMonthsAgo = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1), [currentDate]);
 
   return useQuery({
-    queryKey: ['dashboard-analytics', user?.id],
+    queryKey: ['dashboard-analytics', user?.id, userRole],
     queryFn: async (): Promise<AnalyticsData> => {
       console.log('[Dashboard Analytics] Fetching data...');
       if (!user) throw new Error('User not authenticated');
@@ -50,7 +50,14 @@ export function useDashboardAnalytics() {
       let docQuery = supabase.from('legal_documents').select('*');
       let badgeQuery = supabase.from('badges').select('*');
 
-      // All authenticated users can see all documents (RLS handles access control)
+      // Filter out deactivated documents for regular users
+      // Leaders and admins can see deactivated documents
+      if (userRole !== 'admin' && userRole !== 'leader') {
+        certQuery = certQuery.neq('status', 'deactivated');
+        attQuery = attQuery.neq('status', 'deactivated');
+        docQuery = docQuery.neq('status', 'deactivated');
+        badgeQuery = badgeQuery.neq('status', 'deactivated');
+      }
 
       const [certResult, attResult, docResult, badgeResult] = await Promise.all([
         certQuery,
@@ -71,12 +78,14 @@ export function useDashboardAnalytics() {
         ...badges.map(b => ({ ...b, category: 'Badges', type: 'badge' }))
       ];
 
-      const totalDocuments = allDocuments.length;
+      // Filter active documents for statistics (exclude deactivated ones)
+      const activeDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
+      const totalDocuments = activeDocuments.length;
       
-      // Use database status field which is now automatically updated
-      const expiredDocuments = allDocuments.filter(doc => doc.status === 'expired').length;
-      const expiringDocuments = allDocuments.filter(doc => doc.status === 'expiring').length;
-      const validDocuments = allDocuments.filter(doc => doc.status === 'valid').length;
+      // Use database status field which is now automatically updated (only count active documents)
+      const expiredDocuments = activeDocuments.filter(doc => doc.status === 'expired').length;
+      const expiringDocuments = activeDocuments.filter(doc => doc.status === 'expiring').length;
+      const validDocuments = activeDocuments.filter(doc => doc.status === 'valid').length;
 
       const compliantDocuments = validDocuments + expiringDocuments; // Conformidade inclui válidos + vencendo
       const complianceRate = totalDocuments > 0 ? 
@@ -89,7 +98,8 @@ export function useDashboardAnalytics() {
         date.setMonth(date.getMonth() - i);
         const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
         
-        const monthDocs = allDocuments.filter(doc => {
+        // Only count active documents in monthly trends
+        const monthDocs = activeDocuments.filter(doc => {
           const docDate = new Date(doc.created_at);
           return docDate.getMonth() === date.getMonth() && 
                  docDate.getFullYear() === date.getFullYear();
@@ -108,35 +118,40 @@ export function useDashboardAnalytics() {
         });
       }
 
-      // Category breakdown - using database status field
+      // Category breakdown - using database status field (exclude deactivated documents from counts)
+      const activeCertifications = certifications.filter(c => c.status !== 'deactivated');
+      const activeAttestations = attestations.filter(a => a.status !== 'deactivated');
+      const activeLegalDocuments = documents.filter(d => d.status !== 'deactivated');
+      const activeBadges = badges.filter(b => b.status !== 'deactivated');
+      
       const categoryBreakdown = [
         {
           category: 'Certificações',
-          count: certifications.length,
-          expired: certifications.filter(c => c.status === 'expired').length,
-          expiring: certifications.filter(c => c.status === 'expiring').length,
-          valid: certifications.filter(c => c.status === 'valid').length
+          count: activeCertifications.length,
+          expired: activeCertifications.filter(c => c.status === 'expired').length,
+          expiring: activeCertifications.filter(c => c.status === 'expiring').length,
+          valid: activeCertifications.filter(c => c.status === 'valid').length
         },
         {
           category: 'Atestados',
-          count: attestations.length,
-          expired: attestations.filter(a => a.status === 'expired').length,
-          expiring: attestations.filter(a => a.status === 'expiring').length,
-          valid: attestations.filter(a => a.status === 'valid').length
+          count: activeAttestations.length,
+          expired: activeAttestations.filter(a => a.status === 'expired').length,
+          expiring: activeAttestations.filter(a => a.status === 'expiring').length,
+          valid: activeAttestations.filter(a => a.status === 'valid').length
         },
         {
           category: 'Documentos',
-          count: documents.length,
-          expired: documents.filter(d => d.status === 'expired').length,
-          expiring: documents.filter(d => d.status === 'expiring').length,
-          valid: documents.filter(d => d.status === 'valid').length
+          count: activeLegalDocuments.length,
+          expired: activeLegalDocuments.filter(d => d.status === 'expired').length,
+          expiring: activeLegalDocuments.filter(d => d.status === 'expiring').length,
+          valid: activeLegalDocuments.filter(d => d.status === 'valid').length
         },
         {
           category: 'Badges',
-          count: badges.length,
-          expired: badges.filter(b => b.status === 'expired').length,
-          expiring: badges.filter(b => b.status === 'expiring').length,
-          valid: badges.filter(b => b.status === 'valid').length
+          count: activeBadges.length,
+          expired: activeBadges.filter(b => b.status === 'expired').length,
+          expiring: activeBadges.filter(b => b.status === 'expiring').length,
+          valid: activeBadges.filter(b => b.status === 'valid').length
         }
       ];
 

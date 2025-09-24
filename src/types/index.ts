@@ -1,7 +1,7 @@
 // Corporate Document Management Platform Types
 
 export type UserRole = 'user' | 'leader' | 'admin';
-export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending';
+export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending' | 'deactivated';
 export type DocumentCategory = 'certification' | 'technical_attestation' | 'legal_document';
 export type LegalDocumentType = 'legal_qualification' | 'fiscal_regularity' | 'economic_financial' | 'common_declarations';
 
@@ -44,7 +44,7 @@ export interface Certification {
   validity_date: string;
   equivalence_services?: string[];
   approved_equivalence: boolean;
-  status: 'valid' | 'expiring' | 'expired';
+  status: DocumentStatus;
   created_at: string;
   updated_at: string;
 }
@@ -63,7 +63,7 @@ export interface TechnicalCertificate {
   document_url?: string;
   related_certifications?: string[];
   validity_date?: string;
-  status: 'valid' | 'expiring' | 'expired' | 'pending';
+  status: DocumentStatus;
   created_at: string;
   updated_at: string;
 }

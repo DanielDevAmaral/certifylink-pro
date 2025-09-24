@@ -18,7 +18,7 @@ const legalDocumentSchema = z.object({
   document_type: z.enum(['legal_qualification', 'fiscal_regularity', 'economic_financial', 'common_declarations']),
   document_subtype: z.string().optional(),
   validity_date: z.string().optional(),
-  status: z.enum(['valid', 'expiring', 'expired', 'pending']),
+  status: z.enum(['valid', 'expiring', 'expired', 'pending', 'deactivated']),
   document_url: z.string().optional(),
   is_sensitive: z.boolean().default(false),
 }).refine((data) => {

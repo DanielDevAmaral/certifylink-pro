@@ -26,7 +26,7 @@ interface UserDocument {
   id: string;
   name: string;
   type: 'certification' | 'technical_attestation' | 'legal_document';
-  status: 'valid' | 'expired' | 'expiring' | 'pending';
+  status: 'valid' | 'expired' | 'expiring' | 'pending' | 'deactivated';
   validity_date: string | null;
   created_at: string;
   updated_at: string;

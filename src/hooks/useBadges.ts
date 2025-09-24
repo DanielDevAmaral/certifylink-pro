@@ -14,7 +14,7 @@ export interface Badge {
   image_url?: string;
   issued_date: string;
   expiry_date?: string;
-  status: 'valid' | 'expiring' | 'expired' | 'pending';
+  status: 'valid' | 'expiring' | 'expired' | 'pending' | 'deactivated';
   public_link?: string;
   verification_code?: string;
   issuer_name?: string;

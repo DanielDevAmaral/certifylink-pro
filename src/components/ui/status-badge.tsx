@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: 'valid' | 'expiring' | 'expired' | 'pending' | 'not_applicable';
+  status: 'valid' | 'expiring' | 'expired' | 'pending' | 'not_applicable' | 'deactivated';
   className?: string;
 }
 
@@ -11,7 +11,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     expiring: "badge-warning", 
     expired: "badge-danger",
     pending: "badge-warning",
-    not_applicable: "bg-muted text-muted-foreground"
+    not_applicable: "bg-muted text-muted-foreground",
+    deactivated: "bg-gray-500 text-gray-100"
   };
 
   const labels = {
@@ -19,7 +20,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     expiring: "Vencendo",
     expired: "Vencido",
     pending: "Pendente", 
-    not_applicable: "N/A"
+    not_applicable: "N/A",
+    deactivated: "Desativado"
   };
 
   return (

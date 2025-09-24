@@ -60,6 +60,8 @@ export function TerminationDialog({ user, open, onOpenChange }: TerminationDialo
 
   const onSubmit = async (data: TerminationFormData) => {
     try {
+      console.log('Submitting termination:', data);
+      
       const fullReason = `Tipo: ${data.terminationType === 'voluntary' ? 'Voluntário' : 
         data.terminationType === 'involuntary' ? 'Involuntário' : 'Acordo Mútuo'}. Motivo: ${data.reason}`;
       
@@ -80,8 +82,20 @@ export function TerminationDialog({ user, open, onOpenChange }: TerminationDialo
 
   const canConfirm = confirmationText.toLowerCase() === "desligar profissional";
 
+  // Reset form when dialog opens
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      form.reset({
+        reason: "",
+        terminationType: undefined,
+      });
+      setConfirmationText("");
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
@@ -156,10 +170,10 @@ export function TerminationDialog({ user, open, onOpenChange }: TerminationDialo
             </div>
 
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => handleOpenChange(false)}>Cancelar</AlertDialogCancel>
               <AlertDialogAction
                 type="submit"
-                disabled={isLoading || !canConfirm}
+                disabled={isLoading || !canConfirm || !form.formState.isValid}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {isLoading ? "Desligando..." : "Confirmar Desligamento"}

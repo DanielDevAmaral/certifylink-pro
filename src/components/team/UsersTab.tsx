@@ -100,7 +100,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
       team_name: team.name,
       team_leader: team.leader_profile.full_name,
       user_role: getPrincipalRole(member.user_roles),
-      status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended',
+      status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended' | 'terminated',
       has_team: true,
     }))
   );
@@ -150,6 +150,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   const activeUsers = allMembers.filter(m => m.status === 'active').length;
   const inactiveUsers = allMembers.filter(m => m.status === 'inactive').length;
   const suspendedUsers = allMembers.filter(m => m.status === 'suspended').length;
+  const terminatedUsers = allMembers.filter(m => m.status === 'terminated').length;
   const usersWithoutTeamsCount = usersWithoutTeams.length;
 
   return (
@@ -218,12 +219,12 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
 
         <Card className="card-corporate">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
-              <Shield className="h-6 w-6 text-accent" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
+              <UserX className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats?.totalAdmins || 0}</p>
-              <p className="text-sm text-muted-foreground">Administradores</p>
+              <p className="text-2xl font-bold text-foreground">{terminatedUsers}</p>
+              <p className="text-sm text-muted-foreground">Usuários Desligados</p>
             </div>
           </div>
         </Card>
@@ -321,7 +322,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-foreground">{member.profiles.full_name}</h3>
-                        <UserStatusBadge status={member.status as 'active' | 'inactive' | 'suspended'} />
+                        <UserStatusBadge status={member.status as 'active' | 'inactive' | 'suspended' | 'terminated'} />
                         <Badge className={roleInfo.color}>
                           <RoleIcon className="h-3 w-3 mr-1" />
                           {roleInfo.label}

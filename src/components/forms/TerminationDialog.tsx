@@ -59,18 +59,23 @@ export function TerminationDialog({ user, open, onOpenChange }: TerminationDialo
   });
 
   const onSubmit = async (data: TerminationFormData) => {
-    const fullReason = `Tipo: ${data.terminationType === 'voluntary' ? 'Voluntário' : 
-      data.terminationType === 'involuntary' ? 'Involuntário' : 'Acordo Mútuo'}. Motivo: ${data.reason}`;
-    
-    await updateUserStatus({
-      userId: user.user_id,
-      status: 'terminated',
-      reason: fullReason,
-    });
-    
-    form.reset();
-    setConfirmationText("");
-    onOpenChange(false);
+    try {
+      const fullReason = `Tipo: ${data.terminationType === 'voluntary' ? 'Voluntário' : 
+        data.terminationType === 'involuntary' ? 'Involuntário' : 'Acordo Mútuo'}. Motivo: ${data.reason}`;
+      
+      await updateUserStatus({
+        userId: user.user_id,
+        status: 'terminated',
+        reason: fullReason,
+      });
+      
+      form.reset();
+      setConfirmationText("");
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error terminating user:', error);
+      // Error is already handled by the toast in useUserManagement
+    }
   };
 
   const canConfirm = confirmationText.toLowerCase() === "desligar profissional";

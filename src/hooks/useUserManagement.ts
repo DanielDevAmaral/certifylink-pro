@@ -38,6 +38,7 @@ export function useUserManagement() {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['team-stats'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
       
       const statusLabels = {
         active: 'ativado',

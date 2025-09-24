@@ -57,6 +57,7 @@ export function DeactivationDialog({ user, open, onOpenChange }: DeactivationDia
       onOpenChange(false);
     } catch (error) {
       console.error('Error deactivating user:', error);
+      // Error is already handled by the toast in useUserManagement
     }
   };
 

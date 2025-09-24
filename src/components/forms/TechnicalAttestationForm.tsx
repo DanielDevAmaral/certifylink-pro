@@ -10,11 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CertificationSelectorCombobox } from '@/components/ui/certification-selector-combobox';
+import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
 import { useCertifications } from '@/hooks/useCertifications';
+import { downloadDocument, formatDocumentName, isValidDocumentUrl } from '@/lib/utils/documentUtils';
 import type { TechnicalCertificate } from '@/types';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, FileText, Download, Eye, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const attestationSchema = z.object({
@@ -43,6 +45,8 @@ interface TechnicalAttestationFormProps {
 export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: TechnicalAttestationFormProps) {
   const [selectedCertificationId, setSelectedCertificationId] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
+  const [removeCurrentDocument, setRemoveCurrentDocument] = useState(false);
 
   const createMutation = useCreateTechnicalAttestation();
   const updateMutation = useUpdateTechnicalAttestation();
@@ -72,8 +76,11 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
     try {
       let documentUrl = data.document_url;
 
-      // Upload file if selected
-      if (uploadedFile) {
+      // Handle document logic
+      if (removeCurrentDocument) {
+        documentUrl = null;
+      } else if (uploadedFile) {
+        // Upload new file (replaces existing if any)
         const uploadResult = await uploadMutation.mutateAsync({
           file: uploadedFile,
           bucket: 'documents',
@@ -81,6 +88,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         });
         documentUrl = uploadResult.url;
       }
+      // If no changes to document, keep existing documentUrl
 
       const submitData = {
         client_name: data.client_name,
@@ -156,8 +164,26 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
     const file = event.target.files?.[0];
     if (file) {
       setUploadedFile(file);
+      setRemoveCurrentDocument(false); // Reset remove flag if new file is selected
     }
   };
+
+  const handleDownloadDocument = async () => {
+    if (attestation?.document_url) {
+      await downloadDocument(attestation.document_url, `atestado-${attestation.client_name}.pdf`);
+    }
+  };
+
+  const handleRemoveCurrentDocument = () => {
+    setRemoveCurrentDocument(true);
+    setUploadedFile(null); // Clear any new file selection
+    toast({
+      title: 'Documento marcado para remoção',
+      description: 'O documento atual será removido ao salvar o formulário.'
+    });
+  };
+
+  const hasCurrentDocument = attestation?.document_url && isValidDocumentUrl(attestation.document_url) && !removeCurrentDocument;
 
   const isLoading = createMutation.isPending || updateMutation.isPending || uploadMutation.isPending;
 
@@ -355,14 +381,71 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
             </div>
 
             <div className="space-y-4">
-              <FormLabel>Documento PDF</FormLabel>
+              <FormLabel>Gerenciar Documento</FormLabel>
+              
+              {/* Current Document Section */}
+              {hasCurrentDocument && (
+                <div className="border border-muted rounded-lg p-4 bg-muted/25">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {formatDocumentName(attestation?.document_url)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Documento atual</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDocumentViewerOpen(true)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Visualizar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadDocument}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Baixar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveCurrentDocument}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Document was marked for removal */}
+              {removeCurrentDocument && attestation?.document_url && (
+                <div className="border border-destructive/50 rounded-lg p-3 bg-destructive/5">
+                  <p className="text-sm text-destructive">
+                    ⚠️ Documento atual será removido ao salvar
+                  </p>
+                </div>
+              )}
+
+              {/* New Document Upload Section */}
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-8 w-8 text-muted-foreground" />
                   <div className="text-center">
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <span className="text-sm font-medium text-primary hover:text-primary/80">
-                        Clique para fazer upload
+                        {hasCurrentDocument ? 'Substituir documento atual' : 'Clique para fazer upload'}
                       </span>
                       <input
                         id="file-upload"
@@ -375,11 +458,24 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                     <p className="text-xs text-muted-foreground">PDF, DOC ou DOCX até 10MB</p>
                   </div>
                   {uploadedFile && (
-                    <p className="text-sm font-medium">{uploadedFile.name}</p>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-green-600">{uploadedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">Novo arquivo selecionado</p>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Document Viewer Modal */}
+            {hasCurrentDocument && (
+              <DocumentViewer
+                open={documentViewerOpen}
+                onOpenChange={setDocumentViewerOpen}
+                documentUrl={attestation?.document_url || ''}
+                documentName={formatDocumentName(attestation?.document_url)}
+              />
+            )}
 
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={onCancel}>

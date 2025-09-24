@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Eye, Edit, Trash2, ExternalLink } from "lucide-react";
+import { Eye, Edit, Trash2, ExternalLink, Download } from "lucide-react";
 import { useCanEditDocument } from "@/hooks/useTeamRelations";
+import { downloadDocument, openDocumentInNewTab, isValidDocumentUrl } from "@/lib/utils/documentUtils";
 
 interface DocumentActionButtonsProps {
   documentUserId: string;
@@ -8,6 +9,9 @@ interface DocumentActionButtonsProps {
   onDelete?: () => void;
   onView?: () => void;
   externalLink?: string;
+  documentUrl?: string;
+  documentName?: string;
+  showDownload?: boolean;
   className?: string;
 }
 
@@ -17,6 +21,9 @@ export function DocumentActionButtons({
   onDelete,
   onView,
   externalLink,
+  documentUrl,
+  documentName,
+  showDownload = true,
   className = ""
 }: DocumentActionButtonsProps) {
   const canEdit = useCanEditDocument(documentUserId);
@@ -62,12 +69,25 @@ export function DocumentActionButtons({
         )
       )}
       
+      {/* Download button - always show if document URL is available */}
+      {showDownload && isValidDocumentUrl(documentUrl) && (
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="gap-2 w-full"
+          onClick={() => downloadDocument(documentUrl!, documentName)}
+        >
+          <Download className="h-3 w-3" />
+          Download
+        </Button>
+      )}
+      
       {externalLink && (
         <Button 
           size="sm" 
           variant="outline" 
           className="gap-2 w-full"
-          onClick={() => window.open(externalLink, '_blank')}
+          onClick={() => openDocumentInNewTab(externalLink)}
         >
           <ExternalLink className="h-3 w-3" />
           Ver Certificação

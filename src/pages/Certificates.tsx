@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown } from 'lucide-react';
+import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,8 @@ export default function Certificates() {
   const [showForm, setShowForm] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [viewerAttestation, setViewerAttestation] = useState<TechnicalCertificate | null>(null);
+  const [showViewer, setShowViewer] = useState(false);
 
   const {
     searchTerm,
@@ -152,6 +155,11 @@ export default function Certificates() {
   const handleFormSuccess = () => {
     setShowForm(false);
     setSelectedAttestation(null);
+  };
+
+  const handleView = (attestation: TechnicalCertificate) => {
+    setViewerAttestation(attestation);
+    setShowViewer(true);
   };
 
   const formatCurrency = (value?: number) => {
@@ -332,15 +340,11 @@ export default function Certificates() {
                   documentUserId={certificate.user_id}
                   onEdit={() => handleEdit(certificate)}
                   onDelete={() => handleDelete(certificate.id)}
-                  onView={() => console.log('View certificate:', certificate.id)}
+                  onView={() => handleView(certificate)}
+                  documentUrl={certificate.document_url}
+                  documentName={`${certificate.client_name} - ${certificate.project_object}`}
+                  showDownload={true}
                 />
-                
-                <div className="flex flex-col gap-2 mt-2">
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Download className="h-3 w-3" />
-                    Download PDF
-                  </Button>
-                </div>
               </div>
             </div>
           </Card>
@@ -381,6 +385,16 @@ export default function Certificates() {
           />
         </div>
       )}
+
+      {/* Document Viewer */}
+      <DocumentViewer
+        open={showViewer}
+        onOpenChange={setShowViewer}
+        documentUrl={viewerAttestation?.document_url}
+        documentName={viewerAttestation ? `${viewerAttestation.client_name} - ${viewerAttestation.project_object}` : undefined}
+        documentId={viewerAttestation?.id}
+      />
+      
       </Layout>
     </ErrorBoundary>
   );

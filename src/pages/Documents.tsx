@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, FileText, Calendar, Shield, Edit, Trash2, Scale, Building, Receipt, UserCheck, TrendingUp, Briefcase, AlertTriangle } from 'lucide-react';
+import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,8 @@ export default function Documents() {
   const [showForm, setShowForm] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [viewerDocument, setViewerDocument] = useState<LegalDocument | null>(null);
+  const [showViewer, setShowViewer] = useState(false);
 
   const {
     searchTerm,
@@ -174,6 +177,11 @@ export default function Documents() {
   const handleFormSuccess = () => {
     setShowForm(false);
     setSelectedDocument(null);
+  };
+
+  const handleView = (document: LegalDocument) => {
+    setViewerDocument(document);
+    setShowViewer(true);
   };
 
   if (isLoading) {
@@ -324,7 +332,9 @@ export default function Documents() {
                         documentUserId={document.user_id}
                         onEdit={() => handleEdit(document)}
                         onDelete={() => handleDelete(document.id)}
-                        onView={() => console.log('View document:', document.id)}
+                        onView={() => handleView(document)}
+                        documentUrl={document.document_url}
+                        documentName={document.document_name}
                       />
                     </div>
                   </div>
@@ -362,6 +372,16 @@ export default function Documents() {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Document Viewer */}
+      <DocumentViewer
+        open={showViewer}
+        onOpenChange={setShowViewer}
+        documentUrl={viewerDocument?.document_url}
+        documentName={viewerDocument?.document_name}
+        documentId={viewerDocument?.id}
+      />
+      
       </Layout>
     </ErrorBoundary>
   );

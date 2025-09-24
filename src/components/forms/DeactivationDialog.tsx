@@ -47,6 +47,8 @@ export function DeactivationDialog({ user, open, onOpenChange }: DeactivationDia
 
   const onSubmit = async (data: DeactivationFormData) => {
     try {
+      console.log('Submitting deactivation:', data);
+      
       await updateUserStatus({
         userId: user.user_id,
         status: data.status,
@@ -61,8 +63,19 @@ export function DeactivationDialog({ user, open, onOpenChange }: DeactivationDia
     }
   };
 
+  // Reset form when dialog opens
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      form.reset({
+        status: 'inactive',
+        reason: '',
+      });
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
@@ -135,7 +148,7 @@ export function DeactivationDialog({ user, open, onOpenChange }: DeactivationDia
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 className="flex-1"
               >
                 Cancelar

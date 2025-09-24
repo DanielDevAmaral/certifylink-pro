@@ -73,19 +73,6 @@ export default function Badges() {
     userRole
   } = useAuth();
 
-  // Handle highlighting from URL
-  useEffect(() => {
-    const highlightId = getHighlightedDocumentId();
-    if (highlightId) {
-      setHighlightedId(highlightId);
-      // Clear highlight after 3 seconds
-      setTimeout(() => {
-        setHighlightedId(null);
-        clearHighlight();
-      }, 3000);
-    }
-  }, []);
-
   // Use the badge search engine with pagination
   const {
     data: searchResults,
@@ -113,6 +100,35 @@ export default function Badges() {
     pending: 0
   };
   const availableCategories = searchResults?.categories || [];
+
+  // Handle highlighting from URL - moved here after badges is declared
+  useEffect(() => {
+    const highlightId = getHighlightedDocumentId();
+    if (highlightId) {
+      setHighlightedId(highlightId);
+      
+      // Find the highlighted badge and navigate to correct page
+      const highlightedBadge = badges.find(badge => badge.id === highlightId);
+      if (highlightedBadge) {
+        // Clear any filters that might hide the badge
+        setFilters({});
+        setSearchTerm('');
+        
+        // Since badges use server-side pagination, we need to calculate the page differently
+        // For now, we'll just clear filters and let the user see the badge
+        toast({
+          title: "Badge localizado",
+          description: `Navegando para: ${highlightedBadge.name}`,
+        });
+      }
+      
+      // Clear highlight after 5 seconds (increased time)
+      setTimeout(() => {
+        setHighlightedId(null);
+        clearHighlight();
+      }, 5000);
+    }
+  }, [badges]);
 
   // Get unique user IDs from badges for name lookup
   const userIds = useMemo(() => {

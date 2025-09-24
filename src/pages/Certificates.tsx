@@ -94,13 +94,34 @@ export default function Certificates() {
     const highlighted = getHighlightedDocumentId();
     if (highlighted) {
       setHighlightedId(highlighted);
-      // Clear highlight after 3 seconds
+      
+      // Find the highlighted document and navigate to correct page
+      const highlightedAttestation = attestations.find(att => att.id === highlighted);
+      if (highlightedAttestation) {
+        // Clear any filters that might hide the document
+        setFilters({});
+        setSearchTerm('');
+        
+        // Find which page the document is on and navigate there
+        const documentIndex = attestations.findIndex(att => att.id === highlighted);
+        if (documentIndex !== -1) {
+          const targetPage = Math.ceil((documentIndex + 1) / itemsPerPage);
+          setCurrentPage(targetPage);
+        }
+        
+        toast({
+          title: "Atestado localizado",
+          description: `Navegando para: ${highlightedAttestation.project_object}`,
+        });
+      }
+      
+      // Clear highlight after 5 seconds (increased time)
       setTimeout(() => {
         setHighlightedId(null);
         clearHighlight();
-      }, 3000);
+      }, 5000);
     }
-  }, []);
+  }, [attestations, itemsPerPage, setFilters, setSearchTerm]);
 
   // Apply search and filters
   let filteredCertificates = attestations.filter(cert => {

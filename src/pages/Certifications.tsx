@@ -117,13 +117,34 @@ export default function Certifications() {
     const highlighted = getHighlightedDocumentId();
     if (highlighted) {
       setHighlightedId(highlighted);
-      // Clear highlight after 3 seconds
+      
+      // Find the highlighted document and navigate to correct page
+      const highlightedCertification = certifications.find(cert => cert.id === highlighted);
+      if (highlightedCertification) {
+        // Clear any filters that might hide the document
+        setFilters({});
+        setSearchTerm('');
+        
+        // Find which page the document is on and navigate there
+        const documentIndex = certifications.findIndex(cert => cert.id === highlighted);
+        if (documentIndex !== -1) {
+          const targetPage = Math.ceil((documentIndex + 1) / itemsPerPage);
+          setCurrentPage(targetPage);
+        }
+        
+        toast({
+          title: "Certificação localizada",
+          description: `Navegando para: ${highlightedCertification.name}`,
+        });
+      }
+      
+      // Clear highlight after 5 seconds (increased time)
       setTimeout(() => {
         setHighlightedId(null);
         clearHighlight();
-      }, 3000);
+      }, 5000);
     }
-  }, []);
+  }, [certifications, itemsPerPage, setFilters, setSearchTerm]);
 
   // Apply pagination to search results
   const totalPages = Math.ceil(totalItems / itemsPerPage);

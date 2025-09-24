@@ -123,13 +123,38 @@ export default function Documents() {
     const highlighted = getHighlightedDocumentId();
     if (highlighted) {
       setHighlightedId(highlighted);
-      // Clear highlight after 3 seconds
+      
+      // Find which tab/category the highlighted document belongs to
+      const highlightedDocument = documents.find(doc => doc.id === highlighted);
+      if (highlightedDocument) {
+        // Switch to the correct tab automatically
+        setActiveTab(highlightedDocument.document_type);
+        
+        // Clear any filters that might hide the document
+        setFilters({});
+        setSearchTerm('');
+        
+        // Find which page the document is on and navigate there
+        const categoryDocuments = documents.filter(doc => doc.document_type === highlightedDocument.document_type);
+        const documentIndex = categoryDocuments.findIndex(doc => doc.id === highlighted);
+        if (documentIndex !== -1) {
+          const targetPage = Math.ceil((documentIndex + 1) / itemsPerPage);
+          setCurrentPage(targetPage);
+        }
+        
+        toast({
+          title: "Documento localizado",
+          description: `Navegando para: ${highlightedDocument.document_name}`,
+        });
+      }
+      
+      // Clear highlight after 5 seconds (increased time)
       setTimeout(() => {
         setHighlightedId(null);
         clearHighlight();
-      }, 3000);
+      }, 5000);
     }
-  }, []);
+  }, [documents, itemsPerPage, setFilters, setSearchTerm]);
 
   const currentDocuments = documents.filter(doc => doc.document_type === activeTab);
 

@@ -7,6 +7,7 @@ import { UserStatusBadge } from "@/components/ui/user-status-badge";
 import { UserActionsDropdown } from "@/components/ui/user-actions-dropdown";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import { useUsers } from '@/hooks/useUserSearch';
 import { formatDistanceToNow } from "date-fns";
@@ -57,9 +58,9 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   const { user: currentUser, userRole } = useAuth();
   const { data: allUsers = [], isLoading } = useUsers();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [activeStatusTab, setActiveStatusTab] = useState("active");
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -130,21 +131,29 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   // Combine all users
   const allMembers = [...teamMembers, ...usersWithoutTeams];
 
-  // Apply filters
-  const filteredMembers = allMembers.filter(member => {
-    const matchesSearch = searchQuery === "" || 
-      member.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.profiles.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.team_name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter;
-    const matchesRole = roleFilter === "all" || member.user_role === roleFilter;
-    const matchesTeam = teamFilter === "all" || 
-      (teamFilter === "no-team" && !member.has_team) ||
-      (teamFilter === "with-team" && member.has_team);
-    
-    return matchesSearch && matchesStatus && matchesRole && matchesTeam;
-  });
+  // Apply filters based on current status tab
+  const getFilteredMembers = (statusFilter: string) => {
+    return allMembers.filter(member => {
+      const matchesSearch = searchQuery === "" || 
+        member.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.profiles.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.team_name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" || member.status === statusFilter;
+      const matchesRole = roleFilter === "all" || member.user_role === roleFilter;
+      const matchesTeam = teamFilter === "all" || 
+        (teamFilter === "no-team" && !member.has_team) ||
+        (teamFilter === "with-team" && member.has_team);
+      
+      return matchesSearch && matchesStatus && matchesRole && matchesTeam;
+    });
+  };
+
+  // Get filtered members for each tab
+  const activeMembers = getFilteredMembers("active");
+  const inactiveMembers = getFilteredMembers("inactive");
+  const suspendedMembers = getFilteredMembers("suspended");  
+  const terminatedMembers = getFilteredMembers("terminated");
 
   // Calculate stats for different statuses
   const activeUsers = allMembers.filter(m => m.status === 'active').length;
@@ -244,19 +253,6 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
           </div>
           
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Status</SelectItem>
-                <SelectItem value="active">Ativos</SelectItem>
-                <SelectItem value="inactive">Inativos</SelectItem>
-                <SelectItem value="suspended">Suspensos</SelectItem>
-                <SelectItem value="terminated">Desligados</SelectItem>
-              </SelectContent>
-            </Select>
-
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Papel" />
@@ -283,117 +279,201 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
         </div>
       </Card>
 
-      {/* Users List */}
-      <div className="space-y-4">
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : filteredMembers.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title={searchQuery || statusFilter !== "all" || roleFilter !== "all" || teamFilter !== "all"
-              ? "Nenhum usuário encontrado" 
-              : "Nenhum membro encontrado"
-            }
-            description={searchQuery || statusFilter !== "all" || roleFilter !== "all" || teamFilter !== "all"
-              ? "Tente ajustar os filtros de busca."
-              : "Comece criando uma equipe e adicionando membros."
-            }
-            actionLabel="Adicionar Membro"
-            onAction={() => {/* Handle add member */}}
-          />
-        ) : (
-          filteredMembers.map((member) => {
-            const roleInfo = roleConfig[member.user_role];
-            const RoleIcon = roleInfo.icon;
-            const documentCount = stats?.documentCounts[member.user_id] || 0;
+      {/* Status Tabs */}
+      <Tabs value={activeStatusTab} onValueChange={setActiveStatusTab} className="space-y-6">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsTrigger value="active" className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            Ativos ({activeUsers})
+          </TabsTrigger>
+          <TabsTrigger value="inactive" className="flex items-center gap-2">
+            <UserX className="h-4 w-4" />
+            Inativos ({inactiveUsers})
+          </TabsTrigger>
+          <TabsTrigger value="suspended" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Suspensos ({suspendedUsers})
+          </TabsTrigger>
+          <TabsTrigger value="terminated" className="flex items-center gap-2">
+            <UserX className="h-4 w-4" />
+            Desligados ({terminatedUsers})
+          </TabsTrigger>
+        </TabsList>
 
-            return (
-              <Card key={member.id} className="card-corporate">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {getInitials(member.profiles.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
+        <TabsContent value="active">
+          <UsersList members={activeMembers} isLoading={isLoading} searchQuery={searchQuery} roleFilter={roleFilter} teamFilter={teamFilter} stats={stats} />
+        </TabsContent>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-foreground">{member.profiles.full_name}</h3>
-                        <UserStatusBadge status={member.status as 'active' | 'inactive' | 'suspended' | 'terminated'} />
-                        <Badge className={roleInfo.color}>
-                          <RoleIcon className="h-3 w-3 mr-1" />
-                          {roleInfo.label}
-                        </Badge>
+        <TabsContent value="inactive">
+          <UsersList members={inactiveMembers} isLoading={isLoading} searchQuery={searchQuery} roleFilter={roleFilter} teamFilter={teamFilter} stats={stats} />
+        </TabsContent>
+
+        <TabsContent value="suspended">
+          <UsersList members={suspendedMembers} isLoading={isLoading} searchQuery={searchQuery} roleFilter={roleFilter} teamFilter={teamFilter} stats={stats} />
+        </TabsContent>
+
+        <TabsContent value="terminated">
+          <UsersList members={terminatedMembers} isLoading={isLoading} searchQuery={searchQuery} roleFilter={roleFilter} teamFilter={teamFilter} stats={stats} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// Componente separado para a lista de usuários
+interface UsersListProps {
+  members: any[];
+  isLoading: boolean;
+  searchQuery: string;
+  roleFilter: string;
+  teamFilter: string;
+  stats: any;
+}
+
+function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, stats }: UsersListProps) {
+  const { user: currentUser, userRole } = useAuth();
+  
+  const roleConfig = {
+    admin: {
+      label: "Administrador",
+      icon: Shield,
+      color: "bg-gradient-primary text-primary-foreground",
+      description: "Acesso total ao sistema"
+    },
+    leader: {
+      label: "Líder",
+      icon: Crown,
+      color: "bg-gradient-success text-success-foreground",
+      description: "Gerencia equipe"
+    },
+    user: {
+      label: "Usuário",
+      icon: User,
+      color: "bg-secondary text-secondary-foreground",
+      description: "Acesso aos próprios documentos"
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  // Check if current user is leader of the member's team
+  const isCurrentUserLeaderOf = (member: any) => {
+    if (userRole === 'admin') return true;
+    return userRole === 'leader';
+  };
+
+  return (
+    <div className="space-y-4">
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : members.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title={searchQuery || roleFilter !== "all" || teamFilter !== "all"
+            ? "Nenhum usuário encontrado" 
+            : "Nenhum membro encontrado"
+          }
+          description={searchQuery || roleFilter !== "all" || teamFilter !== "all"
+            ? "Tente ajustar os filtros de busca."
+            : "Nenhum usuário com este status foi encontrado."
+          }
+          actionLabel="Adicionar Membro"
+          onAction={() => {/* Handle add member */}}
+        />
+      ) : (
+        members.map((member) => {
+          const roleInfo = roleConfig[member.user_role];
+          const RoleIcon = roleInfo.icon;
+          const documentCount = stats?.documentCounts[member.user_id] || 0;
+
+          return (
+            <Card key={member.id} className="card-corporate">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      {getInitials(member.profiles.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-foreground">{member.profiles.full_name}</h3>
+                      <UserStatusBadge status={member.status as 'active' | 'inactive' | 'suspended' | 'terminated'} />
+                      <Badge className={roleInfo.color}>
+                        <RoleIcon className="h-3 w-3 mr-1" />
+                        {roleInfo.label}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        <span>{member.profiles.email}</span>
                       </div>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        {!member.has_team && <AlertTriangle className="h-3 w-3 text-warning" />}
+                        <Users className="h-3 w-3" />
+                        <span className={!member.has_team ? "text-warning font-medium" : ""}>{member.team_name}</span>
+                      </div>
+                      {member.profiles.position && (
                         <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          <span>{member.profiles.email}</span>
+                          <User className="h-3 w-3" />
+                          <span>{member.profiles.position}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          {!member.has_team && <AlertTriangle className="h-3 w-3 text-warning" />}
-                          <Users className="h-3 w-3" />
-                          <span className={!member.has_team ? "text-warning font-medium" : ""}>{member.team_name}</span>
-                        </div>
-                        {member.profiles.position && (
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            <span>{member.profiles.position}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground">{documentCount}</p>
-                      <p className="text-xs text-muted-foreground">Documentos</p>
-                    </div>
-
-                    <div className="text-center">
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>
-                          {formatDistanceToNow(new Date(member.joined_at), {
-                            addSuffix: true,
-                            locale: ptBR
-                          })}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{member.has_team ? "Na equipe há" : "Criado há"}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline">
-                        <FileText className="h-3 w-3 mr-1" />
-                        Documentos
-                      </Button>
-
-                      <UserActionsDropdown 
-                        user={{
-                          user_id: member.user_id,
-                          full_name: member.profiles.full_name,
-                          email: member.profiles.email,
-                          status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
-                          role: member.user_role,
-                          position: member.profiles.position,
-                          department: member.profiles.department,
-                        }}
-                        isTeamMember={isCurrentUserLeaderOf(member)}
-                      />
+                      )}
                     </div>
                   </div>
                 </div>
-              </Card>
-            );
-          })
-        )}
-      </div>
+
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-foreground">{documentCount}</p>
+                    <p className="text-xs text-muted-foreground">Documentos</p>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>
+                        {formatDistanceToNow(new Date(member.joined_at), {
+                          addSuffix: true,
+                          locale: ptBR
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{member.has_team ? "Na equipe há" : "Criado há"}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Documentos
+                    </Button>
+
+                    <UserActionsDropdown 
+                      user={{
+                        user_id: member.user_id,
+                        full_name: member.profiles.full_name,
+                        email: member.profiles.email,
+                        status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
+                        role: member.user_role,
+                        position: member.profiles.position,
+                        department: member.profiles.department,
+                      }}
+                      isTeamMember={isCurrentUserLeaderOf(member)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }

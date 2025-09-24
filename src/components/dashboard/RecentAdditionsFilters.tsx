@@ -9,7 +9,7 @@ interface RecentAdditionsFiltersProps {
 }
 
 export function RecentAdditionsFilters({ filters, onFiltersChange }: RecentAdditionsFiltersProps) {
-  const hasActiveFilters = filters.type || filters.days !== 30;
+  const hasActiveFilters = filters.type !== 'certification' || filters.days !== 30;
 
   const typeOptions = [
     { value: 'certification', label: 'Certificações', icon: Award },
@@ -27,23 +27,18 @@ export function RecentAdditionsFilters({ filters, onFiltersChange }: RecentAddit
   return (
     <div className="flex items-center gap-3 mb-4">
       <Select
-        value={filters.type || "all"}
+        value={filters.type || "certification"}
         onValueChange={(value) => 
           onFiltersChange({ 
             ...filters, 
-            type: value === "all" ? undefined : value as any 
+            type: value as any 
           })
         }
       >
         <SelectTrigger className="w-48">
-          <SelectValue placeholder="Todos os tipos" />
+          <SelectValue placeholder="Selecionar tipo" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
-            <span className="flex items-center gap-2">
-              Todos os tipos
-            </span>
-          </SelectItem>
           {typeOptions.map((option) => {
             const Icon = option.icon;
             return (
@@ -83,7 +78,7 @@ export function RecentAdditionsFilters({ filters, onFiltersChange }: RecentAddit
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onFiltersChange({ days: 30 })}
+          onClick={() => onFiltersChange({ type: 'certification', days: 30 })}
           className="gap-2"
         >
           <X className="h-4 w-4" />

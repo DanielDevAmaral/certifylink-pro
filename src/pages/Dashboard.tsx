@@ -47,7 +47,7 @@ export default function Dashboard() {
   
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [showReports, setShowReports] = useState(false);
-  const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({ days: 30 });
+  const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({ type: 'certification', days: 30 });
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { data: recentAdditions, isLoading: additionsLoading } = useRecentAdditions(recentAdditionsFilters);

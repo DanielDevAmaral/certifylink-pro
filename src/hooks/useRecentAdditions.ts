@@ -14,13 +14,13 @@ export interface RecentAddition {
 }
 
 export interface RecentAdditionsFilters {
-  type?: 'certification' | 'technical_attestation' | 'legal_document' | 'badge';
+  type: 'certification' | 'technical_attestation' | 'legal_document' | 'badge';
   days?: 7 | 15 | 30;
 }
 
-export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
+export function useRecentAdditions(filters: RecentAdditionsFilters = { type: 'certification' }) {
   const { user } = useAuth();
-  const { type, days = 30 } = filters;
+  const { type = 'certification', days = 30 } = filters;
   
   return useQuery({
     queryKey: ['recent-additions', user?.id, type, days],
@@ -34,26 +34,16 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
 
       const additions: RecentAddition[] = [];
 
-      // Build queries based on filter type
-      const shouldFetchCertifications = !type || type === 'certification';
-      const shouldFetchAttestations = !type || type === 'technical_attestation';
-      const shouldFetchDocuments = !type || type === 'legal_document';
-      const shouldFetchBadges = !type || type === 'badge';
+      // Build query based on specific filter type
+      console.log(`[Recent Additions] Fetching ${type} for last ${days} days`);
 
-      console.log('[Recent Additions] Will fetch:', {
-        certifications: shouldFetchCertifications,
-        attestations: shouldFetchAttestations,
-        documents: shouldFetchDocuments,
-        badges: shouldFetchBadges
-      });
+      let query;
+      let resultType;
 
-      // Execute queries individually to avoid index confusion
-      const promises = [];
-
-      // Certifications
-      if (shouldFetchCertifications) {
-        promises.push(
-          supabase
+      // Execute single query based on filter type
+      switch (type) {
+        case 'certification':
+          query = supabase
             .from('certifications')
             .select(`
               id,
@@ -61,18 +51,15 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
               validity_date,
               status,
               created_at,
-              profiles!left(full_name)
+              user_id
             `)
             .gte('created_at', cutoffISOString)
-            .order('created_at', { ascending: false })
-            .then(result => ({ type: 'certifications', data: result.data, error: result.error }))
-        );
-      }
+            .order('created_at', { ascending: false });
+          resultType = 'certifications';
+          break;
 
-      // Technical attestations
-      if (shouldFetchAttestations) {
-        promises.push(
-          supabase
+        case 'technical_attestation':
+          query = supabase
             .from('technical_attestations')
             .select(`
               id,
@@ -80,18 +67,15 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
               validity_date,
               status,
               created_at,
-              profiles!left(full_name)
+              user_id
             `)
             .gte('created_at', cutoffISOString)
-            .order('created_at', { ascending: false })
-            .then(result => ({ type: 'attestations', data: result.data, error: result.error }))
-        );
-      }
+            .order('created_at', { ascending: false });
+          resultType = 'attestations';
+          break;
 
-      // Legal documents
-      if (shouldFetchDocuments) {
-        promises.push(
-          supabase
+        case 'legal_document':
+          query = supabase
             .from('legal_documents')
             .select(`
               id,
@@ -99,18 +83,15 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
               validity_date,
               status,
               created_at,
-              profiles!left(full_name)
+              user_id
             `)
             .gte('created_at', cutoffISOString)
-            .order('created_at', { ascending: false })
-            .then(result => ({ type: 'documents', data: result.data, error: result.error }))
-        );
-      }
+            .order('created_at', { ascending: false });
+          resultType = 'documents';
+          break;
 
-      // Badges
-      if (shouldFetchBadges) {
-        promises.push(
-          supabase
+        case 'badge':
+          query = supabase
             .from('badges')
             .select(`
               id,
@@ -118,93 +99,105 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = {}) {
               expiry_date,
               status,
               created_at,
-              profiles!left(full_name)
+              user_id
             `)
             .gte('created_at', cutoffISOString)
-            .order('created_at', { ascending: false })
-            .then(result => ({ type: 'badges', data: result.data, error: result.error }))
-        );
+            .order('created_at', { ascending: false });
+          resultType = 'badges';
+          break;
+
+        default:
+          throw new Error(`Unsupported type: ${type}`);
       }
 
-      // Execute all queries in parallel
-      const results = await Promise.all(promises);
+      // Execute query
+      const { data: queryData, error: queryError } = await query;
 
-      // Process results by type
-      results.forEach(result => {
-        if (result.error) {
-          console.error(`[Recent Additions] Error fetching ${result.type}:`, result.error);
-          return;
-        }
+      if (queryError) {
+        console.error(`[Recent Additions] Error fetching ${type}:`, queryError);
+        throw queryError;
+      }
 
-        const data = result.data || [];
-        console.log(`[Recent Additions] Found ${data.length} ${result.type}`);
+      console.log(`[Recent Additions] Found ${queryData?.length || 0} ${type} items`);
 
-        switch (result.type) {
-          case 'certifications':
-            data.forEach(cert => {
-              additions.push({
-                id: cert.id,
-                type: 'certification',
-                title: cert.name,
-                user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
-                created_at: cert.created_at,
-                validity_date: cert.validity_date,
-                status: cert.status as any
-              });
+      // Get user names for the found items
+      const userIds = [...new Set(queryData?.map((item: any) => item.user_id) || [])] as string[];
+      let userNames: Record<string, string> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', userIds);
+
+        userNames = profiles?.reduce((acc, profile) => {
+          acc[profile.user_id] = profile.full_name;
+          return acc;
+        }, {} as Record<string, string>) || {};
+      }
+
+      // Process results based on query type
+      if (!queryData) return [];
+
+      switch (resultType) {
+        case 'certifications':
+          queryData.forEach(cert => {
+            additions.push({
+              id: cert.id,
+              type: 'certification',
+              title: cert.name,
+              user_name: userNames[cert.user_id] || 'Usuário não encontrado',
+              created_at: cert.created_at,
+              validity_date: cert.validity_date,
+              status: cert.status as any
             });
-            break;
+          });
+          break;
 
-          case 'attestations':
-            data.forEach(att => {
-              additions.push({
-                id: att.id,
-                type: 'technical_attestation',
-                title: att.project_object,
-                user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
-                created_at: att.created_at,
-                validity_date: att.validity_date,
-                status: att.status as any
-              });
+        case 'attestations':
+          queryData.forEach(att => {
+            additions.push({
+              id: att.id,
+              type: 'technical_attestation',
+              title: att.project_object,
+              user_name: userNames[att.user_id] || 'Usuário não encontrado',
+              created_at: att.created_at,
+              validity_date: att.validity_date,
+              status: att.status as any
             });
-            break;
+          });
+          break;
 
-          case 'documents':
-            data.forEach(doc => {
-              additions.push({
-                id: doc.id,
-                type: 'legal_document',
-                title: doc.document_name,
-                user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
-                created_at: doc.created_at,
-                validity_date: doc.validity_date,
-                status: doc.status as any
-              });
+        case 'documents':
+          queryData.forEach(doc => {
+            additions.push({
+              id: doc.id,
+              type: 'legal_document',
+              title: doc.document_name,
+              user_name: userNames[doc.user_id] || 'Usuário não encontrado',
+              created_at: doc.created_at,
+              validity_date: doc.validity_date,
+              status: doc.status as any
             });
-            break;
+          });
+          break;
 
-          case 'badges':
-            data.forEach(badge => {
-              additions.push({
-                id: badge.id,
-                type: 'badge',
-                title: badge.name,
-                user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
-                created_at: badge.created_at,
-                expiry_date: badge.expiry_date,
-                status: badge.status as any
-              });
+        case 'badges':
+          queryData.forEach(badge => {
+            additions.push({
+              id: badge.id,
+              type: 'badge',
+              title: badge.name,
+              user_name: userNames[badge.user_id] || 'Usuário não encontrado',
+              created_at: badge.created_at,
+              expiry_date: badge.expiry_date,
+              status: badge.status as any
             });
-            break;
-        }
-      });
+          });
+          break;
+      }
 
-      console.log(`[Recent Additions] Total items found: ${additions.length}`);
-      console.log('[Recent Additions] Items by type:', {
-        certifications: additions.filter(a => a.type === 'certification').length,
-        attestations: additions.filter(a => a.type === 'technical_attestation').length,
-        documents: additions.filter(a => a.type === 'legal_document').length,
-        badges: additions.filter(a => a.type === 'badge').length
-      });
+      console.log(`[Recent Additions] Processed ${additions.length} items of type ${type}`);
 
       // Sort by creation date (most recent first)
       return additions.sort((a, b) => 

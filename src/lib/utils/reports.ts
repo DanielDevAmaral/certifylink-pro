@@ -792,25 +792,116 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
               currentY += maxImageHeight + 10;
             }
           } else if (attachment.type === 'pdf' && attachment.content) {
-            // Handle PDF attachments
-            doc.setFont('helvetica', 'normal');
-            doc.text('📄 Documento PDF anexado:', margin + 10, currentY);
-            currentY += 6;
-            doc.setFont('helvetica', 'italic');
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Arquivo: ${documentUrl.split('/').pop()}`, margin + 15, currentY);
-            doc.setTextColor(0, 0, 0);
-            currentY += 8;
+            // Handle PDF attachments - content is already converted images from processAttachment
+            try {
+              const pdfImages = attachment.content as string[];
+              if (pdfImages && pdfImages.length > 0) {
+                doc.setFont('helvetica', 'normal');
+                doc.text('📄 Documento PDF anexado:', margin + 10, currentY);
+                currentY += 8;
+                
+                for (let i = 0; i < pdfImages.length; i++) {
+                  const imageData = pdfImages[i];
+                  
+                  if (currentY > pageHeight - 100) {
+                    doc.addPage();
+                    currentY = 40;
+                  }
+                  
+                  try {
+                    // Calculate image dimensions to fit properly
+                    const maxImageWidth = contentWidth - 20;
+                    const maxImageHeight = Math.min(pageHeight - currentY - 30, 120);
+                    
+                    // Add page number
+                    doc.setFont('helvetica', 'italic');
+                    doc.setFontSize(8);
+                    doc.text(`Página ${i + 1}:`, margin + 10, currentY);
+                    currentY += 8;
+                    doc.setFontSize(10);
+                    
+                    doc.addImage(imageData, 'JPEG', margin + 10, currentY, maxImageWidth, maxImageHeight);
+                    currentY += maxImageHeight + 10;
+                  } catch (err) {
+                    console.error('Error adding PDF page image:', err);
+                    doc.setFont('helvetica', 'italic');
+                    doc.text(`(Erro ao processar página ${i + 1} do PDF)`, margin + 10, currentY);
+                    currentY += 8;
+                  }
+                }
+              } else {
+                doc.setFont('helvetica', 'italic');
+                doc.text('📄 Documento PDF (não foi possível renderizar)', margin + 10, currentY);
+                currentY += 8;
+              }
+            } catch (err) {
+              console.error('Error processing PDF:', err);
+              doc.setFont('helvetica', 'italic');
+              doc.text('📄 Documento PDF (erro no processamento)', margin + 10, currentY);
+              currentY += 8;
+            }
           } else if (attachment.type === 'docx' && attachment.content) {
-            // Handle DOCX attachments
-            doc.setFont('helvetica', 'normal');
-            doc.text('📄 Documento Word anexado:', margin + 10, currentY);
-            currentY += 6;
-            doc.setFont('helvetica', 'italic');
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Arquivo: ${documentUrl.split('/').pop()}`, margin + 15, currentY);
-            doc.setTextColor(0, 0, 0);
-            currentY += 8;
+            // Handle DOCX attachments - render content in PDF
+            try {
+              doc.setFont('helvetica', 'normal');
+              doc.text('📄 Conteúdo do Documento Word:', margin + 10, currentY);
+              currentY += 8;
+              
+              const htmlContent = attachment.content as string;
+              // Convert HTML to plain text for PDF and clean it up
+              let textContent = htmlContent
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<[^>]*>/g, '')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/\s+/g, ' ')
+                .trim();
+              
+              if (textContent) {
+                // Split content into manageable chunks
+                const maxChars = 2500;
+                if (textContent.length > maxChars) {
+                  textContent = textContent.substring(0, maxChars) + '...';
+                }
+                
+                const lines = doc.splitTextToSize(textContent, contentWidth - 20);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                
+                // Render text with proper page breaks
+                let lineIndex = 0;
+                while (lineIndex < lines.length) {
+                  if (currentY > pageHeight - 30) {
+                    doc.addPage();
+                    currentY = 40;
+                  }
+                  
+                  const remainingSpace = Math.floor((pageHeight - currentY - 30) / 3);
+                  const linesToAdd = Math.min(remainingSpace, lines.length - lineIndex);
+                  
+                  doc.text(lines.slice(lineIndex, lineIndex + linesToAdd), margin + 10, currentY);
+                  currentY += linesToAdd * 3 + 5;
+                  lineIndex += linesToAdd;
+                }
+                
+                doc.setFontSize(10);
+                
+                if (htmlContent.length > maxChars) {
+                  currentY += 5;
+                  doc.setFont('helvetica', 'italic');
+                  doc.text('(Conteúdo truncado - documento completo disponível no sistema)', margin + 10, currentY);
+                  currentY += 8;
+                }
+              }
+            } catch (err) {
+              console.error('Error processing DOCX:', err);
+              doc.setFont('helvetica', 'italic');
+              doc.text('📄 Documento Word (erro no processamento)', margin + 10, currentY);
+              currentY += 8;
+            }
           } else {
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(150, 150, 150);

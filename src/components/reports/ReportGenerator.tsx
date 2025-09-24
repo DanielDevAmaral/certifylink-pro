@@ -10,6 +10,7 @@ import { generateReport, getFieldMappings } from '@/lib/utils/reports';
 import { ReportConfig, ReportDataType, ReportSummary } from '@/types/reports';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/hooks/useSettings';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReportGeneratorProps {
   data: any[];
@@ -105,6 +106,49 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
       }
 
       return true;
+    });
+  };
+
+  const enrichWithCertificationNames = async (data: any[]) => {
+    // Extract all unique certification IDs from related_certifications
+    const allCertIds = new Set<string>();
+    data.forEach(record => {
+      if (record.related_certifications && Array.isArray(record.related_certifications)) {
+        record.related_certifications.forEach((id: string) => {
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+            allCertIds.add(id);
+          }
+        });
+      }
+    });
+
+    if (allCertIds.size === 0) return data;
+
+    // Fetch certification names
+    const { data: certifications } = await supabase
+      .from('certifications')
+      .select('id, name, function')
+      .in('id', Array.from(allCertIds));
+
+    const certMap = new Map();
+    if (certifications) {
+      certifications.forEach(cert => {
+        certMap.set(cert.id, `${cert.name} - ${cert.function}`);
+      });
+    }
+
+    // Enrich data with certification names
+    return data.map(record => {
+      if (record.related_certifications && Array.isArray(record.related_certifications)) {
+        const resolvedCerts = record.related_certifications.map((id: string) => {
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+            return certMap.get(id) || `Certificação não encontrada (${id.slice(0, 8)}...)`;
+          }
+          return id; // Keep original text if not UUID
+        });
+        return { ...record, related_certifications: resolvedCerts };
+      }
+      return record;
     });
   };
 

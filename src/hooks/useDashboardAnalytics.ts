@@ -79,13 +79,13 @@ export function useDashboardAnalytics() {
       ];
 
       // Filter active documents for statistics (exclude deactivated ones)
-      const activeDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
-      const totalDocuments = activeDocuments.length;
+      const filteredDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
+      const totalDocuments = filteredDocuments.length;
       
       // Use database status field which is now automatically updated (only count active documents)
-      const expiredDocuments = activeDocuments.filter(doc => doc.status === 'expired').length;
-      const expiringDocuments = activeDocuments.filter(doc => doc.status === 'expiring').length;
-      const validDocuments = activeDocuments.filter(doc => doc.status === 'valid').length;
+      const expiredDocuments = filteredDocuments.filter(doc => doc.status === 'expired').length;
+      const expiringDocuments = filteredDocuments.filter(doc => doc.status === 'expiring').length;
+      const validDocuments = filteredDocuments.filter(doc => doc.status === 'valid').length;
 
       const compliantDocuments = validDocuments + expiringDocuments; // Conformidade inclui válidos + vencendo
       const complianceRate = totalDocuments > 0 ? 
@@ -99,7 +99,7 @@ export function useDashboardAnalytics() {
         const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
         
         // Only count active documents in monthly trends
-        const monthDocs = activeDocuments.filter(doc => {
+        const monthDocs = filteredDocuments.filter(doc => {
           const docDate = new Date(doc.created_at);
           return docDate.getMonth() === date.getMonth() && 
                  docDate.getFullYear() === date.getFullYear();

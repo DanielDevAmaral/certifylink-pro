@@ -53,10 +53,17 @@ export function useCreateTechnicalAttestation() {
       if (error) throw error;
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Force refresh all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['technical-attestations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      
+      // Also refetch the data immediately to ensure UI is up-to-date
+      queryClient.refetchQueries({ queryKey: ['technical-attestations'] });
+      
+      console.log('✅ [useTechnicalAttestations] Attestation created successfully:', result);
+      
       toast({
         title: 'Sucesso',
         description: 'Atestado técnico criado com sucesso.',
@@ -97,9 +104,17 @@ export function useUpdateTechnicalAttestation() {
       if (!result) throw new Error('Atestado técnico não encontrado ou você não tem permissão para atualizá-lo');
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Force refresh all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['technical-attestations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      
+      // Also refetch the data immediately to ensure UI is up-to-date
+      queryClient.refetchQueries({ queryKey: ['technical-attestations'] });
+      
+      console.log('✅ [useTechnicalAttestations] Attestation updated successfully:', result);
+      
       toast({
         title: 'Sucesso',
         description: 'Atestado técnico atualizado com sucesso.',

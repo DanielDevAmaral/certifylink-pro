@@ -75,7 +75,15 @@ export function DocumentActionButtons({
           size="sm" 
           variant="outline" 
           className="gap-2 w-full"
-          onClick={() => downloadDocument(documentUrl!, documentName)}
+          onClick={() => {
+            // Debug log to track which URL is being used
+            console.log('📄 [DocumentActionButtons] Download document:', {
+              documentUrl,
+              documentName,
+              location: 'main_list'
+            });
+            downloadDocument(documentUrl!, documentName);
+          }}
         >
           <Download className="h-3 w-3" />
           Download

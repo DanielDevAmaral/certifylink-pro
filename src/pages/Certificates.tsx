@@ -153,8 +153,14 @@ export default function Certificates() {
   };
 
   const handleFormSuccess = () => {
+    console.log('✅ [Certificates] Form success - refreshing data');
     setShowForm(false);
     setSelectedAttestation(null);
+    
+    // Small delay to ensure data is refreshed after form closes
+    setTimeout(() => {
+      console.log('🔄 [Certificates] Data should be refreshed now');
+    }, 500);
   };
 
   const handleView = (attestation: TechnicalCertificate) => {

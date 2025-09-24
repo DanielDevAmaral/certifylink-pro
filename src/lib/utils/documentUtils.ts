@@ -9,6 +9,13 @@ export async function downloadDocument(url: string, filename?: string) {
       throw new Error('URL do documento não encontrada');
     }
 
+    // Debug log to track download attempts
+    console.log('⬇️ [documentUtils] Starting download:', {
+      url,
+      filename,
+      timestamp: new Date().toISOString()
+    });
+
     // Show loading toast
     const loadingToast = toast({
       title: 'Iniciando download...',
@@ -27,6 +34,13 @@ export async function downloadDocument(url: string, filename?: string) {
     
     // Generate filename if not provided
     const finalFilename = filename || getFilenameFromUrl(url) || 'documento.pdf';
+    
+    console.log('✅ [documentUtils] Download successful:', {
+      url,
+      finalFilename,
+      blobSize: blob.size,
+      blobType: blob.type
+    });
     
     // Create blob URL and download
     const blobUrl = URL.createObjectURL(blob);
@@ -50,7 +64,11 @@ export async function downloadDocument(url: string, filename?: string) {
     });
 
   } catch (error) {
-    console.error('Download error:', error);
+    console.error('❌ [documentUtils] Download error:', {
+      url,
+      filename,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     
     // Fallback to simple link method if fetch fails
     try {

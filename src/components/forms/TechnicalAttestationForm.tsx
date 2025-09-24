@@ -74,12 +74,24 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
 
   const onSubmit = async (data: AttestationFormData) => {
     try {
+      // Debug log to track form submission
+      console.log('📝 [TechnicalAttestationForm] Submit form:', {
+        isEdit: !!attestation,
+        attestationId: attestation?.id,
+        hasNewFile: !!uploadedFile,
+        removeCurrentDoc: removeCurrentDocument,
+        currentDocUrl: attestation?.document_url,
+        clientName: data.client_name
+      });
+
       let documentUrl = data.document_url;
 
       // Handle document logic
       if (removeCurrentDocument) {
+        console.log('🗑️ [TechnicalAttestationForm] Removing current document');
         documentUrl = null;
       } else if (uploadedFile) {
+        console.log('📤 [TechnicalAttestationForm] Uploading new file:', uploadedFile.name);
         // Upload new file (replaces existing if any)
         const uploadResult = await uploadMutation.mutateAsync({
           file: uploadedFile,
@@ -87,6 +99,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
           folder: 'attestations',
         });
         documentUrl = uploadResult.url;
+        console.log('✅ [TechnicalAttestationForm] File uploaded:', documentUrl);
       }
       // If no changes to document, keep existing documentUrl
 
@@ -106,14 +119,17 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       };
 
       if (attestation) {
+        console.log('🔄 [TechnicalAttestationForm] Updating attestation:', attestation.id);
         await updateMutation.mutateAsync({
           id: attestation.id,
           data: submitData,
         });
       } else {
+        console.log('➕ [TechnicalAttestationForm] Creating new attestation');
         await createMutation.mutateAsync(submitData);
       }
 
+      console.log('✅ [TechnicalAttestationForm] Form submitted successfully');
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting attestation:', error);
@@ -169,9 +185,17 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   };
 
   const handleDownloadDocument = async () => {
-    if (attestation?.document_url) {
-      await downloadDocument(attestation.document_url, `atestado-${attestation.client_name}.pdf`);
-    }
+    if (!attestation?.document_url) return;
+    
+    // Debug log to track which URL is being used
+    console.log('📄 [TechnicalAttestationForm] Download document:', {
+      attestationId: attestation.id,
+      documentUrl: attestation.document_url,
+      clientName: attestation.client_name,
+      location: 'edit_form'
+    });
+    
+    await downloadDocument(attestation.document_url, `atestado-${attestation.client_name}.pdf`);
   };
 
   const handleRemoveCurrentDocument = () => {

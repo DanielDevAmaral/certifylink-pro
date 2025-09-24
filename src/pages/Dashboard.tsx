@@ -16,6 +16,8 @@ import { useRecentAdditions, RecentAdditionsFilters } from "@/hooks/useRecentAdd
 import { RecentAdditionsFilters as RecentAdditionsFiltersComponent } from "@/components/dashboard/RecentAdditionsFilters";
 import { navigateToRelatedDocument } from "@/lib/utils/navigation";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
+import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
+import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { 
   Award, 
   FileCheck, 
@@ -27,7 +29,8 @@ import {
   AlertCircle,
   Loader2,
   Trophy,
-  MousePointer
+  MousePointer,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -37,10 +40,15 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
   const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
+  const { refreshDashboard } = useCacheInvalidation();
+  
+  // Ativar atualizações em tempo real
+  useRealtimeUpdates();
   
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [showReports, setShowReports] = useState(false);
   const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({ days: 30 });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { data: recentAdditions, isLoading: additionsLoading } = useRecentAdditions(recentAdditionsFilters);
 
@@ -78,12 +86,30 @@ export default function Dashboard() {
     navigateToRelatedDocument(item.type, item.id);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshDashboard();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <Layout>
       <PageHeader
         title="Dashboard Executivo"
         description="Visão geral da gestão documental corporativa"
       >
+        <Button 
+          variant="outline" 
+          className="gap-2"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+        </Button>
         <Button className="btn-corporate gap-2">
           <Plus className="h-4 w-4" />
           Novo Documento

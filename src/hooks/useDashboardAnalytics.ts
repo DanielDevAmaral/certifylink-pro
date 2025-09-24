@@ -35,7 +35,11 @@ export function useDashboardAnalytics() {
   return useQuery({
     queryKey: ['dashboard-analytics', user?.id],
     queryFn: async (): Promise<AnalyticsData> => {
+      console.log('[Dashboard Analytics] Fetching data...');
       if (!user) throw new Error('User not authenticated');
+
+      // Force status update before fetching
+      await supabase.rpc('update_document_status');
 
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -44,23 +48,27 @@ export function useDashboardAnalytics() {
       let certQuery = supabase.from('certifications').select('*');
       let attQuery = supabase.from('technical_attestations').select('*');
       let docQuery = supabase.from('legal_documents').select('*');
+      let badgeQuery = supabase.from('badges').select('*');
 
       // All authenticated users can see all documents (RLS handles access control)
 
-      const [certResult, attResult, docResult] = await Promise.all([
+      const [certResult, attResult, docResult, badgeResult] = await Promise.all([
         certQuery,
         attQuery,
-        docQuery
+        docQuery,
+        badgeQuery
       ]);
 
       const certifications = certResult.data || [];
       const attestations = attResult.data || [];
       const documents = docResult.data || [];
+      const badges = badgeResult.data || [];
 
       const allDocuments = [
         ...certifications.map(c => ({ ...c, category: 'Certificações', type: 'certification' })),
         ...attestations.map(a => ({ ...a, category: 'Atestados', type: 'attestation' })),
-        ...documents.map(d => ({ ...d, category: 'Documentos', type: 'document' }))
+        ...documents.map(d => ({ ...d, category: 'Documentos', type: 'document' })),
+        ...badges.map(b => ({ ...b, category: 'Badges', type: 'badge' }))
       ];
 
       const totalDocuments = allDocuments.length;
@@ -122,8 +130,23 @@ export function useDashboardAnalytics() {
           expired: documents.filter(d => d.status === 'expired').length,
           expiring: documents.filter(d => d.status === 'expiring').length,
           valid: documents.filter(d => d.status === 'valid').length
+        },
+        {
+          category: 'Badges',
+          count: badges.length,
+          expired: badges.filter(b => b.status === 'expired').length,
+          expiring: badges.filter(b => b.status === 'expiring').length,
+          valid: badges.filter(b => b.status === 'valid').length
         }
       ];
+
+      console.log('[Dashboard Analytics] Data updated:', {
+        totalDocuments,
+        validDocuments,
+        expiringDocuments,
+        expiredDocuments,
+        complianceRate
+      });
 
       return {
         totalDocuments,
@@ -137,8 +160,9 @@ export function useDashboardAnalytics() {
       };
     },
     enabled: !!user && isPageVisible,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute
+    refetchOnWindowFocus: true, // Enable refresh on focus
+    refetchOnMount: true, // Enable refresh on mount
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
   });
 }

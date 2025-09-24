@@ -22,6 +22,7 @@ export interface RecentActivity {
   user_name: string;
   validity_date: string | null;
   status: 'valid' | 'expiring' | 'expired';
+  created_at: string;
 }
 
 export interface ExpiringItem {
@@ -40,7 +41,11 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard-stats', user?.id, userRole],
     queryFn: async (): Promise<DashboardStats> => {
+      console.log('[Dashboard Stats] Fetching data...');
       if (!user) throw new Error('User not authenticated');
+
+      // Force status update before fetching
+      await supabase.rpc('update_document_status');
 
       // Build queries based on user role
       let certQuery = supabase.from('certifications').select('status, validity_date');
@@ -61,9 +66,9 @@ export function useDashboardStats() {
       const documents = documentsResult.data || [];
 
       // Use database status field instead of dynamic calculation
-      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring').length;
-      const expiringAttestations = attestations.filter(att => att.status === 'expiring').length;
-      const expiringDocuments = documents.filter(doc => doc.status === 'expiring').length;
+      const expiringCertifications = certifications.filter(cert => cert.status === 'expiring' || cert.status === 'expired').length;
+      const expiringAttestations = attestations.filter(att => att.status === 'expiring' || att.status === 'expired').length;
+      const expiringDocuments = documents.filter(doc => doc.status === 'expiring' || doc.status === 'expired').length;
 
       const totalDocuments = certifications.length + attestations.length + documents.length;
       const validDocuments = [...certifications, ...attestations, ...documents]
@@ -77,6 +82,16 @@ export function useDashboardStats() {
         ? Math.round((compliantDocuments / totalDocuments) * 100) 
         : 0;
 
+      console.log('[Dashboard Stats] Data updated:', {
+        total_certifications: certifications.length,
+        expiring_certifications: expiringCertifications,
+        total_certificates: attestations.length,
+        expiring_certificates: expiringAttestations,
+        total_documents: documents.length,
+        expiring_documents: expiringDocuments,
+        completion_percentage: completionPercentage
+      });
+
       return {
         total_certifications: certifications.length,
         expiring_certifications: expiringCertifications,
@@ -86,11 +101,14 @@ export function useDashboardStats() {
         expiring_documents: expiringDocuments,
         recent_uploads: 0, // Será implementado com auditoria
         completion_percentage: completionPercentage,
-        expiring_alert: allExpiringDocuments // Total de documentos vencendo como alerta
+        expiring_alert: expiringCertifications + expiringAttestations + expiringDocuments // Total de documentos vencendo como alerta
       };
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute
+    refetchOnWindowFocus: true, // Enable refresh on focus
+    refetchOnMount: true, // Enable refresh on mount
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
   });
 }
 
@@ -101,6 +119,7 @@ export function useRecentActivity() {
   return useQuery({
     queryKey: ['recent-activity', user?.id, userRole],
     queryFn: async (): Promise<RecentActivity[]> => {
+      console.log('[Recent Activity] Fetching data...');
       if (!user) throw new Error('User not authenticated');
 
       // Build queries based on user role
@@ -111,6 +130,7 @@ export function useRecentActivity() {
           name,
           validity_date,
           status,
+          created_at,
           profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
@@ -123,6 +143,7 @@ export function useRecentActivity() {
           project_object,
           validity_date,
           status,
+          created_at,
           profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
@@ -135,6 +156,20 @@ export function useRecentActivity() {
           document_name,
           validity_date,
           status,
+          created_at,
+          profiles!left(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      let badgeQuery = supabase
+        .from('badges')
+        .select(`
+          id,
+          name,
+          expiry_date,
+          status,
+          created_at,
           profiles!left(full_name)
         `)
         .order('created_at', { ascending: false })
@@ -143,10 +178,11 @@ export function useRecentActivity() {
       // All authenticated users can see all data (RLS handles access control)
 
       // Buscar atividades recentes de diferentes tabelas
-      const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
+      const [certificationsResult, attestationsResult, documentsResult, badgesResult] = await Promise.all([
         certQuery,
         attQuery,
-        docQuery
+        docQuery,
+        badgeQuery
       ]);
 
       const activities: RecentActivity[] = [];
@@ -159,7 +195,8 @@ export function useRecentActivity() {
           title: cert.name,
             user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
           validity_date: cert.validity_date,
-          status: cert.status as any
+          status: cert.status as any,
+          created_at: cert.created_at
         });
       });
 
@@ -171,7 +208,8 @@ export function useRecentActivity() {
           title: att.project_object,
             user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
           validity_date: att.validity_date,
-          status: att.status as any
+          status: att.status as any,
+          created_at: att.created_at
         });
       });
 
@@ -183,15 +221,36 @@ export function useRecentActivity() {
           title: doc.document_name,
             user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
           validity_date: doc.validity_date,
-          status: doc.status as any
+          status: doc.status as any,
+          created_at: doc.created_at
         });
       });
 
+      // Processar badges
+      badgesResult.data?.forEach(badge => {
+        activities.push({
+          id: badge.id,
+          type: 'badge',
+          title: badge.name,
+          user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
+          validity_date: badge.expiry_date,
+          status: badge.status as any,
+          created_at: badge.created_at
+        });
+      });
+
+      console.log('[Recent Activity] Found activities:', activities.length);
+
       // Ordenar por data mais recente e limitar a 10
-      return activities.slice(0, 10);
+      return activities
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10);
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutos
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute
+    refetchOnWindowFocus: true, // Enable refresh on focus
+    refetchOnMount: true, // Enable refresh on mount
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
   });
 }
 
@@ -202,111 +261,156 @@ export function useExpiringItems() {
   return useQuery({
     queryKey: ['expiring-items', user?.id, userRole],
     queryFn: async (): Promise<ExpiringItem[]> => {
+      console.log('[Expiring Items] Fetching data...');
       if (!user) throw new Error('User not authenticated');
 
+      // Force status update before fetching
+      await supabase.rpc('update_document_status');
+
       const now = new Date();
-      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      // Build queries based on user role
-      let certQuery = supabase
-        .from('certifications')
-        .select(`
-          id,
-          name,
-          validity_date,
-          status,
-          profiles!left(full_name)
-        `)
-        .in('status', ['expiring', 'expired']);
-
-      let attQuery = supabase
-        .from('technical_attestations')
-        .select(`
-          id,
-          project_object,
-          validity_date,
-          status,
-          profiles!left(full_name)
-        `)
-        .in('status', ['expiring', 'expired']);
-
-      let docQuery = supabase
-        .from('legal_documents')
-        .select(`
-          id,
-          document_name,
-          validity_date,
-          status,
-          profiles!left(full_name)
-        `)
-        .in('status', ['expiring', 'expired']);
-
-      // All authenticated users can see all data (RLS handles access control)
-
-      // Buscar itens vencendo nas próximas semanas
-      const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
-        certQuery,
-        attQuery,
-        docQuery
-      ]);
-
       const expiringItems: ExpiringItem[] = [];
 
-      // Processar certificações
-      certificationsResult.data?.forEach(cert => {
-        if (cert.validity_date) {
+      // Get ALL documents and dynamically calculate which ones are expiring
+      const [certResult, attResult, docResult, badgeResult] = await Promise.all([
+        supabase
+          .from('certifications')
+          .select(`
+            id,
+            name,
+            validity_date,
+            status,
+            profiles!left(full_name)
+          `)
+          .order('validity_date', { ascending: true, nullsFirst: false }),
+        
+        supabase
+          .from('technical_attestations')
+          .select(`
+            id,
+            project_object,
+            validity_date,
+            status,
+            profiles!left(full_name)
+          `)
+          .order('validity_date', { ascending: true, nullsFirst: false }),
+        
+        supabase
+          .from('legal_documents')
+          .select(`
+            id,
+            document_name,
+            validity_date,
+            status,
+            profiles!left(full_name)
+          `)
+          .order('validity_date', { ascending: true, nullsFirst: false }),
+
+        supabase
+          .from('badges')
+          .select(`
+            id,
+            name,
+            expiry_date,
+            status,
+            profiles!left(full_name)
+          `)
+          .order('expiry_date', { ascending: true, nullsFirst: false })
+      ]);
+
+      // Process certifications - only include items that are actually expiring/expired
+      if (certResult.data) {
+        certResult.data.forEach(cert => {
+          if (!cert.validity_date) return; // Skip items without expiry date
+          
           const expiryDate = new Date(cert.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          expiringItems.push({
-            id: cert.id,
-            title: cert.name,
-            user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
-            expires_in_days: daysUntilExpiry,
-            type: 'certification',
-            status: cert.status as 'expiring' | 'expired'
-          });
-        }
-      });
+          // Only include if expired OR expiring within 30 days AND status is expiring/expired
+          if ((daysUntilExpiry <= 30) && (cert.status === 'expiring' || cert.status === 'expired')) {
+            expiringItems.push({
+              id: cert.id,
+              title: cert.name,
+              user_name: (cert.profiles as any)?.full_name || 'Usuário não encontrado',
+              expires_in_days: Math.max(0, daysUntilExpiry), // Don't show negative days
+              type: 'certification',
+              status: cert.status as 'expiring' | 'expired'
+            });
+          }
+        });
+      }
 
-      // Processar atestados
-      attestationsResult.data?.forEach(att => {
-        if (att.validity_date) {
+      // Process technical attestations
+      if (attResult.data) {
+        attResult.data.forEach(att => {
+          if (!att.validity_date) return;
+          
           const expiryDate = new Date(att.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          expiringItems.push({
-            id: att.id,
-            title: att.project_object,
-            user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
-            expires_in_days: daysUntilExpiry,
-            type: 'technical_attestation',
-            status: att.status as 'expiring' | 'expired'
-          });
-        }
-      });
+          if ((daysUntilExpiry <= 30) && (att.status === 'expiring' || att.status === 'expired')) {
+            expiringItems.push({
+              id: att.id,
+              title: att.project_object,
+              user_name: (att.profiles as any)?.full_name || 'Usuário não encontrado',
+              expires_in_days: Math.max(0, daysUntilExpiry),
+              type: 'technical_attestation',
+              status: att.status as 'expiring' | 'expired'
+            });
+          }
+        });
+      }
 
-      // Processar documentos
-      documentsResult.data?.forEach(doc => {
-        if (doc.validity_date) {
+      // Process legal documents
+      if (docResult.data) {
+        docResult.data.forEach(doc => {
+          if (!doc.validity_date) return;
+          
           const expiryDate = new Date(doc.validity_date + 'T00:00:00');
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
-          expiringItems.push({
-            id: doc.id,
-            title: doc.document_name,
-            user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
-            expires_in_days: daysUntilExpiry,
-            type: 'legal_document',
-            status: doc.status as 'expiring' | 'expired'
-          });
-        }
-      });
+          if ((daysUntilExpiry <= 30) && (doc.status === 'expiring' || doc.status === 'expired')) {
+            expiringItems.push({
+              id: doc.id,
+              title: doc.document_name,
+              user_name: (doc.profiles as any)?.full_name || 'Usuário não encontrado',
+              expires_in_days: Math.max(0, daysUntilExpiry),
+              type: 'legal_document',
+              status: doc.status as 'expiring' | 'expired'
+            });
+          }
+        });
+      }
+
+      // Process badges
+      if (badgeResult.data) {
+        badgeResult.data.forEach(badge => {
+          if (!badge.expiry_date) return;
+          
+          const expiryDate = new Date(badge.expiry_date + 'T00:00:00');
+          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if ((daysUntilExpiry <= 30) && (badge.status === 'expiring' || badge.status === 'expired')) {
+            expiringItems.push({
+              id: badge.id,
+              title: badge.name,
+              user_name: (badge.profiles as any)?.full_name || 'Usuário não encontrado',
+              expires_in_days: Math.max(0, daysUntilExpiry),
+              type: 'badge',
+              status: badge.status as 'expiring' | 'expired'
+            });
+          }
+        });
+      }
+
+      console.log('[Expiring Items] Found items:', expiringItems.length);
 
       // Ordenar por data de vencimento mais próxima
       return expiringItems.sort((a, b) => a.expires_in_days - b.expires_in_days);
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute
+    refetchOnWindowFocus: true, // Enable refresh on focus
+    refetchOnMount: true, // Enable refresh on mount
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
   });
 }

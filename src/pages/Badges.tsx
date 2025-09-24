@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { getHighlightedDocumentId, clearHighlight } from "@/lib/utils/navigation";
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -67,9 +68,23 @@ export default function Badges() {
   const [filters, setFilters] = useState<BadgeSearchEngineFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const {
     userRole
   } = useAuth();
+
+  // Handle highlighting from URL
+  useEffect(() => {
+    const highlightId = getHighlightedDocumentId();
+    if (highlightId) {
+      setHighlightedId(highlightId);
+      // Clear highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedId(null);
+        clearHighlight();
+      }, 3000);
+    }
+  }, []);
 
   // Use the badge search engine with pagination
   const {
@@ -212,7 +227,20 @@ export default function Badges() {
 
         {/* Badges Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {paginatedBadges.map(badge => <BadgeCard key={badge.id} badge={badge} onViewDetails={handleViewDetails} onEdit={handleEdit} onDelete={handleDelete} userRole={userRole} />)}
+          {paginatedBadges.map(badge => (
+            <div 
+              key={badge.id} 
+              className={highlightedId === badge.id ? 'ring-2 ring-primary ring-offset-2 rounded-lg' : ''}
+            >
+              <BadgeCard 
+                badge={badge} 
+                onViewDetails={handleViewDetails} 
+                onEdit={handleEdit} 
+                onDelete={handleDelete} 
+                userRole={userRole} 
+              />
+            </div>
+          ))}
         </div>
 
         {paginatedBadges.length === 0 && <EmptyState icon={Award} title="Nenhum badge encontrado" description={searchTerm || Object.keys(filters).length > 0 ? 'Ajuste os filtros ou termos de busca.' : 'Cadastre o primeiro badge para começar a gestão de conquistas.'} actionLabel="Novo Badge" onAction={() => setShowForm(true)} />}

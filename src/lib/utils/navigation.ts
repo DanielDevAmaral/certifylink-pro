@@ -3,13 +3,14 @@
  */
 
 export function navigateToRelatedDocument(
-  documentType: 'certification' | 'technical_attestation' | 'legal_document',
+  documentType: 'certification' | 'technical_attestation' | 'legal_document' | 'badge',
   documentId: string
 ) {
   const baseUrls = {
     certification: '/certifications',
     technical_attestation: '/certificates', 
-    legal_document: '/documents'
+    legal_document: '/documents',
+    badge: '/badges'
   };
 
   const targetUrl = `${baseUrls[documentType]}?highlight=${documentId}`;

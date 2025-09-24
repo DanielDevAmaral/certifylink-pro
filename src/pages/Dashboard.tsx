@@ -11,7 +11,10 @@ import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestatio
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
-import { useDashboardStats, useRecentActivity, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useDashboardStats, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useRecentAdditions, RecentAdditionsFilters } from "@/hooks/useRecentAdditions";
+import { RecentAdditionsFilters as RecentAdditionsFiltersComponent } from "@/components/dashboard/RecentAdditionsFilters";
+import { navigateToRelatedDocument } from "@/lib/utils/navigation";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { 
   Award, 
@@ -22,7 +25,9 @@ import {
   Plus,
   Download,
   AlertCircle,
-  Loader2
+  Loader2,
+  Trophy,
+  MousePointer
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -31,11 +36,13 @@ import { useState } from "react";
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
-  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity();
   const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
   
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [showReports, setShowReports] = useState(false);
+  const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({ days: 30 });
+  
+  const { data: recentAdditions, isLoading: additionsLoading } = useRecentAdditions(recentAdditionsFilters);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
@@ -50,10 +57,25 @@ export default function Dashboard() {
   const getTypeLabel = (type: string) => {
     const labels = {
       certification: 'Certificação',
-      certificate: 'Atestado',
-      document: 'Documento'
+      technical_attestation: 'Atestado Técnico', 
+      legal_document: 'Documento Jurídico',
+      badge: 'Badge'
     };
     return labels[type as keyof typeof labels] || type;
+  };
+
+  const getTypeIcon = (type: string) => {
+    const icons = {
+      certification: Award,
+      technical_attestation: FileCheck, 
+      legal_document: Scale,
+      badge: Trophy
+    };
+    return icons[type as keyof typeof icons] || Award;
+  };
+
+  const handleItemClick = (item: any) => {
+    navigateToRelatedDocument(item.type, item.id);
   };
 
   return (
@@ -81,7 +103,7 @@ export default function Dashboard() {
         <CollapsibleContent>
           <div className="mb-6">
             <ReportGenerator 
-              data={[...recentActivity || [], ...expiringItems || []]} 
+              data={[...recentAdditions || [], ...expiringItems || []]} 
               type="dashboard"
               title="Relatório Dashboard Executivo"
             />
@@ -142,32 +164,53 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
+        {/* Recent Additions */}
         <Card className="card-corporate">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Atividade Recente</h3>
-            <Clock className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground">Novas Adições</h3>
+            <Plus className="h-5 w-5 text-muted-foreground" />
           </div>
+          
+          <RecentAdditionsFiltersComponent 
+            filters={recentAdditionsFilters}
+            onFiltersChange={setRecentAdditionsFilters}
+          />
+          
           <div className="space-y-4">
-            {activityLoading ? (
+            {additionsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : recentActivity && recentActivity.length > 0 ? (
-              recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">{activity.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.user_name} • {activity.validity_date ? formatDate(activity.validity_date) : 'Sem validade'} • {getTypeLabel(activity.type)}
-                    </p>
+            ) : recentAdditions && recentAdditions.length > 0 ? (
+              recentAdditions.slice(0, 5).map((addition) => {
+                const TypeIcon = getTypeIcon(addition.type);
+                return (
+                  <div 
+                    key={addition.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 cursor-pointer transition-colors group"
+                    onClick={() => handleItemClick(addition)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <TypeIcon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                          {addition.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {addition.user_name} • {formatDate(addition.created_at)} • {getTypeLabel(addition.type)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={addition.status} />
+                      <MousePointer className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
-                  <StatusBadge status={activity.status} />
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Nenhuma atividade recente</p>
+                <p className="text-muted-foreground">Nenhuma adição recente</p>
               </div>
             )}
           </div>
@@ -185,17 +228,32 @@ export default function Dashboard() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : expiringItems && expiringItems.length > 0 ? (
-              expiringItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light">
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">{item.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.user_name} • Vence em {formatExpiryDays(item.expires_in_days)} • {getTypeLabel(item.type)}
-                    </p>
+              expiringItems.map((item) => {
+                const TypeIcon = getTypeIcon(item.type);
+                return (
+                  <div 
+                    key={item.id} 
+                    className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light hover:bg-warning-light/80 cursor-pointer transition-colors group"
+                    onClick={() => handleItemClick(item)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <TypeIcon className="h-4 w-4 text-warning" />
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                          {item.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.user_name} • Vence em {formatExpiryDays(item.expires_in_days)} • {getTypeLabel(item.type)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={item.status} />
+                      <MousePointer className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
-                  <StatusBadge status={item.status} />
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Nenhum item vencendo em breve</p>

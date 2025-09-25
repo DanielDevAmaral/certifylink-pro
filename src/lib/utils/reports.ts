@@ -4,11 +4,10 @@ import autoTable from 'jspdf-autotable';
 import { PDFDocument } from 'pdf-lib';
 import * as mammoth from 'mammoth';
 import * as pdfjs from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.js?url';
 import { ReportData, ReportConfig, ReportField, ReportSummary } from '@/types/reports';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Configure PDF.js worker using CDN for Vite compatibility
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {

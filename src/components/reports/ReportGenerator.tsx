@@ -166,10 +166,17 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
         return;
       }
 
+      let dataToExport = filteredData;
+      
+      // Enrich with certification names for technical attestations and certifications
+      if (type === 'attestations' || type === 'certifications') {
+        dataToExport = await enrichWithCertificationNames(filteredData);
+      }
+
       // Get field mappings based on type
       const fields = getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
 
-      const summary = generateSummary(filteredData);
+      const summary = generateSummary(dataToExport);
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${timestamp}`;
 
@@ -195,8 +202,8 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
       };
 
       console.log('Starting export with config:', config);
-      console.log('Filtered data sample:', filteredData.slice(0, 2)); // Log sample data
-      await generateReport(filteredData, config);
+      console.log('Filtered data sample:', dataToExport.slice(0, 2)); // Log sample data
+      await generateReport(dataToExport, config);
 
       toast({
         title: 'Relatório gerado com sucesso!',

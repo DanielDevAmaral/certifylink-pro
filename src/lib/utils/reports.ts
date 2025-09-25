@@ -3,7 +3,12 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PDFDocument } from 'pdf-lib';
 import * as mammoth from 'mammoth';
+import * as pdfjs from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.js?url';
 import { ReportData, ReportConfig, ReportField, ReportSummary } from '@/types/reports';
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -406,24 +411,38 @@ async function convertPdfToImages(pdfUrl: string): Promise<string[]> {
     console.log('Converting PDF to images:', pdfUrl);
     const response = await fetch(pdfUrl, { mode: 'cors' });
     if (!response.ok) {
-      console.error('Failed to fetch PDF:', response.status);
-      return [];
+      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
     }
     
-    const pdfArrayBuffer = await response.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(pdfArrayBuffer);
-    const pageCount = pdfDoc.getPageCount();
+    const arrayBuffer = await response.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     const images: string[] = [];
     
-    console.log(`PDF has ${pageCount} pages`);
+    console.log(`PDF has ${pdf.numPages} pages`);
     
-    // For now, we'll create a simple text representation since PDF to image conversion
-    // requires additional libraries not easily available in browser
-    // In a real implementation, you'd use pdf2pic or similar
-    return [`data:text/plain;base64,${btoa(`PDF Document (${pageCount} pages)\nOriginal URL: ${pdfUrl}`)}`];
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d')!;
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+        canvas: canvas
+      }).promise;
+      
+      // Convert to JPEG for smaller file size
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      images.push(dataUrl);
+    }
     
+    return images;
   } catch (error) {
-    console.error('Error converting PDF:', error);
+    console.error('Error converting PDF to images:', error);
     return [];
   }
 }
@@ -855,64 +874,67 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
                 .replace(/<br\s*\/?>/gi, '\n') // Convert br tags to newlines
                 .replace(/<li>/gi, '• ')      // Convert list items to bullets
                 .replace(/<\/li>/gi, '\n')    // End list items with newlines
+                .replace(/<h[1-6][^>]*>/gi, '\n\n**') // Convert headers
+                .replace(/<\/h[1-6]>/gi, '**\n\n')   // Close headers
                 .replace(/<[^>]*>/g, '')      // Remove all remaining HTML tags
                 .replace(/&nbsp;/g, ' ')
                 .replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
                 .replace(/[ \t]+/g, ' ')      // Remove excessive spaces/tabs but preserve newlines
                 .replace(/\n\s*\n\s*\n+/g, '\n\n')  // Normalize multiple newlines to max 2
                 .trim();
               
               if (textContent) {
-                // Split content into paragraphs and render with proper spacing
-                const paragraphs = textContent.split('\n\n');
-                const maxChars = 2500;
-                let processedContent = '';
-                
-                for (const paragraph of paragraphs) {
-                  if (paragraph.trim()) {
-                    processedContent += paragraph.trim() + '\n\n';
-                  }
-                  if (processedContent.length > maxChars) {
-                    processedContent = processedContent.substring(0, maxChars) + '...';
-                    break;
-                  }
-                }
-                
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(9);
                 
-                // Render paragraphs with proper spacing
-                const paragraphsToRender = processedContent.split('\n\n').filter(p => p.trim());
+                // Split content into paragraphs and render with proper spacing - NO TRUNCATION
+                const paragraphs = textContent.split('\n\n').filter(p => p.trim());
                 
-                for (let i = 0; i < paragraphsToRender.length; i++) {
-                  const paragraph = paragraphsToRender[i];
-                  const lines = doc.splitTextToSize(paragraph, contentWidth - 20);
+                for (let i = 0; i < paragraphs.length; i++) {
+                  const paragraph = paragraphs[i];
                   
-                  // Check if we need a new page
-                  if (currentY + lines.length * 3 + 8 > pageHeight - 30) {
-                    doc.addPage();
-                    currentY = 40;
-                  }
-                  
-                  doc.text(lines, margin + 10, currentY);
-                  currentY += lines.length * 3;
-                  
-                  // Add extra space between paragraphs (except for the last one)
-                  if (i < paragraphsToRender.length - 1) {
-                    currentY += 6; // Extra space between paragraphs
+                  // Handle headers (marked with **)
+                  if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
+                    const headerText = paragraph.slice(2, -2);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    
+                    const headerLines = doc.splitTextToSize(headerText, contentWidth - 20);
+                    
+                    if (currentY + headerLines.length * 4 + 12 > pageHeight - 30) {
+                      doc.addPage();
+                      currentY = 40;
+                    }
+                    
+                    doc.text(headerLines, margin + 10, currentY);
+                    currentY += headerLines.length * 4 + 6;
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                  } else {
+                    // Regular paragraph
+                    const lines = doc.splitTextToSize(paragraph, contentWidth - 20);
+                    
+                    // Check if we need a new page
+                    if (currentY + lines.length * 3 + 8 > pageHeight - 30) {
+                      doc.addPage();
+                      currentY = 40;
+                    }
+                    
+                    doc.text(lines, margin + 10, currentY);
+                    currentY += lines.length * 3;
+                    
+                    // Add space between paragraphs
+                    if (i < paragraphs.length - 1) {
+                      currentY += 6;
+                    }
                   }
                 }
                 
                 doc.setFontSize(10);
-                
-                if (htmlContent.length > maxChars) {
-                  currentY += 5;
-                  doc.setFont('helvetica', 'italic');
-                  doc.text('(Conteúdo truncado - documento completo disponível no sistema)', margin + 10, currentY);
-                  currentY += 8;
-                }
               }
             } catch (err) {
               console.error('Error processing DOCX:', err);

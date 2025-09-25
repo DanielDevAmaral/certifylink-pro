@@ -848,43 +848,61 @@ export async function generateDetailedPDF(reportData: ReportData, filename: stri
               currentY += 8;
               
               const htmlContent = attachment.content as string;
-              // Convert HTML to plain text for PDF and clean it up
+              // Convert HTML to plain text for PDF preserving paragraph structure
               let textContent = htmlContent
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<\/p>/gi, '\n\n')
-                .replace(/<[^>]*>/g, '')
+                .replace(/<\/p>/gi, '\n\n')  // Convert paragraph endings to double newlines
+                .replace(/<\/div>/gi, '\n')   // Convert div endings to single newlines
+                .replace(/<br\s*\/?>/gi, '\n') // Convert br tags to newlines
+                .replace(/<li>/gi, '• ')      // Convert list items to bullets
+                .replace(/<\/li>/gi, '\n')    // End list items with newlines
+                .replace(/<[^>]*>/g, '')      // Remove all remaining HTML tags
                 .replace(/&nbsp;/g, ' ')
                 .replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
-                .replace(/\s+/g, ' ')
+                .replace(/[ \t]+/g, ' ')      // Remove excessive spaces/tabs but preserve newlines
+                .replace(/\n\s*\n\s*\n+/g, '\n\n')  // Normalize multiple newlines to max 2
                 .trim();
               
               if (textContent) {
-                // Split content into manageable chunks
+                // Split content into paragraphs and render with proper spacing
+                const paragraphs = textContent.split('\n\n');
                 const maxChars = 2500;
-                if (textContent.length > maxChars) {
-                  textContent = textContent.substring(0, maxChars) + '...';
+                let processedContent = '';
+                
+                for (const paragraph of paragraphs) {
+                  if (paragraph.trim()) {
+                    processedContent += paragraph.trim() + '\n\n';
+                  }
+                  if (processedContent.length > maxChars) {
+                    processedContent = processedContent.substring(0, maxChars) + '...';
+                    break;
+                  }
                 }
                 
-                const lines = doc.splitTextToSize(textContent, contentWidth - 20);
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(9);
                 
-                // Render text with proper page breaks
-                let lineIndex = 0;
-                while (lineIndex < lines.length) {
-                  if (currentY > pageHeight - 30) {
+                // Render paragraphs with proper spacing
+                const paragraphsToRender = processedContent.split('\n\n').filter(p => p.trim());
+                
+                for (let i = 0; i < paragraphsToRender.length; i++) {
+                  const paragraph = paragraphsToRender[i];
+                  const lines = doc.splitTextToSize(paragraph, contentWidth - 20);
+                  
+                  // Check if we need a new page
+                  if (currentY + lines.length * 3 + 8 > pageHeight - 30) {
                     doc.addPage();
                     currentY = 40;
                   }
                   
-                  const remainingSpace = Math.floor((pageHeight - currentY - 30) / 3);
-                  const linesToAdd = Math.min(remainingSpace, lines.length - lineIndex);
+                  doc.text(lines, margin + 10, currentY);
+                  currentY += lines.length * 3;
                   
-                  doc.text(lines.slice(lineIndex, lineIndex + linesToAdd), margin + 10, currentY);
-                  currentY += linesToAdd * 3 + 5;
-                  lineIndex += linesToAdd;
+                  // Add extra space between paragraphs (except for the last one)
+                  if (i < paragraphsToRender.length - 1) {
+                    currentY += 6; // Extra space between paragraphs
+                  }
                 }
                 
                 doc.setFontSize(10);

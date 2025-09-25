@@ -15,6 +15,7 @@ export function useCacheInvalidation() {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
     queryClient.invalidateQueries({ queryKey: ['certifications-by-platform'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-filters'] });
     queryClient.invalidateQueries({ queryKey: ['expiring-items'] });
     queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
     queryClient.invalidateQueries({ queryKey: ['recent-additions'] });
@@ -54,6 +55,7 @@ export function useCacheInvalidation() {
         queryClient.refetchQueries({ queryKey: ['dashboard-stats'] }),
         queryClient.refetchQueries({ queryKey: ['dashboard-analytics'] }),
         queryClient.refetchQueries({ queryKey: ['certifications-by-platform'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-filters'] }),
         queryClient.refetchQueries({ queryKey: ['expiring-items'] }),
         queryClient.refetchQueries({ queryKey: ['recent-activity'] }),
         queryClient.refetchQueries({ queryKey: ['recent-additions'] })

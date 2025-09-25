@@ -245,7 +245,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="valid">Válido</SelectItem>
                 <SelectItem value="expired">Vencido</SelectItem>
-                <SelectItem value="expiring_soon">Vencendo em Breve</SelectItem>
+                <SelectItem value="expiring">Vencendo em Breve</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -318,7 +318,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
                 <div>
                   <span className="text-muted-foreground">Vencendo:</span>
                   <div className="font-semibold text-warning">
-                    {filteredData.filter(item => item.status === 'expiring_soon').length}
+                    {filteredData.filter(item => item.status === 'expiring').length}
                   </div>
                 </div>
               </>

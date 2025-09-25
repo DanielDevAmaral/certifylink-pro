@@ -6,8 +6,19 @@ import * as mammoth from 'mammoth';
 import * as pdfjs from 'pdfjs-dist';
 import { ReportData, ReportConfig, ReportField, ReportSummary } from '@/types/reports';
 
-// Configure PDF.js worker using CDN for Vite compatibility
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with fallback for Vite compatibility
+const configureWorker = () => {
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    console.log('PDF.js worker configured successfully');
+  } catch (error) {
+    console.warn('Failed to configure PDF.js worker:', error);
+    // Fallback to default worker
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+  }
+};
+
+configureWorker();
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -408,41 +419,75 @@ function getFileTypeFromUrl(url: string): 'pdf' | 'docx' | 'image' | 'unknown' {
 async function convertPdfToImages(pdfUrl: string): Promise<string[]> {
   try {
     console.log('Converting PDF to images:', pdfUrl);
+    
+    // Verify worker is loaded
+    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+      console.warn('PDF.js worker not configured, attempting to reconfigure...');
+      configureWorker();
+    }
+    
     const response = await fetch(pdfUrl, { mode: 'cors' });
     if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+      console.error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+      throw new Error(`Falha ao carregar PDF: ${response.statusText}`);
     }
     
     const arrayBuffer = await response.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    const images: string[] = [];
+    console.log('PDF ArrayBuffer size:', arrayBuffer.byteLength);
     
-    console.log(`PDF has ${pdf.numPages} pages`);
-    
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
-      
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d')!;
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
-      }).promise;
-      
-      // Convert to JPEG for smaller file size
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      images.push(dataUrl);
+    let pdf;
+    try {
+      pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    } catch (workerError) {
+      console.error('PDF.js worker error:', workerError);
+      throw new Error('Erro no processamento do PDF. Verifique se o arquivo está válido.');
     }
     
+    const images: string[] = [];
+    const maxPages = Math.min(pdf.numPages, 10); // Limit to 10 pages for performance
+    
+    console.log(`Processing ${maxPages} of ${pdf.numPages} PDF pages`);
+    
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      try {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) {
+          console.warn(`Failed to get canvas context for page ${pageNum}`);
+          continue;
+        }
+        
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+          canvas: canvas
+        }).promise;
+        
+        // Convert to JPEG for smaller file size
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        images.push(dataUrl);
+        console.log(`Successfully converted page ${pageNum}`);
+      } catch (pageError) {
+        console.warn(`Failed to convert PDF page ${pageNum}:`, pageError);
+        // Continue with other pages
+      }
+    }
+    
+    if (images.length === 0) {
+      throw new Error('Nenhuma página do PDF pôde ser convertida');
+    }
+    
+    console.log(`Successfully converted ${images.length} PDF pages`);
     return images;
   } catch (error) {
     console.error('Error converting PDF to images:', error);
-    return [];
+    throw new Error(`Erro ao processar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
 }
 
@@ -475,15 +520,30 @@ async function processAttachment(documentUrl: string): Promise<{
 }> {
   const fileType = getFileTypeFromUrl(documentUrl);
   
+  console.log(`Processing attachment: ${documentUrl} (type: ${fileType})`);
+  
   try {
     switch (fileType) {
       case 'pdf':
-        const pdfPages = await convertPdfToImages(documentUrl);
-        return { type: 'pdf', content: pdfPages };
+        try {
+          const pdfPages = await convertPdfToImages(documentUrl);
+          if (pdfPages.length === 0) {
+            return { type: 'pdf', error: 'PDF não contém páginas válidas' };
+          }
+          return { type: 'pdf', content: pdfPages };
+        } catch (pdfError) {
+          console.error('PDF processing error:', pdfError);
+          return { type: 'pdf', error: `Erro no PDF: ${pdfError instanceof Error ? pdfError.message : 'Erro desconhecido'}` };
+        }
         
       case 'docx':
-        const htmlContent = await convertDocxToHtml(documentUrl);
-        return { type: 'docx', content: htmlContent || undefined };
+        try {
+          const htmlContent = await convertDocxToHtml(documentUrl);
+          return { type: 'docx', content: htmlContent || undefined };
+        } catch (docxError) {
+          console.error('DOCX processing error:', docxError);
+          return { type: 'docx', error: 'Erro ao processar documento Word' };
+        }
         
       case 'image':
         // For images, we'll return the URL to be processed by existing image loading
@@ -494,7 +554,10 @@ async function processAttachment(documentUrl: string): Promise<{
     }
   } catch (error) {
     console.error('Error processing attachment:', error);
-    return { type: fileType, error: 'Erro ao processar anexo' };
+    return { 
+      type: fileType, 
+      error: `Erro ao processar anexo: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
+    };
   }
 }
 

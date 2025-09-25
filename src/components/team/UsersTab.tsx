@@ -13,21 +13,7 @@ import { useUsers } from '@/hooks/useUserSearch';
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
-import { 
-  Users, 
-  Crown,
-  Shield,
-  User,
-  Mail,
-  Calendar,
-  FileText,
-  Search,
-  UserCheck,
-  UserX,
-  AlertTriangle,
-  UserMinus
-} from "lucide-react";
-
+import { Users, Crown, Shield, User, Mail, Calendar, FileText, Search, UserCheck, UserX, AlertTriangle, UserMinus } from "lucide-react";
 const roleConfig = {
   admin: {
     label: "Administrador",
@@ -48,28 +34,40 @@ const roleConfig = {
     description: "Acesso aos próprios documentos"
   }
 };
-
 interface UsersTabProps {
   teams: any[];
   stats: any;
 }
-
-export function UsersTab({ teams, stats }: UsersTabProps) {
-  const { user: currentUser, userRole } = useAuth();
-  const { data: allUsers = [], isLoading } = useUsers();
+export function UsersTab({
+  teams,
+  stats
+}: UsersTabProps) {
+  const {
+    user: currentUser,
+    userRole
+  } = useAuth();
+  const {
+    data: allUsers = [],
+    isLoading
+  } = useUsers();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [activeStatusTab, setActiveStatusTab] = useState("active");
-
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
   // Função para determinar o role principal baseado na hierarquia
-  const getPrincipalRole = (roles: { role: string }[]): 'user' | 'leader' | 'admin' => {
+  const getPrincipalRole = (roles: {
+    role: string;
+  }[]): 'user' | 'leader' | 'admin' => {
     if (!roles || roles.length === 0) return 'user';
-    const rolePriority = { admin: 3, leader: 2, user: 1 };
+    const rolePriority = {
+      admin: 3,
+      leader: 2,
+      user: 1
+    };
     return roles.reduce((highest, current) => {
       const currentPriority = rolePriority[current.role as keyof typeof rolePriority] || 0;
       const highestPriority = rolePriority[highest.role as keyof typeof rolePriority] || 0;
@@ -81,52 +79,44 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   const isCurrentUserLeaderOf = (member: any) => {
     if (userRole === 'admin') return true; // Admins have access to everyone
     if (userRole !== 'leader') return false;
-    
-    const memberTeam = teams.find(team => 
-      team.team_members.some(tm => tm.user_id === member.user_id)
-    );
-    
+    const memberTeam = teams.find(team => team.team_members.some(tm => tm.user_id === member.user_id));
     return memberTeam?.leader_id === currentUser?.id;
   };
 
   // Get all users in teams
-  const teamMemberIds = new Set(teams.flatMap(team => 
-    team.team_members.map(member => member.user_id)
-  ));
+  const teamMemberIds = new Set(teams.flatMap(team => team.team_members.map(member => member.user_id)));
 
   // Flatten all team members with their team info
-  const teamMembers = teams.flatMap(team => 
-    team.team_members.map(member => ({
-      ...member,
-      team_name: team.name,
-      team_leader: team.leader_profile.full_name,
-      user_role: getPrincipalRole(member.user_roles),
-      status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended' | 'terminated',
-      has_team: true,
-    }))
-  );
+  const teamMembers = teams.flatMap(team => team.team_members.map(member => ({
+    ...member,
+    team_name: team.name,
+    team_leader: team.leader_profile.full_name,
+    user_role: getPrincipalRole(member.user_roles),
+    status: (member.profiles.status || 'active') as 'active' | 'inactive' | 'suspended' | 'terminated',
+    has_team: true
+  })));
 
   // Get users without teams
-  const usersWithoutTeams = allUsers
-    .filter(user => !teamMemberIds.has(user.user_id))
-    .map(user => ({
-      id: `no-team-${user.user_id}`,
-      user_id: user.user_id,
-      profiles: {
-        full_name: user.full_name,
-        email: user.email,
-        status: user.status,
-        position: user.position,
-        department: user.department,
-      },
-      user_roles: [{ role: user.role }],
-      joined_at: user.created_at,
-      team_name: "Sem Equipe",
-      team_leader: "N/A",
-      user_role: user.role,
+  const usersWithoutTeams = allUsers.filter(user => !teamMemberIds.has(user.user_id)).map(user => ({
+    id: `no-team-${user.user_id}`,
+    user_id: user.user_id,
+    profiles: {
+      full_name: user.full_name,
+      email: user.email,
       status: user.status,
-      has_team: false,
-    }));
+      position: user.position,
+      department: user.department
+    },
+    user_roles: [{
+      role: user.role
+    }],
+    joined_at: user.created_at,
+    team_name: "Sem Equipe",
+    team_leader: "N/A",
+    user_role: user.role,
+    status: user.status,
+    has_team: false
+  }));
 
   // Combine all users
   const allMembers = [...teamMembers, ...usersWithoutTeams];
@@ -134,17 +124,10 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   // Apply filters based on current status tab
   const getFilteredMembers = (statusFilter: string) => {
     return allMembers.filter(member => {
-      const matchesSearch = searchQuery === "" || 
-        member.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.profiles.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.team_name.toLowerCase().includes(searchQuery.toLowerCase());
-      
+      const matchesSearch = searchQuery === "" || member.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || member.profiles.email.toLowerCase().includes(searchQuery.toLowerCase()) || member.team_name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || member.status === statusFilter;
       const matchesRole = roleFilter === "all" || member.user_role === roleFilter;
-      const matchesTeam = teamFilter === "all" || 
-        (teamFilter === "no-team" && !member.has_team) ||
-        (teamFilter === "with-team" && member.has_team);
-      
+      const matchesTeam = teamFilter === "all" || teamFilter === "no-team" && !member.has_team || teamFilter === "with-team" && member.has_team;
       return matchesSearch && matchesStatus && matchesRole && matchesTeam;
     });
   };
@@ -152,7 +135,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   // Get filtered members for each tab
   const activeMembers = getFilteredMembers("active");
   const inactiveMembers = getFilteredMembers("inactive");
-  const suspendedMembers = getFilteredMembers("suspended");  
+  const suspendedMembers = getFilteredMembers("suspended");
   const terminatedMembers = getFilteredMembers("terminated");
 
   // Calculate stats for different statuses
@@ -161,9 +144,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
   const suspendedUsers = allMembers.filter(m => m.status === 'suspended').length;
   const terminatedUsers = allMembers.filter(m => m.status === 'terminated').length;
   const usersWithoutTeamsCount = usersWithoutTeams.length;
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* User Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <Card className="card-corporate">
@@ -244,12 +225,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar usuários por nome, email ou equipe..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar usuários por nome, email ou equipe..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           
           <div className="flex gap-2">
@@ -316,8 +292,7 @@ export function UsersTab({ teams, stats }: UsersTabProps) {
           <UsersList members={terminatedMembers} isLoading={isLoading} searchQuery={searchQuery} roleFilter={roleFilter} teamFilter={teamFilter} stats={stats} />
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 }
 
 // Componente separado para a lista de usuários
@@ -329,10 +304,18 @@ interface UsersListProps {
   teamFilter: string;
   stats: any;
 }
-
-function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, stats }: UsersListProps) {
-  const { user: currentUser, userRole } = useAuth();
-  
+function UsersList({
+  members,
+  isLoading,
+  searchQuery,
+  roleFilter,
+  teamFilter,
+  stats
+}: UsersListProps) {
+  const {
+    user: currentUser,
+    userRole
+  } = useAuth();
   const roleConfig = {
     admin: {
       label: "Administrador",
@@ -353,7 +336,6 @@ function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, st
       description: "Acesso aos próprios documentos"
     }
   };
-
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
@@ -363,35 +345,14 @@ function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, st
     if (userRole === 'admin') return true;
     return userRole === 'leader';
   };
-
-  return (
-    <div className="space-y-4">
-      {isLoading ? (
-        <div className="flex justify-center py-8">
+  return <div className="space-y-4">
+      {isLoading ? <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : members.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={searchQuery || roleFilter !== "all" || teamFilter !== "all"
-            ? "Nenhum usuário encontrado" 
-            : "Nenhum membro encontrado"
-          }
-          description={searchQuery || roleFilter !== "all" || teamFilter !== "all"
-            ? "Tente ajustar os filtros de busca."
-            : "Nenhum usuário com este status foi encontrado."
-          }
-          actionLabel="Adicionar Membro"
-          onAction={() => {/* Handle add member */}}
-        />
-      ) : (
-        members.map((member) => {
-          const roleInfo = roleConfig[member.user_role];
-          const RoleIcon = roleInfo.icon;
-          const documentCount = stats?.documentCounts[member.user_id] || 0;
-
-          return (
-            <Card key={member.id} className="card-corporate">
+        </div> : members.length === 0 ? <EmptyState icon={Users} title={searchQuery || roleFilter !== "all" || teamFilter !== "all" ? "Nenhum usuário encontrado" : "Nenhum membro encontrado"} description={searchQuery || roleFilter !== "all" || teamFilter !== "all" ? "Tente ajustar os filtros de busca." : "Nenhum usuário com este status foi encontrado."} actionLabel="Adicionar Membro" onAction={() => {/* Handle add member */}} /> : members.map(member => {
+      const roleInfo = roleConfig[member.user_role];
+      const RoleIcon = roleInfo.icon;
+      const documentCount = stats?.documentCounts[member.user_id] || 0;
+      return <Card key={member.id} className="card-corporate">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
@@ -420,12 +381,10 @@ function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, st
                         <Users className="h-3 w-3" />
                         <span className={!member.has_team ? "text-warning font-medium" : ""}>{member.team_name}</span>
                       </div>
-                      {member.profiles.position && (
-                        <div className="flex items-center gap-1">
+                      {member.profiles.position && <div className="flex items-center gap-1">
                           <User className="h-3 w-3" />
                           <span>{member.profiles.position}</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                   </div>
                 </div>
@@ -441,39 +400,30 @@ function UsersList({ members, isLoading, searchQuery, roleFilter, teamFilter, st
                       <Calendar className="h-3 w-3" />
                       <span>
                         {formatDistanceToNow(new Date(member.joined_at), {
-                          addSuffix: true,
-                          locale: ptBR
-                        })}
+                    addSuffix: true,
+                    locale: ptBR
+                  })}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">{member.has_team ? "Na equipe há" : "Criado há"}</p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline">
-                      <FileText className="h-3 w-3 mr-1" />
-                      Documentos
-                    </Button>
+                    
 
-                    <UserActionsDropdown 
-                      user={{
-                        user_id: member.user_id,
-                        full_name: member.profiles.full_name,
-                        email: member.profiles.email,
-                        status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
-                        role: member.user_role,
-                        position: member.profiles.position,
-                        department: member.profiles.department,
-                      }}
-                      isTeamMember={isCurrentUserLeaderOf(member)}
-                    />
+                    <UserActionsDropdown user={{
+                user_id: member.user_id,
+                full_name: member.profiles.full_name,
+                email: member.profiles.email,
+                status: member.status as 'active' | 'inactive' | 'suspended' | 'terminated',
+                role: member.user_role,
+                position: member.profiles.position,
+                department: member.profiles.department
+              }} isTeamMember={isCurrentUserLeaderOf(member)} />
                   </div>
                 </div>
               </div>
-            </Card>
-          );
-        })
-      )}
-    </div>
-  );
+            </Card>;
+    })}
+    </div>;
 }

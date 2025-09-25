@@ -47,13 +47,22 @@ export function useCacheInvalidation() {
   const refreshDashboard = useCallback(async () => {
     console.log('[Cache Invalidation] Force refreshing dashboard...');
     
-    // Remove dados antigos do cache e força nova busca
-    await queryClient.refetchQueries({ queryKey: ['dashboard-stats'] });
-    await queryClient.refetchQueries({ queryKey: ['dashboard-analytics'] });
-    await queryClient.refetchQueries({ queryKey: ['expiring-items'] });
-    await queryClient.refetchQueries({ queryKey: ['recent-activity'] });
-    
-    console.log('[Cache Invalidation] Dashboard refreshed');
+    try {
+      // Remove dados antigos do cache e força nova busca
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['dashboard-stats'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-analytics'] }),
+        queryClient.refetchQueries({ queryKey: ['expiring-items'] }),
+        queryClient.refetchQueries({ queryKey: ['recent-activity'] }),
+        queryClient.refetchQueries({ queryKey: ['recent-additions'] })
+      ]);
+      
+      console.log('[Cache Invalidation] Dashboard refreshed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[Cache Invalidation] Error refreshing dashboard:', error);
+      return { success: false, error };
+    }
   }, [queryClient]);
 
   return {

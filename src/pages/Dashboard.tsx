@@ -16,6 +16,7 @@ import { useRecentAdditions, RecentAdditionsFilters } from "@/hooks/useRecentAdd
 import { RecentAdditionsFilters as RecentAdditionsFiltersComponent } from "@/components/dashboard/RecentAdditionsFilters";
 import { navigateToRelatedDocument } from "@/lib/utils/navigation";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
+import { toast } from "sonner";
 import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { 
@@ -89,7 +90,15 @@ export default function Dashboard() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refreshDashboard();
+      const result = await refreshDashboard();
+      if (result.success) {
+        toast.success("Dashboard atualizado com sucesso!");
+      } else {
+        toast.error("Erro ao atualizar o dashboard. Tente novamente.");
+      }
+    } catch (error) {
+      console.error('Error refreshing dashboard:', error);
+      toast.error("Erro ao atualizar o dashboard. Tente novamente.");
     } finally {
       setIsRefreshing(false);
     }

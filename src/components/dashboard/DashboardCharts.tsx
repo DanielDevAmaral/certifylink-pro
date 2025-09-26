@@ -3,6 +3,7 @@ import { useCertificationsByPlatform } from "@/hooks/useCertificationsByPlatform
 import { memo } from 'react';
 import { InteractiveCharts } from './InteractiveCharts';
 import { FilterControlPanel } from './FilterControlPanel';
+import { DetailedFilterPanel } from './DetailedFilterPanel';
 import { DashboardFilterProvider } from '@/contexts/DashboardFilterContext';
 interface DashboardChartsProps {
   analytics?: AnalyticsData;
@@ -16,6 +17,7 @@ const DashboardCharts = memo(function DashboardCharts({
   return (
     <DashboardFilterProvider>
       <div className="space-y-6">
+        <DetailedFilterPanel />
         <FilterControlPanel />
         <InteractiveCharts analytics={analytics} platformData={platformData} />
       </div>

@@ -330,10 +330,16 @@ export default function Auth() {
           </Tabs>
         </Card>
 
-       <div className="text-center text-sm text-muted-foreground">
-  <p>Plataforma interna • Acesso restrito a colaboradores.</p>
-  <p className="mt-1 text-xs italic opacity-70">Por: Roger Lovato & Rodrigo Bonfim</p>
-</div>
+        <div className="text-center text-sm text-muted-foreground">
+          <p>Plataforma interna • Acesso restrito a colaboradores.</p>
+        </div>
+    <div className="text-center text-sm text-muted-foreground">
+      <p>Plataforma interna • Acesso restrito a colaboradores.</p>
+      <p className="mt-1 text-xs italic opacity-70">Por: Roger Lovato & Rodrigo Bonfim</p>
+    </div>
 
+      
+      </div>
+    
     </div>;
 }

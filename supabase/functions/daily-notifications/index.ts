@@ -27,7 +27,15 @@ serve(async (req) => {
     console.log('🚀 Starting daily notification job...', new Date().toISOString())
     
     // Log request details for debugging
-    const requestBody = await req.text()
+    const requestBodyText = await req.text()
+    let requestBody = null;
+    
+    try {
+      requestBody = requestBodyText ? JSON.parse(requestBodyText) : null;
+    } catch (e) {
+      console.log('📥 Request body (text):', requestBodyText || 'empty')
+    }
+    
     console.log('📥 Request body:', requestBody || 'empty')
     console.log('🔗 Request method:', req.method)
     console.log('📍 Request URL:', req.url)
@@ -369,10 +377,42 @@ serve(async (req) => {
     const jobCompletedAt = new Date().toISOString()
     console.log('🎉 Daily notification job completed successfully at:', jobCompletedAt)
 
+    // 🔧 Create admin test notification if in test mode
+    let adminTestNotification = null;
+    if (requestBody && typeof requestBody === 'object' && 'test_mode' in requestBody) {
+      try {
+        console.log('🧪 Creating admin test notification...');
+        const { data: testNotif, error: testError } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: '3164a91d-e1ab-49a7-946a-4c85b00cadbc', // Current admin user
+            title: 'Teste do Sistema de Notificações',
+            message: `Sistema testado com sucesso! Encontradas ${(expiringCertifications?.length || 0) + (expiringTechnical?.length || 0) + (expiringLegal?.length || 0)} notificações de vencimento. ${notificationsCreated} novas notificações criadas nesta execução.`,
+            notification_type: 'success',
+            related_document_type: null,
+            related_document_id: null,
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Expires in 24 hours
+          })
+          .select()
+          .single();
+        
+        if (testError) {
+          console.error('❌ Error creating admin test notification:', testError);
+        } else {
+          adminTestNotification = testNotif;
+          console.log('✅ Admin test notification created:', testNotif?.id);
+        }
+      } catch (error) {
+        console.error('💥 Exception creating admin test notification:', error);
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: 'Daily notification job completed successfully',
       timestamp: jobCompletedAt,
+      test_mode: requestBody && typeof requestBody === 'object' && 'test_mode' in requestBody,
+      admin_test_notification: adminTestNotification?.id || null,
       statistics: {
         expiringCertifications: expiringCertifications?.length || 0,
         expiringTechnicalAttestations: expiringTechnical?.length || 0,

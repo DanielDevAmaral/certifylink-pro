@@ -5,6 +5,7 @@ import { DocumentStatusManager } from '@/components/admin/DocumentStatusManager'
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
 import { CertificationManagement } from '@/components/admin/CertificationManagement';
 import { NotificationSystemCard } from '@/components/admin/NotificationSystemCard';
+import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -118,7 +119,10 @@ export default function AdminDashboard() {
             />
 
             {/* Notification System Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <NotificationSystemCard />
+            <NotificationStatsCard />
+          </div>
 
             {/* System Status */}
             <Card>

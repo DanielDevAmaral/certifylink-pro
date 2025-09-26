@@ -18,6 +18,7 @@ import UserDocuments from "./pages/UserDocuments";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminNotifications from "./pages/AdminNotifications";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -102,11 +103,16 @@ const App = () => (
                   <AuditLogs />
                 </ProtectedRoute>
               } />
-              <Route path="/admin" element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/notifications" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminNotifications />
+              </ProtectedRoute>
+            } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

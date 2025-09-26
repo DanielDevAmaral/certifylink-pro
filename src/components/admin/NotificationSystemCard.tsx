@@ -35,7 +35,7 @@ export function NotificationSystemCard() {
       
       toast({
         title: 'Teste Concluído',
-        description: 'Sistema de notificações testado com sucesso',
+        description: `Sistema testado com sucesso! ${data?.statistics?.new_notifications_created || 0} notificações criadas. Verifique suas notificações.`,
       });
       
       // Atualiza o status após o teste

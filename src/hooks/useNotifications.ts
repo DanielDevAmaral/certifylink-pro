@@ -13,6 +13,11 @@ export interface Notification {
   expires_at: string | null;
   related_document_id: string | null;
   related_document_type: string | null;
+  user_id: string;
+  profiles?: {
+    full_name?: string;
+    email?: string;
+  };
 }
 
 // Hook para buscar notificações do usuário

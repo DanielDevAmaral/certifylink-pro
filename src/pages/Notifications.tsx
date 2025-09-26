@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Clock, AlertCircle, Info, CheckCircle, Trash2, CheckCheck } from 'lucide-react';
+import { Bell, Clock, AlertCircle, Info, CheckCircle, Trash2, CheckCheck, Users } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useNotifications, useMarkNotificationRead, useDeleteNotification, useDeleteMultipleNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAllNotifications } from '@/hooks/useAdminNotifications';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -19,8 +21,15 @@ import { NotificationFixButton } from '@/components/admin/NotificationFixButton'
 export default function Notifications() {
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [viewMode, setViewMode] = useState<'personal' | 'all'>('personal');
   
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { userRole } = useAuth();
+  const { data: personalNotifications = [], isLoading: isLoadingPersonal } = useNotifications();
+  const { data: allNotifications = [], isLoading: isLoadingAll } = useAllNotifications();
+  
+  // Choose which notifications to show based on view mode and user role
+  const notifications = (userRole === 'admin' && viewMode === 'all') ? allNotifications : personalNotifications;
+  const isLoading = (userRole === 'admin' && viewMode === 'all') ? isLoadingAll : isLoadingPersonal;
   const markAsReadMutation = useMarkNotificationRead();
   const deleteNotificationMutation = useDeleteNotification();
   const deleteMultipleMutation = useDeleteMultipleNotifications();
@@ -152,6 +161,30 @@ export default function Notifications() {
         description={`${notifications.length} notificações totais • ${unreadCount} não lidas`}
       >
         <div className="flex items-center gap-2">
+          {/* Admin View Toggle */}
+          {userRole === 'admin' && (
+            <div className="flex items-center gap-1 rounded-lg border border-input p-1">
+              <Button
+                variant={viewMode === 'personal' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('personal')}
+                className="text-xs gap-1"
+              >
+                <Bell className="h-3 w-3" />
+                Minhas
+              </Button>
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+                className="text-xs gap-1"
+              >
+                <Users className="h-3 w-3" />
+                Todas
+              </Button>
+            </div>
+          )}
+          
           <NotificationFixButton />
           
           {selectedNotifications.length > 0 && (
@@ -237,12 +270,20 @@ export default function Notifications() {
             icon={Bell}
             title="Nenhuma notificação encontrada"
             description={
-              filter === 'all' 
+              viewMode === 'all' && userRole === 'admin'
+                ? filter === 'all' 
+                  ? "Nenhuma notificação no sistema."
+                  : filter === 'unread'
+                  ? "Nenhuma notificação não lida no sistema."
+                  : "Nenhuma notificação lida no sistema."
+                : filter === 'all' 
                 ? "Você não possui notificações no momento."
                 : filter === 'unread'
                 ? "Você não possui notificações não lidas."
                 : "Você não possui notificações lidas."
             }
+            actionLabel={userRole === 'admin' && viewMode === 'personal' ? 'Ver notificações de todos os usuários' : undefined}
+            onAction={userRole === 'admin' && viewMode === 'personal' ? () => setViewMode('all') : undefined}
           />
         ) : (
           <div className="space-y-3">
@@ -324,6 +365,13 @@ export default function Notifications() {
                     }`}>
                       {notification.message}
                     </p>
+                    
+                    {/* Show user info for admin viewing all notifications */}
+                    {viewMode === 'all' && userRole === 'admin' && notification.profiles && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Para: {notification.profiles.full_name || notification.profiles.email}
+                      </p>
+                    )}
                     
                     {notification.related_document_type && (
                       <div className="flex items-center gap-1">

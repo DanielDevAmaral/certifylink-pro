@@ -19,74 +19,71 @@ import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { toast } from "sonner";
 import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
-import { 
-  Award, 
-  FileCheck, 
-  Scale, 
-  TrendingUp, 
-  Clock,
-  Plus,
-  Download,
-  AlertCircle,
-  Loader2,
-  Trophy,
-  MousePointer,
-  RefreshCw
-} from "lucide-react";
+import { Award, FileCheck, Scale, TrendingUp, Clock, Plus, Download, AlertCircle, Loader2, Trophy, MousePointer, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
-
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
-  const { data: expiringItems, isLoading: expiringLoading } = useExpiringItems();
-  const { refreshDashboard } = useCacheInvalidation();
-  
+  const {
+    data: stats,
+    isLoading: statsLoading
+  } = useDashboardStats();
+  const {
+    data: analytics,
+    isLoading: analyticsLoading
+  } = useDashboardAnalytics();
+  const {
+    data: expiringItems,
+    isLoading: expiringLoading
+  } = useExpiringItems();
+  const {
+    refreshDashboard
+  } = useCacheInvalidation();
+
   // Ativar atualizações em tempo real
   useRealtimeUpdates();
-  
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [showReports, setShowReports] = useState(false);
-  const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({ type: 'certification', days: 30 });
+  const [recentAdditionsFilters, setRecentAdditionsFilters] = useState<RecentAdditionsFilters>({
+    type: 'certification',
+    days: 30
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const { data: recentAdditions, isLoading: additionsLoading } = useRecentAdditions(recentAdditionsFilters);
-
+  const {
+    data: recentAdditions,
+    isLoading: additionsLoading
+  } = useRecentAdditions(recentAdditionsFilters);
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+    return format(new Date(dateString), "dd/MM/yyyy", {
+      locale: ptBR
+    });
   };
-
   const formatExpiryDays = (days: number) => {
     if (days <= 0) return 'Vencido';
     if (days === 1) return '1 dia';
     return `${days} dias`;
   };
-
   const getTypeLabel = (type: string) => {
     const labels = {
       certification: 'Certificação',
-      technical_attestation: 'Atestado Técnico', 
+      technical_attestation: 'Atestado Técnico',
       legal_document: 'Documento Jurídico',
       badge: 'Badge'
     };
     return labels[type as keyof typeof labels] || type;
   };
-
   const getTypeIcon = (type: string) => {
     const icons = {
       certification: Award,
-      technical_attestation: FileCheck, 
+      technical_attestation: FileCheck,
       legal_document: Scale,
       badge: Trophy
     };
     return icons[type as keyof typeof icons] || Award;
   };
-
   const handleItemClick = (item: any) => {
     navigateToRelatedDocument(item.type, item.id);
   };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -103,31 +100,14 @@ export default function Dashboard() {
       setIsRefreshing(false);
     }
   };
-
-  return (
-    <Layout>
-      <PageHeader
-        title="Dashboard Executivo"
-        description="Visão geral da gestão documental corporativa"
-      >
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
+  return <Layout>
+      <PageHeader title="Dashboard Executivo" description="Visão geral da gestão documental corporativa">
+        <Button variant="outline" className="gap-2" onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           {isRefreshing ? 'Atualizando...' : 'Atualizar'}
         </Button>
-        <Button className="btn-corporate gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Documento
-        </Button>
-        <Button 
-          variant="outline" 
-          className="gap-2"
-          onClick={() => setShowReports(!showReports)}
-        >
+        
+        <Button variant="outline" className="gap-2" onClick={() => setShowReports(!showReports)}>
           <Download className="h-4 w-4" />
           Exportar Relatório
         </Button>
@@ -137,60 +117,41 @@ export default function Dashboard() {
       <Collapsible open={showReports} onOpenChange={setShowReports}>
         <CollapsibleContent>
           <div className="mb-6">
-            <ReportGenerator 
-              data={[...recentAdditions || [], ...expiringItems || []]} 
-              type="dashboard"
-              title="Relatório Dashboard Executivo"
-            />
+            <ReportGenerator data={[...(recentAdditions || []), ...(expiringItems || [])]} type="dashboard" title="Relatório Dashboard Executivo" />
           </div>
         </CollapsibleContent>
       </Collapsible>
 
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statsLoading ? (
-          // Loading skeleton
-          Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="card-corporate">
+        {statsLoading ?
+      // Loading skeleton
+      Array.from({
+        length: 4
+      }).map((_, i) => <Card key={i} className="card-corporate">
               <div className="animate-pulse">
                 <div className="h-4 bg-muted rounded w-24 mb-2"></div>
                 <div className="h-8 bg-muted rounded w-16 mb-1"></div>
                 <div className="h-3 bg-muted rounded w-32"></div>
               </div>
-            </Card>
-          ))
-        ) : (
-          <>
-            <StatsCard
-              title="Certificações"
-              value={stats?.total_certifications || 0}
-              description={`${stats?.expiring_certifications || 0} vencendo em breve`}
-              icon={Award}
-              trend={{ value: 12, isPositive: true }}
-            />
-            <StatsCard
-              title="Atestados Técnicos"
-              value={stats?.total_certificates || 0}
-              description={`${stats?.expiring_certificates || 0} vencendo em breve`}
-              icon={FileCheck}
-              trend={{ value: 8, isPositive: true }}
-            />
-            <StatsCard
-              title="Documentos Jurídicos"
-              value={stats?.total_documents || 0}
-              description={`${stats?.expiring_documents || 0} vencendo em breve`}
-              icon={Scale}
-              trend={{ value: 5, isPositive: false }}
-            />
-            <StatsCard
-              title="Taxa de Conformidade"
-              value={`${stats?.completion_percentage || 0}%`}
-              description={`${stats?.expiring_alert || 0} documentos vencendo em breve`}
-              icon={TrendingUp}
-              trend={{ value: 3, isPositive: true }}
-            />
-          </>
-        )}
+            </Card>) : <>
+            <StatsCard title="Certificações" value={stats?.total_certifications || 0} description={`${stats?.expiring_certifications || 0} vencendo em breve`} icon={Award} trend={{
+          value: 12,
+          isPositive: true
+        }} />
+            <StatsCard title="Atestados Técnicos" value={stats?.total_certificates || 0} description={`${stats?.expiring_certificates || 0} vencendo em breve`} icon={FileCheck} trend={{
+          value: 8,
+          isPositive: true
+        }} />
+            <StatsCard title="Documentos Jurídicos" value={stats?.total_documents || 0} description={`${stats?.expiring_documents || 0} vencendo em breve`} icon={Scale} trend={{
+          value: 5,
+          isPositive: false
+        }} />
+            <StatsCard title="Taxa de Conformidade" value={`${stats?.completion_percentage || 0}%`} description={`${stats?.expiring_alert || 0} documentos vencendo em breve`} icon={TrendingUp} trend={{
+          value: 3,
+          isPositive: true
+        }} />
+          </>}
       </div>
 
       {/* Analytics Charts */}
@@ -206,25 +167,14 @@ export default function Dashboard() {
             <Plus className="h-5 w-5 text-muted-foreground" />
           </div>
           
-          <RecentAdditionsFiltersComponent 
-            filters={recentAdditionsFilters}
-            onFiltersChange={setRecentAdditionsFilters}
-          />
+          <RecentAdditionsFiltersComponent filters={recentAdditionsFilters} onFiltersChange={setRecentAdditionsFilters} />
           
           <div className="space-y-4">
-            {additionsLoading ? (
-              <div className="flex items-center justify-center py-8">
+            {additionsLoading ? <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : recentAdditions && recentAdditions.length > 0 ? (
-              recentAdditions.slice(0, 5).map((addition) => {
-                const TypeIcon = getTypeIcon(addition.type);
-                return (
-                  <div 
-                    key={addition.id} 
-                    className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 cursor-pointer transition-colors group"
-                    onClick={() => handleItemClick(addition)}
-                  >
+              </div> : recentAdditions && recentAdditions.length > 0 ? recentAdditions.slice(0, 5).map(addition => {
+            const TypeIcon = getTypeIcon(addition.type);
+            return <div key={addition.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 cursor-pointer transition-colors group" onClick={() => handleItemClick(addition)}>
                     <div className="flex items-center gap-3 flex-1">
                       <TypeIcon className="h-4 w-4 text-muted-foreground" />
                       <div className="flex-1">
@@ -240,14 +190,10 @@ export default function Dashboard() {
                       <StatusBadge status={addition.status} />
                       <MousePointer className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
+                  </div>;
+          }) : <div className="text-center py-8">
                 <p className="text-muted-foreground">Nenhuma adição recente</p>
-              </div>
-            )}
+              </div>}
           </div>
         </Card>
 
@@ -258,19 +204,11 @@ export default function Dashboard() {
             <AlertCircle className="h-5 w-5 text-warning" />
           </div>
           <div className="space-y-4">
-            {expiringLoading ? (
-              <div className="flex items-center justify-center py-8">
+            {expiringLoading ? <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : expiringItems && expiringItems.length > 0 ? (
-              expiringItems.map((item) => {
-                const TypeIcon = getTypeIcon(item.type);
-                return (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light hover:bg-warning-light/80 cursor-pointer transition-colors group"
-                    onClick={() => handleItemClick(item)}
-                  >
+              </div> : expiringItems && expiringItems.length > 0 ? expiringItems.map(item => {
+            const TypeIcon = getTypeIcon(item.type);
+            return <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning-light hover:bg-warning-light/80 cursor-pointer transition-colors group" onClick={() => handleItemClick(item)}>
                     <div className="flex items-center gap-3 flex-1">
                       <TypeIcon className="h-4 w-4 text-warning" />
                       <div className="flex-1">
@@ -286,14 +224,10 @@ export default function Dashboard() {
                       <StatusBadge status={item.status} />
                       <MousePointer className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
+                  </div>;
+          }) : <div className="text-center py-8">
                 <p className="text-muted-foreground">Nenhum item vencendo em breve</p>
-              </div>
-            )}
+              </div>}
           </div>
         </Card>
       </div>
@@ -302,7 +236,7 @@ export default function Dashboard() {
       <Card className="card-corporate mt-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Ações Rápidas</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Dialog open={openDialog === 'certification'} onOpenChange={(open) => setOpenDialog(open ? 'certification' : null)}>
+          <Dialog open={openDialog === 'certification'} onOpenChange={open => setOpenDialog(open ? 'certification' : null)}>
             <DialogTrigger asChild>
               <Button variant="outline" className="h-auto p-4 flex-col gap-2">
                 <Award className="h-6 w-6" />
@@ -314,7 +248,7 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={openDialog === 'attestation'} onOpenChange={(open) => setOpenDialog(open ? 'attestation' : null)}>
+          <Dialog open={openDialog === 'attestation'} onOpenChange={open => setOpenDialog(open ? 'attestation' : null)}>
             <DialogTrigger asChild>
               <Button variant="outline" className="h-auto p-4 flex-col gap-2">
                 <FileCheck className="h-6 w-6" />
@@ -326,7 +260,7 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={openDialog === 'document'} onOpenChange={(open) => setOpenDialog(open ? 'document' : null)}>
+          <Dialog open={openDialog === 'document'} onOpenChange={open => setOpenDialog(open ? 'document' : null)}>
             <DialogTrigger asChild>
               <Button variant="outline" className="h-auto p-4 flex-col gap-2">
                 <Scale className="h-6 w-6" />
@@ -339,6 +273,5 @@ export default function Dashboard() {
           </Dialog>
         </div>
       </Card>
-    </Layout>
-  );
+    </Layout>;
 }

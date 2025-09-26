@@ -65,9 +65,10 @@ async function testGroqConnection(apiKey: string, model: string) {
       return await testGroqChatModel(apiKey, model);
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return {
       success: false,
-      error: `Erro de conexão com Groq: ${error.message}`
+      error: `Erro de conexão com Groq: ${errorMessage}`
     };
   }
 }
@@ -186,9 +187,10 @@ async function testOpenAIConnection(apiKey: string, model: string) {
       return await testOpenAIChatModel(apiKey, model);
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return {
       success: false,
-      error: `Erro de conexão com OpenAI: ${error.message}`
+      error: `Erro de conexão com OpenAI: ${errorMessage}`
     };
   }
 }

@@ -319,7 +319,7 @@ serve(async (req) => {
 
     // 📈 Count notifications created today
     console.log('📈 Counting today\'s notifications...')
-    const today = new Date().toISOString().split('T')[0]
+    // Reuse the 'today' variable already declared at line 58
     const { count: notificationCount, error: countError } = await supabase
       .from('notifications')
       .select('*', { count: 'exact' })
@@ -395,13 +395,17 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 ERROR in daily notification job:', error)
-    console.error('Error stack:', error.stack)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    console.error('Error stack:', errorStack)
     
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: errorMessage,
       timestamp: new Date().toISOString(),
-      stack: error.stack
+      stack: errorStack
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

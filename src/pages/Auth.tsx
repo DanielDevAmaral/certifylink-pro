@@ -331,12 +331,9 @@ export default function Auth() {
         </Card>
 
         <div className="text-center text-sm text-muted-foreground">
-          <p>Plataforma interna • Acesso restrito a colaboradores. 
-
-
-
-
-Por: Roger Lovato e Rodrigo Bonfim</p>
+          <p>Plataforma interna • Acesso restrito a colaboradores. </p>
+          <br>
+          Por: Roger Lovato e Rodrigo Bonfim</br>
         </div>
       </div>
     </div>;

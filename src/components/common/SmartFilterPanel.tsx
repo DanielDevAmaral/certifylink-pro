@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FilterPresets, FilterPreset } from "./FilterPresets";
 import { UserSelectorCombobox } from "@/components/ui/user-selector-combobox";
+import { CertificationTypeMultiSelector } from "./CertificationTypeMultiSelector";
+import { TeamMultiSelector } from "./TeamMultiSelector";
 import { CalendarIcon, Filter, X, Settings, RotateCcw } from "lucide-react";
 import { format, subDays, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,7 +20,7 @@ import { Clock, AlertTriangle, CheckCircle, User, FileX, Award } from "lucide-re
 export interface SmartFilterConfig {
   key: string;
   label: string;
-  type: 'select' | 'date' | 'dateRange' | 'multiSelect' | 'user' | 'function';
+  type: 'select' | 'date' | 'dateRange' | 'multiSelect' | 'user' | 'function' | 'certificationTypes' | 'teams';
   options?: Array<{ value: string; label: string }>;
   placeholder?: string;
 }
@@ -148,6 +150,12 @@ export function SmartFilterPanel({
     if (filter.type === 'user') {
       return userNames[value] || 'Usuário não encontrado';
     }
+    if (filter.type === 'certificationTypes') {
+      return Array.isArray(value) ? `${value.length} tipo(s)` : value;
+    }
+    if (filter.type === 'teams') {
+      return Array.isArray(value) ? `${value.length} equipe(s)` : value;
+    }
     return value;
   };
 
@@ -197,6 +205,24 @@ export function SmartFilterPanel({
             value={activeFilters[filter.key] || ""}
             onValueChange={(value) => handleFilterChange(filter.key, value)}
             placeholder="Selecione um responsável..."
+          />
+        );
+
+      case 'certificationTypes':
+        return (
+          <CertificationTypeMultiSelector
+            value={activeFilters[filter.key] || []}
+            onChange={(value) => handleFilterChange(filter.key, value)}
+            placeholder={filter.placeholder}
+          />
+        );
+
+      case 'teams':
+        return (
+          <TeamMultiSelector
+            value={activeFilters[filter.key] || []}
+            onChange={(value) => handleFilterChange(filter.key, value)}
+            placeholder={filter.placeholder}
           />
         );
 

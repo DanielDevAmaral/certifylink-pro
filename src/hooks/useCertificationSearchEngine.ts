@@ -10,6 +10,8 @@ export interface SearchEngineFilters {
   approved_equivalence?: string;
   user_id?: string;
   function?: string;
+  certification_type_ids?: string[];
+  team_ids?: string[];
   expiring_in_days?: number;
   validity_date?: {
     from?: Date;
@@ -69,6 +71,34 @@ export function useCertificationSearchEngine(filters: SearchEngineFilters = {}) 
 
       if (filters.function) {
         query = query.eq('function', filters.function);
+      }
+
+      // Filter by certification types
+      if (filters.certification_type_ids && filters.certification_type_ids.length > 0) {
+        // Get certifications that match any of the selected types
+        const { data: typeData } = await supabase
+          .from('certification_types')
+          .select('name, full_name')
+          .in('id', filters.certification_type_ids);
+        
+        if (typeData && typeData.length > 0) {
+          const typeNames = typeData.flatMap(t => [t.name, t.full_name]);
+          query = query.in('name', typeNames);
+        }
+      }
+
+      // Filter by teams
+      if (filters.team_ids && filters.team_ids.length > 0) {
+        // Get user IDs from team members
+        const { data: teamMembers } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .in('team_id', filters.team_ids);
+        
+        if (teamMembers && teamMembers.length > 0) {
+          const userIds = teamMembers.map(m => m.user_id);
+          query = query.in('user_id', userIds);
+        }
       }
 
       // Handle expiring certificates filter

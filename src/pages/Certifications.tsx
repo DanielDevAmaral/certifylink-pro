@@ -45,6 +45,16 @@ const smartFilterConfigs = [{
   }],
   placeholder: 'Selecione o status...'
 }, {
+  key: 'certification_type_ids',
+  label: 'Tipos de Certificação',
+  type: 'certificationTypes' as const,
+  placeholder: 'Selecione tipos de certificação...'
+}, {
+  key: 'team_ids',
+  label: 'Equipes',
+  type: 'teams' as const,
+  placeholder: 'Selecione equipes...'
+}, {
   key: 'approved_equivalence',
   label: 'Equivalência',
   type: 'select' as const,
@@ -56,11 +66,6 @@ const smartFilterConfigs = [{
     label: 'Pendente'
   }],
   placeholder: 'Status da equivalência...'
-}, {
-  key: 'function',
-  label: 'Função',
-  type: 'function' as const,
-  placeholder: 'Selecione uma função...'
 }, {
   key: 'user_id',
   label: 'Responsável',

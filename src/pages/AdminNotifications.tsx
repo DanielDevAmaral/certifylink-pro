@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Bell, Users, TrendingUp, Send, Plus, AlertTriangle, FileText, Award, Shield } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,8 +13,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
+import { useSearchParams } from 'react-router-dom';
 
 export default function AdminNotifications() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: allNotifications = [], isLoading } = useAllNotifications();
   const { data: expiringDocs = [], isLoading: isLoadingExpiring } = useExpiringDocuments(60);
   const createBulkMutation = useCreateBulkNotifications();
@@ -100,6 +102,19 @@ export default function AdminNotifications() {
     return acc;
   }, {});
 
+  // Get active tab from URL or default to overview
+  const activeTab = searchParams.get('tab') || 'overview';
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+
+  // Scroll to top when tab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   return (
     <Layout>
       <PageHeader
@@ -128,7 +143,7 @@ export default function AdminNotifications() {
         </div>
       </PageHeader>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview" className="gap-2">
             <TrendingUp className="h-4 w-4" />

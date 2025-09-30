@@ -701,6 +701,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_notification_metrics: {
+        Args: { period_hours?: number }
+        Returns: Json
+      }
       get_unread_notifications_count: {
         Args: { user_uuid?: string }
         Returns: number

@@ -5,6 +5,7 @@ import { SecurityIndicator } from '@/components/security/SecurityIndicator';
 import { CertificationManagement } from '@/components/admin/CertificationManagement';
 import { NotificationSystemCard } from '@/components/admin/NotificationSystemCard';
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
+import { NotificationMetricsCard } from '@/components/admin/NotificationMetricsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ export default function AdminDashboard() {
         />
 
         <Tabs defaultValue="status" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="status" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Status do Sistema
@@ -89,6 +90,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Segurança
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notificações
             </TabsTrigger>
             <TabsTrigger value="certifications" className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
@@ -200,6 +205,14 @@ export default function AdminDashboard() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-6 mt-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <NotificationSystemCard />
+              <NotificationStatsCard />
+            </div>
+            <NotificationMetricsCard />
           </TabsContent>
 
           <TabsContent value="certifications" className="space-y-6 mt-6">

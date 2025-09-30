@@ -3,5 +3,8 @@ project_id = "fxfmswnvfqqdsgrcgvhl"
 [functions.test-ai-provider]
 verify_jwt = false
 
+[functions.cleanup-notifications]
+verify_jwt = false
+
 [functions.fix-notification-links]
 verify_jwt = false

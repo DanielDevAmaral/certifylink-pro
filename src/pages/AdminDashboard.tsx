@@ -6,6 +6,7 @@ import { CertificationManagement } from '@/components/admin/CertificationManagem
 import { NotificationSystemCard } from '@/components/admin/NotificationSystemCard';
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
 import { NotificationMetricsCard } from '@/components/admin/NotificationMetricsCard';
+import { RetryQueueMonitor } from '@/components/admin/RetryQueueMonitor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -212,6 +213,7 @@ export default function AdminDashboard() {
               <NotificationSystemCard />
               <NotificationStatsCard />
             </div>
+            <RetryQueueMonitor />
             <NotificationMetricsCard />
           </TabsContent>
 

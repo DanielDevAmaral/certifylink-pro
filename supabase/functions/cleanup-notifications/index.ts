@@ -27,20 +27,34 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get retention settings from system_settings
-    const { data: settings } = await supabase
+    const { data: globalSettings } = await supabase
       .from('system_settings')
       .select('setting_value')
       .eq('setting_key', 'notifications.retention_days')
       .single();
 
-    const retentionDays = settings?.setting_value ? parseInt(settings.setting_value) : 90;
-    console.log(`📅 Using retention period: ${retentionDays} days`);
+    const { data: typeSettings } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'notifications.retention_by_type')
+      .single();
+
+    const globalRetentionDays = globalSettings?.setting_value ? parseInt(globalSettings.setting_value) : 90;
+    const retentionByType = typeSettings?.setting_value || {
+      info: 30,
+      warning: 60,
+      error: 90,
+      success: 14,
+    };
+
+    console.log(`📅 Global retention: ${globalRetentionDays} days`);
+    console.log(`📅 Type-specific retention:`, retentionByType);
 
     const stats: CleanupStats = {
       expired_deleted: 0,
       old_read_deleted: 0,
       total_deleted: 0,
-      retention_days: retentionDays,
+      retention_days: globalRetentionDays,
       executed_at: new Date().toISOString(),
     };
 
@@ -58,23 +72,51 @@ Deno.serve(async (req) => {
       console.log(`✅ Deleted ${stats.expired_deleted} expired notifications`);
     }
 
-    // 2. Delete old read notifications (beyond retention period)
-    const retentionDate = new Date();
-    retentionDate.setDate(retentionDate.getDate() - retentionDays);
+    // 2. Delete old read notifications by type (with type-specific retention)
+    let totalOldReadDeleted = 0;
 
-    const { data: oldRead, error: oldReadError } = await supabase
+    for (const [type, days] of Object.entries(retentionByType)) {
+      const retentionDate = new Date();
+      retentionDate.setDate(retentionDate.getDate() - (days as number));
+
+      const { data: oldRead, error: oldReadError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('notification_type', type)
+        .not('read_at', 'is', null)
+        .lt('read_at', retentionDate.toISOString())
+        .select('id');
+
+      if (oldReadError) {
+        console.error(`❌ Error deleting old ${type} notifications:`, oldReadError);
+      } else {
+        const deleted = oldRead?.length || 0;
+        totalOldReadDeleted += deleted;
+        console.log(`✅ Deleted ${deleted} old ${type} notifications (retention: ${days} days)`);
+      }
+    }
+
+    // Also clean up any other types using global retention
+    const globalRetentionDate = new Date();
+    globalRetentionDate.setDate(globalRetentionDate.getDate() - globalRetentionDays);
+
+    const { data: otherOldRead, error: otherError } = await supabase
       .from('notifications')
       .delete()
+      .not('notification_type', 'in', `(${Object.keys(retentionByType).map(t => `'${t}'`).join(',')})`)
       .not('read_at', 'is', null)
-      .lt('read_at', retentionDate.toISOString())
+      .lt('read_at', globalRetentionDate.toISOString())
       .select('id');
 
-    if (oldReadError) {
-      console.error('❌ Error deleting old read notifications:', oldReadError);
+    if (otherError) {
+      console.error('❌ Error deleting other old notifications:', otherError);
     } else {
-      stats.old_read_deleted = oldRead?.length || 0;
-      console.log(`✅ Deleted ${stats.old_read_deleted} old read notifications`);
+      const deleted = otherOldRead?.length || 0;
+      totalOldReadDeleted += deleted;
+      console.log(`✅ Deleted ${deleted} other old notifications (global retention: ${globalRetentionDays} days)`);
     }
+
+    stats.old_read_deleted = totalOldReadDeleted;
 
     stats.total_deleted = stats.expired_deleted + stats.old_read_deleted;
 

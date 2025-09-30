@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.fix-notification-links]
 verify_jwt = false
+
+[functions.notification-retry-system]
+verify_jwt = false

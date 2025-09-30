@@ -428,6 +428,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          resource_id: string | null
+          resource_type: string
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type: string
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           description: string | null
@@ -681,6 +720,10 @@ export type Database = {
           old_status: string
           reason: string
         }[]
+      }
+      is_direct_team_leader: {
+        Args: { leader_id: string; member_id: string }
+        Returns: boolean
       }
       is_team_leader: {
         Args: { target_user_uuid: string; user_uuid: string }

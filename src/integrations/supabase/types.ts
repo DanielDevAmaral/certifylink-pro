@@ -602,7 +602,7 @@ export type Database = {
           project_period_end: string | null
           project_period_start: string | null
           project_value: number | null
-          related_certifications: string[] | null
+          related_certifications: Json[] | null
           status: Database["public"]["Enums"]["document_status"]
           updated_at: string
           user_id: string
@@ -620,7 +620,7 @@ export type Database = {
           project_period_end?: string | null
           project_period_start?: string | null
           project_value?: number | null
-          related_certifications?: string[] | null
+          related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id: string
@@ -638,7 +638,7 @@ export type Database = {
           project_period_end?: string | null
           project_period_start?: string | null
           project_value?: number | null
-          related_certifications?: string[] | null
+          related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id?: string

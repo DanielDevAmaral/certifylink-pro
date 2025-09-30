@@ -16,7 +16,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
 import { usePublicNames } from "@/hooks/usePublicNames";
-import { useCertificationNames } from "@/hooks/useCertificationResolver";
+import { useRelatedCertificationResolver, RelatedCertification } from "@/hooks/useRelatedCertificationResolver";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -90,13 +90,25 @@ export default function Certificates() {
 
   const { data: userNames = {} } = usePublicNames(userIds);
 
-  // Get all related certification IDs for name lookup
-  const relatedCertIds = useMemo(() => {
-    const ids = attestations.flatMap(att => att.related_certifications || []);
-    return Array.from(new Set(ids));
+  // Get all related certifications for name lookup
+  const allRelatedCerts = useMemo(() => {
+    const certs: RelatedCertification[] = [];
+    attestations.forEach(att => {
+      if (att.related_certifications && Array.isArray(att.related_certifications)) {
+        att.related_certifications.forEach((cert: any) => {
+          if (cert && typeof cert === 'object' && cert.certification_id && cert.user_id) {
+            certs.push({
+              certification_id: cert.certification_id,
+              user_id: cert.user_id
+            });
+          }
+        });
+      }
+    });
+    return certs;
   }, [attestations]);
 
-  const certificationNames = useCertificationNames(relatedCertIds);
+  const { data: resolvedCertifications = [] } = useRelatedCertificationResolver(allRelatedCerts);
 
   // Handle highlighting from notifications
   useEffect(() => {
@@ -350,15 +362,20 @@ export default function Certificates() {
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Certificações Relacionadas:</p>
                     <div className="flex flex-wrap gap-1">
-                      {certificate.related_certifications.map((certId, index) => {
-                        const certIndex = relatedCertIds.indexOf(certId);
-                        const certName = certIndex >= 0 ? certificationNames[certIndex] : certId;
+                      {certificate.related_certifications.map((cert: any, index) => {
+                        const resolved = resolvedCertifications.find(
+                          rc => rc.certification_id === cert.certification_id && rc.user_id === cert.user_id
+                        );
+                        const displayText = resolved 
+                          ? `${resolved.user_name} - ${resolved.certification_name}`
+                          : `${cert.user_id?.slice(0, 8)}... - ${cert.certification_id?.slice(0, 8)}...`;
+                        
                         return (
                           <span
-                            key={index}
+                            key={`${cert.certification_id}-${cert.user_id}-${index}`}
                             className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground"
                           >
-                            {certName}
+                            {displayText}
                           </span>
                         );
                       })}

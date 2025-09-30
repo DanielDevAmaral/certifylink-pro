@@ -186,7 +186,7 @@ export function useTechnicalAttestationSearch(filters: SearchFilters) {
       const totalPages = Math.ceil((count || 0) / itemsPerPage);
 
       return {
-        data: (data as TechnicalCertificate[]) || [],
+        data: ((data || []) as unknown as TechnicalCertificate[]),
         totalCount: count || 0,
         totalPages,
         currentPage: page

@@ -49,6 +49,11 @@ export interface Certification {
   updated_at: string;
 }
 
+export interface RelatedCertification {
+  certification_id: string;
+  user_id: string;
+}
+
 export interface TechnicalCertificate {
   id: string;
   user_id: string;
@@ -61,7 +66,7 @@ export interface TechnicalCertificate {
   issuer_position?: string;
   issuer_contact?: string;
   document_url?: string;
-  related_certifications?: string[];
+  related_certifications?: RelatedCertification[];
   validity_date?: string;
   status: DocumentStatus;
   created_at: string;

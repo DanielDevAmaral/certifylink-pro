@@ -24,7 +24,7 @@ export function useTechnicalAttestations() {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as unknown as TechnicalCertificate[];
     },
     enabled: !!user?.id,
   });
@@ -46,12 +46,12 @@ export function useCreateTechnicalAttestation() {
 
       const { data: result, error } = await supabase
         .from('technical_attestations')
-        .insert([{ ...data, user_id: user.id }] as any)
+        .insert([{ ...data, user_id: user.id, related_certifications: (data.related_certifications || []) as any }])
         .select()
         .single();
 
       if (error) throw error;
-      return result;
+      return result as unknown as TechnicalCertificate;
     },
     onSuccess: (result) => {
       // Force refresh all related queries to ensure data consistency
@@ -86,9 +86,14 @@ export function useUpdateTechnicalAttestation() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TechnicalCertificate> }) => {
+      const updateData = { 
+        ...data,
+        related_certifications: (data.related_certifications || []) as any 
+      };
+      
       let query = supabase
         .from('technical_attestations')
-        .update(data)
+        .update(updateData)
         .eq('id', id);
 
       // Only filter by user_id if not admin
@@ -102,7 +107,7 @@ export function useUpdateTechnicalAttestation() {
 
       if (error) throw error;
       if (!result) throw new Error('Atestado técnico não encontrado ou você não tem permissão para atualizá-lo');
-      return result;
+      return result as unknown as TechnicalCertificate;
     },
     onSuccess: (result) => {
       // Force refresh all related queries to ensure data consistency

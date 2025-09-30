@@ -327,6 +327,45 @@ export type Database = {
           },
         ]
       }
+      notification_retry_queue: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          max_retries: number
+          next_retry_at: string
+          notification_data: Json
+          notification_id: string
+          retry_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number
+          next_retry_at: string
+          notification_data: Json
+          notification_id: string
+          retry_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number
+          next_retry_at?: string
+          notification_data?: Json
+          notification_id?: string
+          retry_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -703,6 +742,10 @@ export type Database = {
       }
       get_notification_metrics: {
         Args: { period_hours?: number }
+        Returns: Json
+      }
+      get_retry_queue_stats: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       get_unread_notifications_count: {

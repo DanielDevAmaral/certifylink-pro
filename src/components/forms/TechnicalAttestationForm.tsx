@@ -14,6 +14,7 @@ import { UserSelectorCombobox } from "@/components/ui/user-selector-combobox";
 import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
+import { useRelatedCertificationResolver } from '@/hooks/useRelatedCertificationResolver';
 import { downloadDocument, formatDocumentName, isValidDocumentUrl, getFilenameFromUrl } from '@/lib/utils/documentUtils';
 import type { TechnicalCertificate, RelatedCertification } from '@/types';
 import { X, Upload, FileText, Download, Eye, Trash2, Plus } from 'lucide-react';
@@ -70,6 +71,10 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       related_certifications: attestation?.related_certifications || [],
     },
   });
+
+  // Resolve related certifications to show names instead of IDs
+  const relatedCerts = form.watch('related_certifications') || [];
+  const { data: resolvedCerts, isLoading: isResolvingCerts } = useRelatedCertificationResolver(relatedCerts);
 
   const onSubmit = async (data: AttestationFormData) => {
     try {
@@ -383,20 +388,31 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                     </div>
                     {field.value && field.value.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {field.value.map((cert, index) => (
-                          <div key={`${cert.certification_id}-${cert.user_id}-${index}`} className="flex items-center gap-1 px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm">
-                            <span>{cert.user_id.slice(0, 8)}... - {cert.certification_id.slice(0, 8)}...</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-auto p-0 hover:bg-transparent"
-                              onClick={() => removeCertification(cert.certification_id, cert.user_id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                        {field.value.map((cert, index) => {
+                          const resolved = resolvedCerts?.find(
+                            r => r.certification_id === cert.certification_id && r.user_id === cert.user_id
+                          );
+                          const displayText = isResolvingCerts 
+                            ? 'Carregando...' 
+                            : resolved 
+                              ? `${resolved.user_name} - ${resolved.certification_name}`
+                              : `${cert.user_id.slice(0, 8)}... - ${cert.certification_id.slice(0, 8)}...`;
+                          
+                          return (
+                            <div key={`${cert.certification_id}-${cert.user_id}-${index}`} className="flex items-center gap-1 px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm">
+                              <span>{displayText}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto p-0 hover:bg-transparent"
+                                onClick={() => removeCertification(cert.certification_id, cert.user_id)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

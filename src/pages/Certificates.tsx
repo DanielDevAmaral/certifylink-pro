@@ -16,6 +16,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
 import { usePublicNames } from "@/hooks/usePublicNames";
+import { useCertificationNames } from "@/hooks/useCertificationResolver";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -88,6 +89,14 @@ export default function Certificates() {
   }, [attestations]);
 
   const { data: userNames = {} } = usePublicNames(userIds);
+
+  // Get all related certification IDs for name lookup
+  const relatedCertIds = useMemo(() => {
+    const ids = attestations.flatMap(att => att.related_certifications || []);
+    return Array.from(new Set(ids));
+  }, [attestations]);
+
+  const certificationNames = useCertificationNames(relatedCertIds);
 
   // Handle highlighting from notifications
   useEffect(() => {
@@ -341,14 +350,18 @@ export default function Certificates() {
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Certificações Relacionadas:</p>
                     <div className="flex flex-wrap gap-1">
-                      {certificate.related_certifications.map((cert, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground"
-                        >
-                          {cert}
-                        </span>
-                      ))}
+                      {certificate.related_certifications.map((certId, index) => {
+                        const certIndex = relatedCertIds.indexOf(certId);
+                        const certName = certIndex >= 0 ? certificationNames[certIndex] : certId;
+                        return (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground"
+                          >
+                            {certName}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

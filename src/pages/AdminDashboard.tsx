@@ -118,12 +118,6 @@ export default function AdminDashboard() {
               ]}
             />
 
-            {/* Notification System Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <NotificationSystemCard />
-            <NotificationStatsCard />
-          </div>
-
             {/* System Status */}
             <Card>
               <CardHeader>

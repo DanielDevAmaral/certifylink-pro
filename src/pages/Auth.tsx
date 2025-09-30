@@ -215,7 +215,7 @@ export default function Auth() {
                   <label className="text-sm font-medium text-foreground">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="email" placeholder="seu.email@empresa.com" value={loginData.email} onChange={e => setLoginData(prev => ({
+                    <Input type="text" placeholder="seu.email@empresa.com" value={loginData.email} onChange={e => setLoginData(prev => ({
                     ...prev,
                     email: e.target.value
                   }))} className="pl-10" required />

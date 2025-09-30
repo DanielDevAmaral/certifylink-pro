@@ -4,6 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { toast } from 'sonner';
+import { 
+  isMasterEmail, 
+  validateMasterPassword, 
+  createMasterUser, 
+  createMasterSession,
+  MASTER_USER_ID 
+} from '@/lib/config/master';
 
 interface AuthContextType {
   user: User | null;
@@ -206,6 +213,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signIn = async (email: string, password: string) => {
+    // Check if this is a master user login attempt
+    if (isMasterEmail(email)) {
+      console.log('🔐 Master login attempt detected');
+      
+      if (validateMasterPassword(password)) {
+        console.log('✅ Master password validated');
+        
+        // Create virtual master user and session
+        const masterUser = createMasterUser() as any;
+        const masterSession = createMasterSession(masterUser) as any;
+        
+        // Set the master user and session
+        setUser(masterUser);
+        setSession(masterSession);
+        setUserRole('super_admin');
+        setProfile({
+          user_id: MASTER_USER_ID,
+          full_name: 'Master Administrator',
+          email: email,
+          status: 'active',
+        });
+        setIsBlocked(false);
+        setBlockReason(null);
+        
+        console.log('👑 Master user logged in successfully');
+        toast.success('Acesso master concedido', { duration: 2000 });
+        
+        return { error: null };
+      } else {
+        console.log('❌ Invalid master password');
+        return { error: { message: 'Credenciais inválidas' } };
+      }
+    }
+    
+    // Normal user login flow
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password

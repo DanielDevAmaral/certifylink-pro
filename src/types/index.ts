@@ -1,6 +1,6 @@
 // Corporate Document Management Platform Types
 
-export type UserRole = 'user' | 'leader' | 'admin';
+export type UserRole = 'user' | 'leader' | 'admin' | 'super_admin';
 export type DocumentStatus = 'valid' | 'expiring' | 'expired' | 'pending' | 'deactivated';
 export type DocumentCategory = 'certification' | 'technical_attestation' | 'legal_document';
 export type LegalDocumentType = 'legal_qualification' | 'fiscal_regularity' | 'economic_financial' | 'common_declarations';

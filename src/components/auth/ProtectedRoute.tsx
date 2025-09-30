@@ -29,7 +29,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <BlockedUser reason={blockReason} />;
   }
 
-  if (requiredRole && userRole !== requiredRole && userRole !== 'admin') {
+  if (requiredRole && userRole !== requiredRole && userRole !== 'admin' && userRole !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
   }
 

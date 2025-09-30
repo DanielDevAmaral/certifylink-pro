@@ -147,15 +147,6 @@ export function NotificationStatsCard() {
           </div>
         </div>
 
-        {/* Ação Rápida */}
-        <Button 
-          variant="outline" 
-          className="w-full gap-2"
-          onClick={() => navigate('/admin/notifications?tab=overview')}
-        >
-          <Bell className="h-4 w-4" />
-          Gerenciar Todas as Notificações
-        </Button>
       </CardContent>
     </Card>
   );

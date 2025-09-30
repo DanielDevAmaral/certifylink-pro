@@ -164,12 +164,8 @@ export default function Settings() {
         </Button>
       </PageHeader>
 
-      <Tabs defaultValue="ai" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="ai" className="flex flex-col gap-2 h-auto py-4">
-            <Bot className="h-5 w-5" />
-            <span className="text-xs">IA & Equivalências</span>
-          </TabsTrigger>
+      <Tabs defaultValue="notifications" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="notifications" className="flex flex-col gap-2 h-auto py-4">
             <Bell className="h-5 w-5" />
             <span className="text-xs">Notificações</span>
@@ -183,13 +179,6 @@ export default function Settings() {
             <span className="text-xs">Segurança</span>
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="ai" className="space-y-6">
-          <AIProviderConfig 
-            settings={localSettings.ai}
-            onUpdate={updateAISetting}
-          />
-        </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
           <Card className="card-corporate">

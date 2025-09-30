@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const location = useLocation();
-  const { userRole, profile, signOut, isMaster } = useAuth();
+  const { userRole, profile, signOut } = useAuth();
   
   const navigation = [
     {
@@ -80,8 +80,6 @@ export function Sidebar() {
     },
   ].filter(item => {
     if (!item.requiredRole) return true;
-    // Master has access to everything
-    if (isMaster) return true;
     return userRole === item.requiredRole || userRole === 'admin';
   });
 
@@ -140,13 +138,11 @@ export function Sidebar() {
               {userRole && (
                 <div className="flex items-center gap-1 mt-1">
                   <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    isMaster ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
                     userRole === 'admin' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                     userRole === 'leader' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                     'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                   }`}>
-                    {isMaster ? 'Super Admin' : 
-                     userRole === 'admin' ? 'Admin' : 
+                    {userRole === 'admin' ? 'Admin' : 
                      userRole === 'leader' ? 'Líder' : 'Usuário'}
                   </div>
                 </div>

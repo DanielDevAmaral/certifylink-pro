@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { toast } from 'sonner';
-import { isMasterEmail } from '@/lib/config/master';
 
 interface AuthContextType {
   user: User | null;
@@ -18,7 +17,6 @@ interface AuthContextType {
   loading: boolean;
   isBlocked: boolean;
   blockReason: string | null;
-  isMaster: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
-  const [isMaster, setIsMaster] = useState(false);
   const isPageVisible = usePageVisibility();
 
   const checkUserStatus = useCallback((profileData: any) => {
@@ -117,13 +114,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check if this is master user by email
-        if (session?.user?.email === 'master@system.local') {
-          setIsMaster(true);
-        } else {
-          setIsMaster(false);
-        }
-        
         if (session?.user && isPageVisible) {
           setTimeout(() => {
             fetchUserData(session.user.id);
@@ -134,7 +124,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setProfile(null);
           setIsBlocked(false);
           setBlockReason(null);
-          setIsMaster(false);
         }
         
         setLoading(false);
@@ -173,11 +162,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setSession(session);
         setUser(session.user);
         
-        // Check if master
-        if (session.user.email === 'master@system.local') {
-          setIsMaster(true);
-        }
-        
         if (isPageVisible) {
           fetchUserData(session.user.id);
         }
@@ -212,50 +196,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signIn = async (email: string, password: string) => {
-    // Check if this is a master user login attempt
-    if (isMasterEmail(email)) {
-      console.log('🔐 Master login attempt detected');
-      
-      try {
-        // Call edge function to ensure master user exists with correct password
-        const { data: ensureData, error: ensureError } = await supabase.functions.invoke('ensure-master-user', {
-          body: { password }
-        });
-
-        if (ensureError) {
-          console.error('❌ Error ensuring master user:', ensureError);
-          return { error: { message: 'Credenciais inválidas' } };
-        }
-
-        if (!ensureData?.ok) {
-          console.error('❌ Master user validation failed');
-          return { error: { message: 'Credenciais inválidas' } };
-        }
-
-        console.log('✅ Master user ensured, signing in...');
-
-        // Now sign in with the technical email
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: 'master@system.local',
-          password,
-        });
-
-        if (error) {
-          console.error('❌ Master sign in error:', error);
-          return { error };
-        }
-
-        console.log('👑 Master user authenticated successfully');
-        toast.success('Acesso master concedido', { duration: 2000 });
-        
-        return { error: null };
-      } catch (error) {
-        console.error('❌ Master login error:', error);
-        return { error: { message: 'Erro ao autenticar usuário master' } };
-      }
-    }
-    
-    // Normal user login flow
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -288,7 +228,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
-    setIsMaster(false);
     await supabase.auth.signOut();
   };
 
@@ -303,8 +242,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     loading,
     isBlocked,
-    blockReason,
-    isMaster
+    blockReason
   };
 
   return (

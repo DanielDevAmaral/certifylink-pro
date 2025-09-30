@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { MASTER_DISPLAY_EMAIL } from '@/lib/config/master';
 
 // Password strength validation
 const passwordSchema = z
@@ -15,18 +14,7 @@ export const loginSchema = z.object({
   email: z
     .string()
     .min(1, 'Email é obrigatório')
-    .refine(
-      (email) => {
-        const trimmedEmail = email.toLowerCase().trim();
-        // Allow master email without @
-        if (trimmedEmail === MASTER_DISPLAY_EMAIL.toLowerCase()) {
-          return true;
-        }
-        // For other emails, validate @ is present
-        return z.string().email().safeParse(email).success;
-      },
-      { message: 'Digite um email válido' }
-    )
+    .email('Digite um email válido')
     .transform((email) => email.toLowerCase().trim()),
   password: z
     .string()

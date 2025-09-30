@@ -1,6 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from '@/components/layout/PageHeader';
-import { TestDataGenerator } from '@/components/admin/TestDataGenerator';
 import { DocumentStatusManager } from '@/components/admin/DocumentStatusManager';
 import { SecurityIndicator } from '@/components/security/SecurityIndicator';
 import { CertificationManagement } from '@/components/admin/CertificationManagement';
@@ -19,8 +18,7 @@ import {
   Settings,
   Database,
   Bell,
-  FileText,
-  Wrench
+  FileText
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -83,7 +81,7 @@ export default function AdminDashboard() {
         />
 
         <Tabs defaultValue="status" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="status" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Status do Sistema
@@ -99,10 +97,6 @@ export default function AdminDashboard() {
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Documentos
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="flex items-center gap-2">
-              <Wrench className="h-4 w-4" />
-              Ferramentas
             </TabsTrigger>
           </TabsList>
 
@@ -214,10 +208,6 @@ export default function AdminDashboard() {
 
           <TabsContent value="documents" className="space-y-6 mt-6">
             <DocumentStatusManager />
-          </TabsContent>
-
-          <TabsContent value="tools" className="space-y-6 mt-6">
-            <TestDataGenerator />
           </TabsContent>
         </Tabs>
       </div>

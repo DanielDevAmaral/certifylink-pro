@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Users, TrendingUp, Send, Plus } from 'lucide-react';
+import { Bell, Users, TrendingUp, Send, Plus, AlertTriangle, FileText, Award, Shield } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
 import { useAllNotifications, useCreateBulkNotifications } from '@/hooks/useAdminNotifications';
+import { useExpiringDocuments } from '@/hooks/useExpiringDocuments';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -15,6 +16,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 
 export default function AdminNotifications() {
   const { data: allNotifications = [], isLoading } = useAllNotifications();
+  const { data: expiringDocs = [], isLoading: isLoadingExpiring } = useExpiringDocuments(60);
   const createBulkMutation = useCreateBulkNotifications();
 
   const handleCreateTestNotification = () => {
@@ -45,6 +47,47 @@ export default function AdminNotifications() {
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  };
+
+  const getDocumentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'certification':
+        return <Award className="h-4 w-4" />;
+      case 'badge':
+        return <Shield className="h-4 w-4" />;
+      case 'technical_attestation':
+        return <FileText className="h-4 w-4" />;
+      case 'legal_document':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getDocumentTypeLabel = (type: string) => {
+    switch (type) {
+      case 'certification':
+        return 'Certificação';
+      case 'badge':
+        return 'Badge';
+      case 'technical_attestation':
+        return 'Atestado Técnico';
+      case 'legal_document':
+        return 'Documento Legal';
+      default:
+        return type;
+    }
+  };
+
+  const getUrgencyBadge = (days: number) => {
+    if (days <= 0) {
+      return <Badge variant="destructive">Vencido</Badge>;
+    } else if (days <= 14) {
+      return <Badge variant="destructive">Urgente</Badge>;
+    } else if (days <= 30) {
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Atenção</Badge>;
+    }
+    return <Badge variant="outline">Normal</Badge>;
   };
 
   // Group notifications by user
@@ -91,6 +134,15 @@ export default function AdminNotifications() {
             <TrendingUp className="h-4 w-4" />
             Visão Geral
           </TabsTrigger>
+          <TabsTrigger value="critical-docs" className="gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Documentos Críticos
+            {expiringDocs.length > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {expiringDocs.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="all-notifications" className="gap-2">
             <Bell className="h-4 w-4" />
             Todas as Notificações
@@ -103,6 +155,75 @@ export default function AdminNotifications() {
 
         <TabsContent value="overview">
           <NotificationStatsCard />
+        </TabsContent>
+
+        <TabsContent value="critical-docs">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                Documentos Expirando nos Próximos 60 Dias
+              </CardTitle>
+              <CardDescription>
+                Monitoramento em tempo real de todos os documentos críticos da organização
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingExpiring ? (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner />
+                </div>
+              ) : expiringDocs.length === 0 ? (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Nenhum documento crítico"
+                  description="Não há documentos expirando nos próximos 60 dias"
+                />
+              ) : (
+                <div className="space-y-3">
+                  {expiringDocs.map((doc) => (
+                    <div key={`${doc.type}-${doc.id}`} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="mt-1">
+                            {getDocumentTypeIcon(doc.type)}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-medium">{doc.name}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                {getDocumentTypeLabel(doc.type)}
+                              </Badge>
+                              {getUrgencyBadge(doc.days_until_expiry)}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>Usuário: {doc.user_name || 'N/A'}</span>
+                              <span>Vence em: {format(new Date(doc.expiry_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              <span className={doc.days_until_expiry <= 14 ? 'text-red-600 font-semibold' : ''}>
+                                {doc.days_until_expiry} {doc.days_until_expiry === 1 ? 'dia' : 'dias'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => {
+                            // TODO: Implement notification to user
+                            console.log('Notify user:', doc.user_id);
+                          }}
+                        >
+                          <Send className="h-3 w-3" />
+                          Notificar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="all-notifications">

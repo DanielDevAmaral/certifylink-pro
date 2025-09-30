@@ -48,7 +48,8 @@ serve(async (req) => {
       .in('setting_key', [
         'notifications.certification_alert_days',
         'notifications.technical_attestation_alert_days', 
-        'notifications.legal_document_alert_days'
+        'notifications.legal_document_alert_days',
+        'notifications.badge_alert_days'
       ])
 
     if (settingsError) {
@@ -59,14 +60,16 @@ serve(async (req) => {
     const certAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.certification_alert_days')?.setting_value) || 60;
     const techAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.technical_attestation_alert_days')?.setting_value) || 45;
     const legalAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.legal_document_alert_days')?.setting_value) || 30;
+    const badgeAlertDays = parseInt(settingsData?.find(s => s.setting_key === 'notifications.badge_alert_days')?.setting_value) || 30;
 
-    console.log(`⚙️ Alert periods - Certifications: ${certAlertDays}d, Technical: ${techAlertDays}d, Legal: ${legalAlertDays}d`)
+    console.log(`⚙️ Alert periods - Certifications: ${certAlertDays}d, Technical: ${techAlertDays}d, Legal: ${legalAlertDays}d, Badges: ${badgeAlertDays}d`)
 
     // Calculate future dates based on settings
     const today = new Date().toISOString().split('T')[0]
     const certAlertDate = new Date(Date.now() + certAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const techAlertDate = new Date(Date.now() + techAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const legalAlertDate = new Date(Date.now() + legalAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const badgeAlertDate = new Date(Date.now() + badgeAlertDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     // 📊 Check for expiring certifications and create notifications
     console.log('🔍 Checking for expiring certifications...')
@@ -116,6 +119,23 @@ serve(async (req) => {
       console.log(`📋 Found ${expiringLegal?.length || 0} expiring legal documents`)
       expiringLegal?.forEach(legal => {
         console.log(`  - ${legal.document_name} (${legal.validity_date}) - Status: ${legal.status}`)
+      })
+    }
+
+    // 📊 Check for expiring badges and create notifications
+    console.log('🔍 Checking for expiring badges...')
+    const { data: expiringBadges, error: badgeError } = await supabase
+      .from('badges')
+      .select('id, name, user_id, expiry_date, status')
+      .gte('expiry_date', today)
+      .lte('expiry_date', badgeAlertDate)
+
+    if (badgeError) {
+      console.error('❌ Error fetching badges:', badgeError)
+    } else {
+      console.log(`📋 Found ${expiringBadges?.length || 0} expiring badges`)
+      expiringBadges?.forEach(badge => {
+        console.log(`  - ${badge.name} (${badge.expiry_date}) - Status: ${badge.status}`)
       })
     }
 
@@ -311,6 +331,88 @@ serve(async (req) => {
       }
     }
 
+    // Process badges
+    if (expiringBadges && expiringBadges.length > 0) {
+      console.log('📧 Processing badge notifications...')
+      for (const badge of expiringBadges) {
+        try {
+          const hasNotification = await hasRecentNotification(badge.user_id, badge.id, 'badge')
+          if (hasNotification) {
+            console.log(`⏭️ Skipping badge ${badge.name} - notification already exists`)
+            continue
+          }
+
+          const daysLeft = getDaysUntilExpiry(badge.expiry_date)
+          const config = getNotificationConfig(daysLeft, badge.name)
+          
+          console.log(`🔍 Debug: Badge ID = ${badge.id}, User ID = ${badge.user_id}`)
+          
+          const insertData = {
+            user_id: badge.user_id,
+            title: config.title,
+            message: config.message,
+            notification_type: config.type,
+            related_document_id: badge.id,
+            related_document_type: 'badge',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+          }
+          
+          console.log('📝 Inserting badge notification data:', JSON.stringify(insertData, null, 2))
+          
+          const { data: insertResult, error: notifError } = await supabase
+            .from('notifications')
+            .insert(insertData)
+            .select('id, related_document_id')
+
+          if (notifError) {
+            console.error(`❌ Error creating notification for badge ${badge.name}:`, notifError)
+          } else {
+            notificationsCreated++
+            console.log(`✅ Notification created for badge: ${badge.name} (${daysLeft} days left)`)
+            console.log(`📊 Badge insert result:`, JSON.stringify(insertResult, null, 2))
+          }
+        } catch (error) {
+          console.error(`❌ Error processing badge ${badge.name}:`, error)
+        }
+      }
+    }
+
+    // 📧 Create consolidated admin notifications
+    console.log('📧 Creating admin consolidated notifications...')
+    const totalExpiring = (expiringCertifications?.length || 0) + (expiringTechnical?.length || 0) + (expiringLegal?.length || 0) + (expiringBadges?.length || 0);
+    
+    if (totalExpiring > 0) {
+      // Get all admin users
+      const { data: adminUsers, error: adminError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin')
+      
+      if (adminError) {
+        console.error('❌ Error fetching admin users:', adminError)
+      } else if (adminUsers && adminUsers.length > 0) {
+        console.log(`👤 Found ${adminUsers.length} admin users`)
+        
+        const adminNotifications = adminUsers.map(admin => ({
+          user_id: admin.user_id,
+          title: '🔔 Alerta: Documentos Expirando',
+          message: `${totalExpiring} documento(s) expirando: ${expiringCertifications?.length || 0} certificações, ${expiringBadges?.length || 0} badges, ${expiringTechnical?.length || 0} atestados técnicos, ${expiringLegal?.length || 0} documentos legais.`,
+          notification_type: totalExpiring > 10 ? 'warning' : 'info',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        }))
+        
+        const { error: adminNotifError } = await supabase
+          .from('notifications')
+          .insert(adminNotifications)
+        
+        if (adminNotifError) {
+          console.error('❌ Error creating admin notifications:', adminNotifError)
+        } else {
+          console.log(`✅ Created ${adminNotifications.length} admin notifications`)
+        }
+      }
+    }
+
     console.log(`📧 Total notifications created: ${notificationsCreated}`)
 
     // 🔄 Update document status using RPC
@@ -369,10 +471,11 @@ serve(async (req) => {
     console.log(`  - Expiring certifications: ${expiringCertifications?.length || 0}`)
     console.log(`  - Expiring technical attestations: ${expiringTechnical?.length || 0}`)
     console.log(`  - Expiring legal documents: ${expiringLegal?.length || 0}`)
+    console.log(`  - Expiring badges: ${expiringBadges?.length || 0}`)
     console.log(`  - Notifications created today: ${notificationCount || 0}`)
     console.log(`  - New notifications created this run: ${notificationsCreated}`)
     console.log(`  - Old notifications cleaned: ${deletedCount || 0}`)
-    console.log(`  - Alert periods: Cert=${certAlertDays}d, Tech=${techAlertDays}d, Legal=${legalAlertDays}d`)
+    console.log(`  - Alert periods: Cert=${certAlertDays}d, Tech=${techAlertDays}d, Legal=${legalAlertDays}d, Badge=${badgeAlertDays}d`)
 
     const jobCompletedAt = new Date().toISOString()
     console.log('🎉 Daily notification job completed successfully at:', jobCompletedAt)

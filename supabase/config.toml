@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.notification-retry-system]
 verify_jwt = false
+
+[functions.ensure-master-user]
+verify_jwt = false

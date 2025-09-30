@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MASTER_USER_ID } from '@/lib/config/master';
+import { MASTER_AUTH_EMAIL } from '@/lib/config/master';
 
 interface UseUserSearchParams {
   search?: string;
@@ -50,12 +50,12 @@ export function useUserSearch({
         );
       }
 
-      // Always exclude master user from searches
-      const allExcludedIds = [...excludeUserIds, MASTER_USER_ID];
+      // Always exclude master user from searches by email
+      profilesQuery = profilesQuery.neq('email', MASTER_AUTH_EMAIL);
       
       // Exclude specific user IDs
-      if (allExcludedIds.length > 0) {
-        profilesQuery = profilesQuery.not('user_id', 'in', `(${allExcludedIds.join(',')})`);
+      if (excludeUserIds.length > 0) {
+        profilesQuery = profilesQuery.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
       }
 
       const { data: profiles, error: profilesError } = await profilesQuery;

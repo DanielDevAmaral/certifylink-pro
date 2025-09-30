@@ -4,13 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { toast } from 'sonner';
-import { 
-  isMasterEmail, 
-  validateMasterPassword, 
-  createMasterUser, 
-  createMasterSession,
-  MASTER_USER_ID 
-} from '@/lib/config/master';
+import { isMasterEmail } from '@/lib/config/master';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +18,7 @@ interface AuthContextType {
   loading: boolean;
   isBlocked: boolean;
   blockReason: string | null;
+  isMaster: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,6 +43,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
   const isPageVisible = usePageVisibility();
 
   const checkUserStatus = useCallback((profileData: any) => {
@@ -68,7 +64,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         duration: 5000
       });
       
-      // Desconectar usuário após 2 segundos
       setTimeout(() => {
         supabase.auth.signOut();
       }, 2000);
@@ -85,7 +80,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log('🔍 AuthContext: Fetching user data for:', userId);
     
     try {
-      // Fetch user role
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -97,7 +91,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUserRole(roleData.role);
       }
 
-      // Fetch user profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -107,8 +100,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (profileData) {
         console.log('📄 AuthContext: User profile fetched');
         setProfile(profileData);
-        
-        // Verificar status do usuário
         checkUserStatus(profileData);
       }
     } catch (error) {
@@ -119,22 +110,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     console.log('🚀 AuthContext: Setting up auth state listener');
     
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('🔄 AuthContext: Auth state changed:', event, !!session);
         
-        // CRITICAL: Ignore auth state changes for master user
-        if (user?.id === MASTER_USER_ID) {
-          console.log('🔒 AuthContext: Ignoring auth state change for master user');
-          return;
-        }
-        
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Check if this is master user by email
+        if (session?.user?.email === 'master@system.local') {
+          setIsMaster(true);
+        } else {
+          setIsMaster(false);
+        }
+        
         if (session?.user && isPageVisible) {
-          // Defer fetchUserData to prevent blocking
           setTimeout(() => {
             fetchUserData(session.user.id);
           }, 100);
@@ -144,13 +134,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setProfile(null);
           setIsBlocked(false);
           setBlockReason(null);
+          setIsMaster(false);
         }
         
         setLoading(false);
       }
     );
 
-    // Set up realtime listener for profile changes
     let profileChannel: any = null;
     if (user?.id) {
       profileChannel = supabase
@@ -168,7 +158,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const newProfile = payload.new as any;
             setProfile(newProfile);
             
-            // Verificar se o status mudou para inativo
             if (newProfile && !checkUserStatus(newProfile)) {
               console.log('🚫 AuthContext: User status changed to inactive, signing out');
             }
@@ -177,13 +166,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .subscribe();
     }
 
-    // Check for existing session only once
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('🔍 AuthContext: Checking existing session:', !!session);
       
       if (session) {
         setSession(session);
         setUser(session.user);
+        
+        // Check if master
+        if (session.user.email === 'master@system.local') {
+          setIsMaster(true);
+        }
         
         if (isPageVisible) {
           fetchUserData(session.user.id);
@@ -223,33 +216,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (isMasterEmail(email)) {
       console.log('🔐 Master login attempt detected');
       
-      if (validateMasterPassword(password)) {
-        console.log('✅ Master password validated');
-        
-        // Create virtual master user and session
-        const masterUser = createMasterUser() as any;
-        const masterSession = createMasterSession(masterUser) as any;
-        
-        // Set the master user and session
-        setUser(masterUser);
-        setSession(masterSession);
-        setUserRole('super_admin');
-        setProfile({
-          user_id: MASTER_USER_ID,
-          full_name: 'Master Administrator',
-          email: email,
-          status: 'active',
+      try {
+        // Call edge function to ensure master user exists with correct password
+        const { data: ensureData, error: ensureError } = await supabase.functions.invoke('ensure-master-user', {
+          body: { password }
         });
-        setIsBlocked(false);
-        setBlockReason(null);
-        
-        console.log('👑 Master user logged in successfully');
+
+        if (ensureError) {
+          console.error('❌ Error ensuring master user:', ensureError);
+          return { error: { message: 'Credenciais inválidas' } };
+        }
+
+        if (!ensureData?.ok) {
+          console.error('❌ Master user validation failed');
+          return { error: { message: 'Credenciais inválidas' } };
+        }
+
+        console.log('✅ Master user ensured, signing in...');
+
+        // Now sign in with the technical email
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'master@system.local',
+          password,
+        });
+
+        if (error) {
+          console.error('❌ Master sign in error:', error);
+          return { error };
+        }
+
+        console.log('👑 Master user authenticated successfully');
         toast.success('Acesso master concedido', { duration: 2000 });
         
         return { error: null };
-      } else {
-        console.log('❌ Invalid master password');
-        return { error: { message: 'Credenciais inválidas' } };
+      } catch (error) {
+        console.error('❌ Master login error:', error);
+        return { error: { message: 'Erro ao autenticar usuário master' } };
       }
     }
     
@@ -259,7 +261,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       password
     });
     
-    // Verificar status do usuário após login bem-sucedido
     if (!error && data.user) {
       const { data: profileData } = await supabase
         .from('profiles')
@@ -268,7 +269,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .single();
         
       if (profileData && !checkUserStatus(profileData)) {
-        // Se usuário está inativo, fazer logout imediatamente
         await supabase.auth.signOut();
         return { error: { message: 'Acesso negado devido ao status da conta.' } };
       }
@@ -288,6 +288,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
+    setIsMaster(false);
     await supabase.auth.signOut();
   };
 
@@ -302,7 +303,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     loading,
     isBlocked,
-    blockReason
+    blockReason,
+    isMaster
   };
 
   return (

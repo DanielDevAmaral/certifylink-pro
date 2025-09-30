@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MASTER_EMAIL } from '@/lib/config/master';
+import { MASTER_DISPLAY_EMAIL } from '@/lib/config/master';
 
 // Password strength validation
 const passwordSchema = z
@@ -19,7 +19,7 @@ export const loginSchema = z.object({
       (email) => {
         const trimmedEmail = email.toLowerCase().trim();
         // Allow master email without @
-        if (trimmedEmail === MASTER_EMAIL.toLowerCase()) {
+        if (trimmedEmail === MASTER_DISPLAY_EMAIL.toLowerCase()) {
           return true;
         }
         // For other emails, validate @ is present

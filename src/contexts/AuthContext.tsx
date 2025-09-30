@@ -124,6 +124,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       (event, session) => {
         console.log('🔄 AuthContext: Auth state changed:', event, !!session);
         
+        // CRITICAL: Ignore auth state changes for master user
+        if (user?.id === MASTER_USER_ID) {
+          console.log('🔒 AuthContext: Ignoring auth state change for master user');
+          return;
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         

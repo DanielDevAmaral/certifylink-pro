@@ -164,16 +164,14 @@ export default function Auth() {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center">
-            <CertBaseLogo variant="icon" size={60} />
-          </div>
+         
           <h1 className="text-2xl font-bold text-foreground">
-            CertBase
-          </h1>
-
-           <div className="flex h-20 items-center border-b border-border px-6">
+             <div className="flex h-20 items-center border-b border-border px-6">
           <CertBaseLogo variant="full" size={285} />
         </div>
+          </h1>
+
+          
 
           
           <p className="text-muted-foreground">

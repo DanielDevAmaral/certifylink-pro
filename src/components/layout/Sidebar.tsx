@@ -89,7 +89,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-20 items-center border-b border-border px-6">
-          <CertBaseLogo variant="full" size={185} />
+          <CertBaseLogo variant="full" size={285} />
         </div>
 
         {/* Navigation */}

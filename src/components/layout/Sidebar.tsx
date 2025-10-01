@@ -89,12 +89,12 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center border-b border-border px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-              <Scale className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary shadow-sm">
+              <Database className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">DocManager</h1>
-              <p className="text-xs text-muted-foreground">Corporate Edition</p>
+              <h1 className="text-lg font-bold text-foreground">CertBase</h1>
+              <p className="text-xs" style={{ color: "#660099" }}>Document Platform</p>
             </div>
           </div>
         </div>

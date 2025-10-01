@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { CertBaseLogo } from "@/components/ui/certbase-logo";
 import { 
   LayoutDashboard, 
   Award, 
@@ -88,15 +89,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center border-b border-border px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary shadow-sm">
-              <Database className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground">CertBase</h1>
-              <p className="text-xs" style={{ color: "#660099" }}>Document Platform</p>
-            </div>
-          </div>
+          <CertBaseLogo variant="full" size={50} />
         </div>
 
         {/* Navigation */}

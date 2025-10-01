@@ -46,7 +46,14 @@ export function useCreateTechnicalAttestation() {
 
       const { data: result, error } = await supabase
         .from('technical_attestations')
-        .insert([{ ...data, user_id: user.id, related_certifications: (data.related_certifications || []) as any }])
+        .insert([{ 
+          ...data, 
+          user_id: user.id, 
+          related_certifications: (data.related_certifications || []) as any,
+          tags: data.tags || [],
+          hours_breakdown: data.hours_breakdown || {},
+          total_hours: data.total_hours || 0,
+        }])
         .select()
         .single();
 
@@ -88,7 +95,10 @@ export function useUpdateTechnicalAttestation() {
     mutationFn: async ({ id, data }: { id: string; data: Partial<TechnicalCertificate> }) => {
       const updateData = { 
         ...data,
-        related_certifications: (data.related_certifications || []) as any 
+        related_certifications: (data.related_certifications || []) as any,
+        tags: data.tags || [],
+        hours_breakdown: data.hours_breakdown || {},
+        total_hours: data.total_hours || 0,
       };
       
       let query = supabase

@@ -69,6 +69,9 @@ export interface TechnicalCertificate {
   related_certifications?: RelatedCertification[];
   validity_date?: string;
   status: DocumentStatus;
+  tags?: string[];
+  hours_breakdown?: Record<string, number>;
+  total_hours?: number;
   created_at: string;
   updated_at: string;
 }

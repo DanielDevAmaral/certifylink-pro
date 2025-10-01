@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CertificationSelectorCombobox } from "@/components/ui/certification-selector-combobox";
 import { UserSelectorCombobox } from "@/components/ui/user-selector-combobox";
 import { DocumentViewer } from '@/components/common/DocumentViewer';
+import { TagManager } from '@/components/forms/TagManager';
+import { HoursBreakdownManager } from '@/components/forms/HoursBreakdownManager';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
 import { useRelatedCertificationResolver } from '@/hooks/useRelatedCertificationResolver';
@@ -34,6 +34,8 @@ const attestationSchema = z.object({
     certification_id: z.string(),
     user_id: z.string()
   })).optional(),
+  tags: z.array(z.string()).optional(),
+  hours_breakdown: z.record(z.string(), z.number()).optional(),
 });
 
 type AttestationFormData = z.infer<typeof attestationSchema>;
@@ -50,6 +52,8 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
   const [removeCurrentDocument, setRemoveCurrentDocument] = useState(false);
+  const [tags, setTags] = useState<string[]>(attestation?.tags || []);
+  const [hoursBreakdown, setHoursBreakdown] = useState<Record<string, number>>(attestation?.hours_breakdown || {});
 
   const createMutation = useCreateTechnicalAttestation();
   const updateMutation = useUpdateTechnicalAttestation();
@@ -69,6 +73,8 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       issuer_contact: attestation?.issuer_contact || '',
       validity_date: attestation?.validity_date || '',
       related_certifications: attestation?.related_certifications || [],
+      tags: attestation?.tags || [],
+      hours_breakdown: attestation?.hours_breakdown || {},
     },
   });
 
@@ -84,7 +90,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         hasNewFile: !!uploadedFile,
         removeCurrentDoc: removeCurrentDocument,
         currentDocUrl: attestation?.document_url,
-        clientName: data.client_name
+        clientName: data.client_name,
+        tags,
+        hoursBreakdown
       });
 
       let documentUrl = attestation?.document_url;
@@ -104,6 +112,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         console.log('✅ [TechnicalAttestationForm] File uploaded:', documentUrl);
       }
 
+      // Calculate total hours
+      const totalHours = Object.values(hoursBreakdown).reduce((sum, hours) => sum + hours, 0);
+
       const submitData = {
         client_name: data.client_name,
         project_object: data.project_object,
@@ -117,6 +128,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         status: attestation?.status || 'valid',
         document_url: documentUrl || '',
         related_certifications: (data.related_certifications || []) as any,
+        tags,
+        hours_breakdown: hoursBreakdown,
+        total_hours: totalHours,
       };
 
       if (attestation) {
@@ -420,6 +434,24 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                 </FormItem>
               )}
             />
+
+            {/* Tags and Hours Section */}
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+              <h3 className="font-semibold text-lg">Tags e Controle de Horas</h3>
+              
+              <TagManager
+                tags={tags}
+                onChange={setTags}
+                label="Tags do Projeto"
+                placeholder="Ex: LLM, Frontend, Backend..."
+              />
+
+              <HoursBreakdownManager
+                tags={tags}
+                hoursBreakdown={hoursBreakdown}
+                onChange={setHoursBreakdown}
+              />
+            </div>
 
             <div className="space-y-4">
               <FormLabel>Gerenciar Documento</FormLabel>

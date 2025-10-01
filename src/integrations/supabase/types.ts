@@ -594,6 +594,7 @@ export type Database = {
           client_name: string
           created_at: string
           document_url: string | null
+          hours_breakdown: Json | null
           id: string
           issuer_contact: string | null
           issuer_name: string
@@ -604,6 +605,8 @@ export type Database = {
           project_value: number | null
           related_certifications: Json[] | null
           status: Database["public"]["Enums"]["document_status"]
+          tags: string[] | null
+          total_hours: number | null
           updated_at: string
           user_id: string
           validity_date: string | null
@@ -612,6 +615,7 @@ export type Database = {
           client_name: string
           created_at?: string
           document_url?: string | null
+          hours_breakdown?: Json | null
           id?: string
           issuer_contact?: string | null
           issuer_name: string
@@ -622,6 +626,8 @@ export type Database = {
           project_value?: number | null
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
+          tags?: string[] | null
+          total_hours?: number | null
           updated_at?: string
           user_id: string
           validity_date?: string | null
@@ -630,6 +636,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           document_url?: string | null
+          hours_breakdown?: Json | null
           id?: string
           issuer_contact?: string | null
           issuer_name?: string
@@ -640,6 +647,8 @@ export type Database = {
           project_value?: number | null
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
+          tags?: string[] | null
+          total_hours?: number | null
           updated_at?: string
           user_id?: string
           validity_date?: string | null

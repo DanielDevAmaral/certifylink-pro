@@ -51,6 +51,15 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
       // Force status update before fetching
       await supabase.rpc('update_document_status');
 
+      // Get certification platforms and types for matching
+      const { data: platforms } = await supabase
+        .from('certification_platforms')
+        .select('id, name');
+
+      const { data: certTypes } = await supabase
+        .from('certification_types')
+        .select('id, name, full_name, aliases, platform_id, certification_platforms!inner(name)');
+
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -81,15 +90,59 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
       const documents = docResult.data || [];
       const badges = badgeResult.data || [];
 
+      // Helper function to match certification with platform
+      const matchCertificationPlatform = (certName: string): string | null => {
+        const matchedType = certTypes?.find(type => {
+          const nameLower = certName.toLowerCase();
+          const typeNameLower = type.name.toLowerCase();
+          const fullNameLower = type.full_name?.toLowerCase() || '';
+          
+          if (nameLower.includes(typeNameLower) || typeNameLower.includes(nameLower)) {
+            return true;
+          }
+          if (fullNameLower && (nameLower.includes(fullNameLower) || fullNameLower.includes(nameLower))) {
+            return true;
+          }
+          
+          if (type.aliases && Array.isArray(type.aliases)) {
+            return type.aliases.some((alias: string) => {
+              const aliasLower = alias.toLowerCase();
+              return nameLower.includes(aliasLower) || aliasLower.includes(nameLower);
+            });
+          }
+          
+          return false;
+        });
+        
+        if (matchedType?.certification_platforms?.name) {
+          return matchedType.certification_platforms.name;
+        }
+        
+        const foundPlatform = platforms?.find(platform =>
+          certName.toLowerCase().includes(platform.name.toLowerCase()) ||
+          platform.name.toLowerCase().includes(certName.toLowerCase())
+        );
+        
+        return foundPlatform?.name || null;
+      };
+
       const allDocuments = [
-        ...certifications.map(c => ({ ...c, category: 'Certificações', type: 'certification' })),
-        ...attestations.map(a => ({ ...a, category: 'Atestados', type: 'attestation' })),
-        ...documents.map(d => ({ ...d, category: 'Documentos', type: 'document' })),
-        ...badges.map(b => ({ ...b, category: 'Badges', type: 'badge' }))
+        ...certifications.map(c => ({ 
+          ...c, 
+          category: 'Certificações', 
+          type: 'certification',
+          platform: matchCertificationPlatform(c.name)
+        })),
+        ...attestations.map(a => ({ ...a, category: 'Atestados', type: 'attestation', platform: null })),
+        ...documents.map(d => ({ ...d, category: 'Documentos', type: 'document', platform: null })),
+        ...badges.map(b => ({ ...b, category: 'Badges', type: 'badge', platform: null }))
       ];
 
       // Filter active documents for statistics (exclude deactivated ones)
       let filteredDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
+
+      console.log('[useDashboardAnalytics] Total documents:', filteredDocuments.length);
+      console.log('[useDashboardAnalytics] Active filters:', filters);
 
       // Apply filters if provided
       if (filters) {
@@ -97,12 +150,26 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
           filteredDocuments = filteredDocuments.filter(doc => 
             filters.categories!.includes(doc.category)
           );
+          console.log('[useDashboardAnalytics] After category filter:', filteredDocuments.length);
         }
+        
+        if (filters.platforms && filters.platforms.length > 0) {
+          filteredDocuments = filteredDocuments.filter(doc => {
+            if (doc.type === 'certification') {
+              return doc.platform && filters.platforms!.includes(doc.platform);
+            }
+            return true;
+          });
+          console.log('[useDashboardAnalytics] After platform filter:', filteredDocuments.length);
+        }
+        
         if (filters.statuses && filters.statuses.length > 0) {
           filteredDocuments = filteredDocuments.filter(doc => 
             filters.statuses!.includes(doc.status)
           );
+          console.log('[useDashboardAnalytics] After status filter:', filteredDocuments.length);
         }
+        
         if (filters.dateRange && filters.dateRange.start && filters.dateRange.end) {
           const startDate = new Date(filters.dateRange.start);
           const endDate = new Date(filters.dateRange.end);
@@ -110,6 +177,7 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
             const docDate = new Date(doc.created_at);
             return docDate >= startDate && docDate <= endDate;
           });
+          console.log('[useDashboardAnalytics] After date filter:', filteredDocuments.length);
         }
       }
       const totalDocuments = filteredDocuments.length;

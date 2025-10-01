@@ -43,7 +43,9 @@ export function useCertificationsByPlatform(filters?: PlatformFilters) {
         .from('certification_types')
         .select(`
           id, 
-          name, 
+          name,
+          full_name,
+          aliases,
           platform_id,
           certification_platforms!inner(name)
         `);
@@ -95,11 +97,30 @@ export function useCertificationsByPlatform(filters?: PlatformFilters) {
         // Try to match certification name with platform
         let matchedPlatform = null;
         
-        // First try to match with certification types
-        const matchedType = certTypes?.find(type => 
-          cert.name.toLowerCase().includes(type.name.toLowerCase()) ||
-          type.name.toLowerCase().includes(cert.name.toLowerCase())
-        );
+        // First try to match with certification types (improved matching)
+        const matchedType = certTypes?.find(type => {
+          const certNameLower = cert.name.toLowerCase();
+          const typeNameLower = type.name.toLowerCase();
+          const fullNameLower = type.full_name?.toLowerCase() || '';
+          
+          // Check exact matches or contains
+          if (certNameLower.includes(typeNameLower) || typeNameLower.includes(certNameLower)) {
+            return true;
+          }
+          if (fullNameLower && (certNameLower.includes(fullNameLower) || fullNameLower.includes(certNameLower))) {
+            return true;
+          }
+          
+          // Check aliases
+          if (type.aliases && Array.isArray(type.aliases)) {
+            return type.aliases.some((alias: string) => {
+              const aliasLower = alias.toLowerCase();
+              return certNameLower.includes(aliasLower) || aliasLower.includes(certNameLower);
+            });
+          }
+          
+          return false;
+        });
         
         if (matchedType?.certification_platforms?.name) {
           matchedPlatform = matchedType.certification_platforms.name;
@@ -135,6 +156,9 @@ export function useCertificationsByPlatform(filters?: PlatformFilters) {
           else if (cert.status === 'expired') platformData.expired++;
         }
       });
+
+      console.log('[useCertificationsByPlatform] Platform data:', Array.from(platformMap.values()));
+      console.log('[useCertificationsByPlatform] Active filters:', filters);
 
       // Convert map to array and filter out platforms with no certifications
       let result = Array.from(platformMap.values())

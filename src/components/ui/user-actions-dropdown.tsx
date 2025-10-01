@@ -9,6 +9,7 @@ import { DeactivationDialog } from "@/components/forms/DeactivationDialog";
 import { TerminationDialog } from "@/components/forms/TerminationDialog";
 import { RoleChangeDialog } from "@/components/forms/RoleChangeDialog";
 import { UserStatusHistoryDialog } from "@/components/forms/UserStatusHistoryDialog";
+import { UserDeletionDialog } from "@/components/forms/UserDeletionDialog";
 interface UserActionsDropdownProps {
   user: {
     user_id: string;
@@ -34,6 +35,7 @@ export function UserActionsDropdown({
   const [terminationDialogOpen, setTerminationDialogOpen] = useState(false);
   const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
   const [statusHistoryDialogOpen, setStatusHistoryDialogOpen] = useState(false);
+  const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
   const handleDocumentsClick = () => {
     navigate(`/documents?user=${user.user_id}`);
   };
@@ -100,7 +102,24 @@ export function UserActionsDropdown({
             <History className="mr-2 h-4 w-4" />
             Histórico de Status
           </DropdownMenuItem>
-          
+
+          <DropdownMenuItem onClick={handleDocumentsClick}>
+            <FileText className="mr-2 h-4 w-4" />
+            Ver Documentos
+          </DropdownMenuItem>
+
+          {user.status === 'terminated' && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => setDeletionDialogOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir Usuário Permanente
+              </DropdownMenuItem>
+            </>
+          )}
           
         </DropdownMenuContent>
       </DropdownMenu>
@@ -114,5 +133,7 @@ export function UserActionsDropdown({
       {canChangeRole && <RoleChangeDialog user={user} open={roleChangeDialogOpen} onOpenChange={setRoleChangeDialogOpen} />}
 
       <UserStatusHistoryDialog user={user} open={statusHistoryDialogOpen} onOpenChange={setStatusHistoryDialogOpen} />
+
+      <UserDeletionDialog user={user} open={deletionDialogOpen} onOpenChange={setDeletionDialogOpen} />
     </>;
 }

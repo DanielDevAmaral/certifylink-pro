@@ -729,6 +729,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      delete_terminated_user: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       get_alert_days: {
         Args: { document_type: string }
         Returns: number

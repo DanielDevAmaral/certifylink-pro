@@ -25,7 +25,17 @@ export interface AnalyticsData {
   }>;
 }
 
-export function useDashboardAnalytics() {
+export interface DashboardFilters {
+  categories?: string[];
+  platforms?: string[];
+  statuses?: string[];
+  dateRange?: {
+    start: Date | null;
+    end: Date | null;
+  } | null;
+}
+
+export function useDashboardAnalytics(filters?: DashboardFilters) {
   const { user, userRole } = useAuth();
   const isPageVisible = usePageVisibility();
 
@@ -33,7 +43,7 @@ export function useDashboardAnalytics() {
   const sixMonthsAgo = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1), [currentDate]);
 
   return useQuery({
-    queryKey: ['dashboard-analytics', user?.id, userRole],
+    queryKey: ['dashboard-analytics', user?.id, userRole, filters],
     queryFn: async (): Promise<AnalyticsData> => {
       console.log('[Dashboard Analytics] Fetching data...');
       if (!user) throw new Error('User not authenticated');
@@ -79,7 +89,29 @@ export function useDashboardAnalytics() {
       ];
 
       // Filter active documents for statistics (exclude deactivated ones)
-      const filteredDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
+      let filteredDocuments = allDocuments.filter(doc => doc.status !== 'deactivated');
+
+      // Apply filters if provided
+      if (filters) {
+        if (filters.categories && filters.categories.length > 0) {
+          filteredDocuments = filteredDocuments.filter(doc => 
+            filters.categories!.includes(doc.category)
+          );
+        }
+        if (filters.statuses && filters.statuses.length > 0) {
+          filteredDocuments = filteredDocuments.filter(doc => 
+            filters.statuses!.includes(doc.status)
+          );
+        }
+        if (filters.dateRange && filters.dateRange.start && filters.dateRange.end) {
+          const startDate = new Date(filters.dateRange.start);
+          const endDate = new Date(filters.dateRange.end);
+          filteredDocuments = filteredDocuments.filter(doc => {
+            const docDate = new Date(doc.created_at);
+            return docDate >= startDate && docDate <= endDate;
+          });
+        }
+      }
       const totalDocuments = filteredDocuments.length;
       
       // Use database status field which is now automatically updated (only count active documents)

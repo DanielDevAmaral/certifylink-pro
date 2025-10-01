@@ -12,12 +12,21 @@ export interface CertificationPlatformData {
   color: string;
 }
 
-export function useCertificationsByPlatform() {
+export interface PlatformFilters {
+  platforms?: string[];
+  statuses?: string[];
+  dateRange?: {
+    start: Date | null;
+    end: Date | null;
+  } | null;
+}
+
+export function useCertificationsByPlatform(filters?: PlatformFilters) {
   const { user, userRole } = useAuth();
   const isPageVisible = usePageVisibility();
 
   return useQuery({
-    queryKey: ['certifications-by-platform', user?.id, userRole],
+    queryKey: ['certifications-by-platform', user?.id, userRole, filters],
     queryFn: async (): Promise<CertificationPlatformData[]> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -44,11 +53,23 @@ export function useCertificationsByPlatform() {
       // Get certifications
       let certQuery = supabase
         .from('certifications')
-        .select('name, status');
+        .select('name, status, created_at');
 
       // Filter out deactivated documents for regular users
       if (userRole !== 'admin' && userRole !== 'leader') {
         certQuery = certQuery.neq('status', 'deactivated');
+      }
+
+      // Apply status filter
+      if (filters?.statuses && filters.statuses.length > 0) {
+        certQuery = certQuery.in('status', filters.statuses as any);
+      }
+
+      // Apply date range filter
+      if (filters?.dateRange && filters.dateRange.start && filters.dateRange.end) {
+        certQuery = certQuery
+          .gte('created_at', filters.dateRange.start.toISOString())
+          .lte('created_at', filters.dateRange.end.toISOString());
       }
 
       const { data: certifications, error: certError } = await certQuery;
@@ -116,9 +137,15 @@ export function useCertificationsByPlatform() {
       });
 
       // Convert map to array and filter out platforms with no certifications
-      return Array.from(platformMap.values())
-        .filter(platform => platform.count > 0)
-        .sort((a, b) => b.count - a.count);
+      let result = Array.from(platformMap.values())
+        .filter(platform => platform.count > 0);
+
+      // Apply platform filter if provided
+      if (filters?.platforms && filters.platforms.length > 0) {
+        result = result.filter(platform => filters.platforms!.includes(platform.platform));
+      }
+
+      return result.sort((a, b) => b.count - a.count);
     },
     enabled: !!user && isPageVisible,
     staleTime: 1 * 60 * 1000,

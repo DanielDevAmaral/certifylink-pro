@@ -156,7 +156,7 @@ export default function Dashboard() {
 
       {/* Analytics Charts */}
       <div className="mb-8">
-        <DashboardCharts analytics={analytics} />
+        <DashboardCharts />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

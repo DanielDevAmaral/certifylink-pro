@@ -2,8 +2,7 @@ import { Card } from "@/components/ui/card";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend,
-  AreaChart, Area, ScatterChart, Scatter
+  PieChart, Pie, Cell, AreaChart, Area, ScatterChart, Scatter, Legend
 } from 'recharts';
 import { AnalyticsData } from "@/hooks/useDashboardAnalytics";
 import { CertificationPlatformData } from "@/hooks/useCertificationsByPlatform";
@@ -14,56 +13,40 @@ import { useDashboardFilters } from '@/contexts/DashboardFilterContext';
 interface InteractiveChartsProps {
   analytics?: AnalyticsData;
   platformData?: CertificationPlatformData[];
+  isLoading?: boolean;
 }
 
-export const InteractiveCharts = memo(function InteractiveCharts({
+const InteractiveCharts = memo(function InteractiveCharts({
   analytics,
-  platformData
+  platformData,
+  isLoading
 }: InteractiveChartsProps) {
-  const { filters, toggleFilter, addFilter } = useDashboardFilters();
+  const { toggleFilter, filters } = useDashboardFilters();
 
-  if (!analytics || !platformData) {
+  // Show loading state if data isn't ready yet or filters are being applied
+  if (isLoading || !analytics || !platformData) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[...Array(6)].map((_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
     );
   }
 
-  // Filter data based on active filters
-  const filteredAnalytics = useMemo(() => {
-    if (!filters.categories.length && !filters.statuses.length) {
-      return analytics;
-    }
-
-    let categoryBreakdown = analytics.categoryBreakdown;
-
-    if (filters.categories.length > 0) {
-      categoryBreakdown = categoryBreakdown.filter(item => 
-        filters.categories.includes(item.category)
-      );
-    }
-
-    return {
-      ...analytics,
-      categoryBreakdown
-    };
-  }, [analytics, filters]);
-
-  const filteredPlatformData = useMemo(() => {
-    if (!filters.platforms.length && !filters.statuses.length) {
-      return platformData;
-    }
-
-    return platformData.filter(item => {
-      if (filters.platforms.length > 0 && !filters.platforms.includes(item.platform)) {
-        return false;
-      }
-      return true;
-    });
-  }, [platformData, filters]);
+  // Check if we have any data to display
+  const hasData = analytics.totalDocuments > 0 || platformData.length > 0;
+  
+  if (!hasData) {
+    return (
+      <Card className="p-8">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg mb-2">Nenhum dado encontrado</p>
+          <p className="text-sm">Ajuste os filtros ou adicione novos documentos para visualizar os gráficos.</p>
+        </div>
+      </Card>
+    );
+  }
 
   // Chart interaction handlers
   const handleCategoryClick = useCallback((data: any) => {
@@ -74,7 +57,15 @@ export const InteractiveCharts = memo(function InteractiveCharts({
 
   const handleStatusClick = useCallback((data: any) => {
     if (data && data.name) {
-      toggleFilter('statuses', data.name);
+      const statusMap: Record<string, string> = {
+        'Válidos': 'valid',
+        'Vencendo': 'expiring',
+        'Vencidos': 'expired'
+      };
+      const statusValue = statusMap[data.name];
+      if (statusValue) {
+        toggleFilter('statuses', statusValue);
+      }
     }
   }, [toggleFilter]);
 
@@ -84,69 +75,63 @@ export const InteractiveCharts = memo(function InteractiveCharts({
     }
   }, [toggleFilter]);
 
-  // Data preparation with interaction styling
-  const documentData = useMemo(() => 
-    filteredAnalytics.categoryBreakdown.map(category => ({
-      name: category.category,
-      total: category.count,
-      vencendo: category.expiring,
-      válidos: category.valid,
-      vencidos: category.expired,
-      isActive: filters.categories.includes(category.category)
-    })), 
-    [filteredAnalytics.categoryBreakdown, filters.categories]
-  );
+  // Prepare data for charts with isActive flag for visual feedback
+  const documentData = useMemo(() => {
+    return analytics.categoryBreakdown.map(cat => ({
+      name: cat.category,
+      category: cat.category,
+      válidos: cat.valid,
+      vencendo: cat.expiring,
+      vencidos: cat.expired,
+      total: cat.count,
+      isActive: !filters.categories?.length || filters.categories.includes(cat.category)
+    }));
+  }, [analytics, filters]);
 
-  const statusData = useMemo(() => [{
-    name: 'Válidos',
-    value: filteredAnalytics.validDocuments,
-    color: filters.statuses.includes('Válidos') ? '#0ea5e9' : '#10B981',
-    totalDocuments: filteredAnalytics.totalDocuments,
-    isActive: filters.statuses.includes('Válidos')
-  }, {
-    name: 'Vencendo',
-    value: filteredAnalytics.expiringDocuments,
-    color: filters.statuses.includes('Vencendo') ? '#f97316' : '#F59E0B',
-    totalDocuments: filteredAnalytics.totalDocuments,
-    isActive: filters.statuses.includes('Vencendo')
-  }, {
-    name: 'Vencidos',
-    value: filteredAnalytics.expiredDocuments,
-    color: filters.statuses.includes('Vencidos') ? '#dc2626' : '#EF4444',
-    totalDocuments: filteredAnalytics.totalDocuments,
-    isActive: filters.statuses.includes('Vencidos')
-  }], [filteredAnalytics, filters.statuses]);
+  const statusData = useMemo(() => {
+    return [
+      { 
+        name: 'Válidos', 
+        value: analytics.validDocuments, 
+        color: filters.statuses?.includes('valid') ? '#0ea5e9' : '#10B981',
+        isActive: !filters.statuses?.length || filters.statuses.includes('valid')
+      },
+      { 
+        name: 'Vencendo', 
+        value: analytics.expiringDocuments, 
+        color: filters.statuses?.includes('expiring') ? '#f97316' : '#F59E0B',
+        isActive: !filters.statuses?.length || filters.statuses.includes('expiring')
+      },
+      { 
+        name: 'Vencidos', 
+        value: analytics.expiredDocuments, 
+        color: filters.statuses?.includes('expired') ? '#dc2626' : '#EF4444',
+        isActive: !filters.statuses?.length || filters.statuses.includes('expired')
+      },
+    ].filter(item => item.value > 0);
+  }, [analytics, filters]);
 
   const scatterData = useMemo(() => {
-    return filteredAnalytics.categoryBreakdown.map((category, index) => ({
-      x: category.count,
-      y: category.valid + category.expiring,
-      z: category.expired,
-      category: category.category,
-      compliance: category.count > 0 ? ((category.valid + category.expiring) / category.count * 100) : 0
+    return analytics.categoryBreakdown.map(cat => ({
+      x: cat.count,
+      y: cat.valid + cat.expiring,
+      z: cat.expired,
+      category: cat.category,
+      compliance: cat.count > 0 ? Math.round(((cat.valid + cat.expiring) / cat.count) * 100) : 0,
+      isActive: !filters.categories?.length || filters.categories.includes(cat.category)
     }));
-  }, [filteredAnalytics.categoryBreakdown]);
+  }, [analytics, filters]);
 
-  const heatmapData = useMemo(() => {
-    const data = [];
-    filteredPlatformData.forEach((platform, platformIndex) => {
-      ['valid', 'expiring', 'expired'].forEach((status, statusIndex) => {
-        data.push({
-          platform: platform.platform,
-          status,
-          value: platform[status as keyof typeof platform] as number,
-          platformIndex,
-          statusIndex,
-          intensity: (platform[status as keyof typeof platform] as number) / Math.max(1, platform.count)
-        });
-      });
-    });
-    return data;
-  }, [filteredPlatformData]);
+  const platformChartData = useMemo(() => {
+    return platformData.map(platform => ({
+      ...platform,
+      isActive: !filters.platforms?.length || filters.platforms.includes(platform.platform)
+    }));
+  }, [platformData, filters]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {/* Enhanced Documents Overview - Interactive */}
+      {/* Documents Overview */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Visão Geral dos Documentos" 
@@ -194,7 +179,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* Enhanced Status Distribution - Interactive */}
+      {/* Status Distribution */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Distribuição de Status" 
@@ -229,7 +214,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* New: Platform Distribution - Interactive */}
+      {/* Platform Distribution */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Distribuição por Plataforma" 
@@ -240,7 +225,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={filteredPlatformData}
+                  data={platformChartData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -251,10 +236,10 @@ export const InteractiveCharts = memo(function InteractiveCharts({
                   onClick={handlePlatformClick}
                   style={{ cursor: 'pointer' }}
                 >
-                  {filteredPlatformData.map((entry, index) => (
+                  {platformChartData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={filters.platforms.includes(entry.platform) ? '#0ea5e9' : entry.color} 
+                      fill={filters.platforms?.includes(entry.platform) ? '#0ea5e9' : entry.color} 
                     />
                   ))}
                 </Pie>
@@ -265,7 +250,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* New: Compliance Trend - Enhanced */}
+      {/* Compliance Trend */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Tendência de Compliance" 
@@ -277,7 +262,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
               <AreaChart data={analytics.monthlyTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
-                <YAxis domain={[70, 100]} tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
+                <YAxis domain={[0, 100]} tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                 <Tooltip />
                 <Area 
                   type="monotone" 
@@ -293,7 +278,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* New: Scatter Plot - Compliance vs Total */}
+      {/* Correlation Analysis */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Análise de Correlação" 
@@ -302,7 +287,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart data={scatterData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
                   type="number" 
@@ -321,7 +306,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 <Scatter 
                   name="Categorias" 
-                  dataKey="y" 
+                  data={scatterData}
                   fill="hsl(var(--primary))"
                   onClick={handleCategoryClick}
                   style={{ cursor: 'pointer' }}
@@ -332,7 +317,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* New: Platform Status Breakdown */}
+      {/* Platform Status Breakdown */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
           title="Status por Plataforma" 
@@ -341,7 +326,7 @@ export const InteractiveCharts = memo(function InteractiveCharts({
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredPlatformData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <BarChart data={platformChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
                   dataKey="platform" 
@@ -386,3 +371,5 @@ export const InteractiveCharts = memo(function InteractiveCharts({
     </div>
   );
 });
+
+export { InteractiveCharts };

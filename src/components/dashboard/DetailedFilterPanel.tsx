@@ -14,10 +14,10 @@ import { useCertificationCategories } from "@/hooks/useCertificationCategories";
 import { useCertificationPlatforms } from "@/hooks/useCertificationPlatforms";
 
 const statusOptions = [
-  { value: "active", label: "Ativo" },
-  { value: "expired", label: "Expirado" },
-  { value: "expiring_soon", label: "Expirando em Breve" },
-  { value: "pending", label: "Pendente" }
+  { value: 'valid', label: 'Válido' },
+  { value: 'expiring', label: 'Vencendo' },
+  { value: 'expired', label: 'Vencido' },
+  { value: 'deactivated', label: 'Desativado' },
 ];
 
 export function DetailedFilterPanel() {
@@ -208,7 +208,7 @@ export function DetailedFilterPanel() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => addFilter('statuses', ['expired', 'expiring_soon'])}
+                  onClick={() => addFilter('statuses', ['expired', 'expiring'])}
                   className="text-xs"
                 >
                   Atenção Necessária
@@ -216,10 +216,10 @@ export function DetailedFilterPanel() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => addFilter('statuses', ['active'])}
+                  onClick={() => addFilter('statuses', ['valid'])}
                   className="text-xs"
                 >
-                  Apenas Ativos
+                  Apenas Válidos
                 </Button>
                 <Button
                   variant="outline"

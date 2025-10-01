@@ -88,8 +88,8 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-card">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center border-b border-border px-6">
-          <CertBaseLogo variant="full" size={50} />
+        <div className="flex h-20 items-center border-b border-border px-6">
+          <CertBaseLogo variant="full" size={85} />
         </div>
 
         {/* Navigation */}

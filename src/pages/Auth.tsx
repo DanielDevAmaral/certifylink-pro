@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Shield, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { CertBaseLogo } from '@/components/ui/certbase-logo';
 import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '@/lib/validations/auth';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { FormFieldError } from '@/components/ui/form-field-error';
@@ -164,15 +165,13 @@ export default function Auth() {
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Shield className="h-6 w-6 text-white" />
-            </div>
+            <CertBaseLogo variant="icon" size={60} />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            Gestão Documental
+            CertBase
           </h1>
           <p className="text-muted-foreground">
-            Plataforma corporativa de certificações e documentos
+            Plataforma de Gestão de Certificações e Documentos
           </p>
         </div>
 

@@ -18,12 +18,23 @@ export interface RecentAdditionsFilters {
   days?: 7 | 15 | 30;
 }
 
-export function useRecentAdditions(filters: RecentAdditionsFilters = { type: 'certification' }) {
+export interface DetailedFilters {
+  categories?: string[];
+  platforms?: string[];
+  statuses?: string[];
+  dateRange?: { start: Date | null; end: Date | null } | null;
+  users?: string[];
+}
+
+export function useRecentAdditions(
+  filters: RecentAdditionsFilters = { type: 'certification' },
+  detailedFilters?: DetailedFilters
+) {
   const { user } = useAuth();
   const { type = 'certification', days = 30 } = filters;
   
   return useQuery({
-    queryKey: ['recent-additions', user?.id, type, days],
+    queryKey: ['recent-additions', user?.id, type, days, detailedFilters],
     queryFn: async (): Promise<RecentAddition[]> => {
       console.log('[Recent Additions] Fetching with filters:', { type, days });
       if (!user) throw new Error('User not authenticated');
@@ -199,8 +210,31 @@ export function useRecentAdditions(filters: RecentAdditionsFilters = { type: 'ce
 
       console.log(`[Recent Additions] Processed ${additions.length} items of type ${type}`);
 
+      // Apply detailed filters if provided
+      let filteredAdditions = additions;
+      
+      if (detailedFilters) {
+        filteredAdditions = additions.filter(item => {
+          // Filter by status
+          if (detailedFilters.statuses && detailedFilters.statuses.length > 0) {
+            if (!detailedFilters.statuses.includes(item.status)) return false;
+          }
+
+          // Filter by date range
+          if (detailedFilters.dateRange?.start || detailedFilters.dateRange?.end) {
+            const itemDate = new Date(item.created_at);
+            if (detailedFilters.dateRange.start && itemDate < detailedFilters.dateRange.start) return false;
+            if (detailedFilters.dateRange.end && itemDate > detailedFilters.dateRange.end) return false;
+          }
+
+          return true;
+        });
+      }
+
+      console.log(`[Recent Additions] After detailed filters: ${filteredAdditions.length} items`);
+
       // Sort by creation date (most recent first)
-      return additions.sort((a, b) => 
+      return filteredAdditions.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     },

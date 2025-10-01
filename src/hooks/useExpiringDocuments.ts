@@ -13,11 +13,19 @@ export interface ExpiringDocument {
   days_until_expiry: number;
 }
 
-export function useExpiringDocuments(days: number = 60) {
+export interface DetailedFilters {
+  categories?: string[];
+  platforms?: string[];
+  statuses?: string[];
+  dateRange?: { start: Date | null; end: Date | null } | null;
+  users?: string[];
+}
+
+export function useExpiringDocuments(days: number = 60, detailedFilters?: DetailedFilters) {
   const { user, userRole } = useAuth();
 
   return useQuery({
-    queryKey: ['expiring-documents', days],
+    queryKey: ['expiring-documents', days, detailedFilters],
     queryFn: async (): Promise<ExpiringDocument[]> => {
       if (userRole !== 'admin') {
         throw new Error('Access denied');
@@ -166,8 +174,41 @@ export function useExpiringDocuments(days: number = 60) {
         });
       }
 
+      // Apply detailed filters if provided
+      let filteredResults = results;
+      
+      if (detailedFilters) {
+        filteredResults = results.filter(item => {
+          // Filter by categories (map types to categories)
+          if (detailedFilters.categories && detailedFilters.categories.length > 0) {
+            const categoryMap: Record<string, string> = {
+              'certification': 'Certificações',
+              'badge': 'Badges',
+              'technical_attestation': 'Atestados',
+              'legal_document': 'Documentos'
+            };
+            const itemCategory = categoryMap[item.type];
+            if (!detailedFilters.categories.includes(itemCategory)) return false;
+          }
+
+          // Filter by status
+          if (detailedFilters.statuses && detailedFilters.statuses.length > 0) {
+            if (!detailedFilters.statuses.includes(item.status)) return false;
+          }
+
+          // Filter by date range (expiry date)
+          if (detailedFilters.dateRange?.start || detailedFilters.dateRange?.end) {
+            const itemDate = new Date(item.expiry_date);
+            if (detailedFilters.dateRange.start && itemDate < detailedFilters.dateRange.start) return false;
+            if (detailedFilters.dateRange.end && itemDate > detailedFilters.dateRange.end) return false;
+          }
+
+          return true;
+        });
+      }
+
       // Sort by days until expiry
-      return results.sort((a, b) => a.days_until_expiry - b.days_until_expiry);
+      return filteredResults.sort((a, b) => a.days_until_expiry - b.days_until_expiry);
     },
     enabled: !!user && userRole === 'admin',
     refetchInterval: 60000 // Refresh every minute

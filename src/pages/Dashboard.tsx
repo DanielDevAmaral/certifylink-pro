@@ -11,11 +11,13 @@ import { TechnicalAttestationForm } from "@/components/forms/TechnicalAttestatio
 import { LegalDocumentForm } from "@/components/forms/LegalDocumentForm";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
-import { useDashboardStats, useExpiringItems } from "@/hooks/useSupabaseQuery";
+import { useDashboardStats } from "@/hooks/useSupabaseQuery";
+import { useExpiringDocuments } from "@/hooks/useExpiringDocuments";
 import { useRecentAdditions, RecentAdditionsFilters } from "@/hooks/useRecentAdditions";
 import { RecentAdditionsFilters as RecentAdditionsFiltersComponent } from "@/components/dashboard/RecentAdditionsFilters";
 import { navigateToRelatedDocument } from "@/lib/utils/navigation";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
+import { DashboardFilterProvider, useDashboardFilters } from "@/contexts/DashboardFilterContext";
 import { toast } from "sonner";
 import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
@@ -23,7 +25,9 @@ import { Award, FileCheck, Scale, TrendingUp, Clock, Plus, Download, AlertCircle
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
-export default function Dashboard() {
+
+function DashboardContent() {
+  const { filters } = useDashboardFilters();
   const {
     data: stats,
     isLoading: statsLoading
@@ -32,10 +36,20 @@ export default function Dashboard() {
     data: analytics,
     isLoading: analyticsLoading
   } = useDashboardAnalytics();
+  
+  // Prepare detailed filters for hooks
+  const detailedFilters = {
+    categories: filters.categories,
+    platforms: filters.platforms,
+    statuses: filters.statuses,
+    dateRange: filters.dateRange,
+    users: filters.users
+  };
+
   const {
     data: expiringItems,
     isLoading: expiringLoading
-  } = useExpiringItems();
+  } = useExpiringDocuments(60, detailedFilters);
   const {
     refreshDashboard
   } = useCacheInvalidation();
@@ -52,7 +66,7 @@ export default function Dashboard() {
   const {
     data: recentAdditions,
     isLoading: additionsLoading
-  } = useRecentAdditions(recentAdditionsFilters);
+  } = useRecentAdditions(recentAdditionsFilters, detailedFilters);
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "dd/MM/yyyy", {
       locale: ptBR
@@ -213,15 +227,15 @@ export default function Dashboard() {
                       <TypeIcon className="h-4 w-4 text-warning" />
                       <div className="flex-1">
                         <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                          {item.title}
+                          {item.name}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {item.user_name} • Vence em {formatExpiryDays(item.expires_in_days)} • {getTypeLabel(item.type)}
+                          {item.user_name} • Vence em {formatExpiryDays(item.days_until_expiry)} • {getTypeLabel(item.type)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={item.status} />
+                      <StatusBadge status={item.status as any} />
                       <MousePointer className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>;
@@ -274,4 +288,12 @@ export default function Dashboard() {
         </div>
       </Card>
     </Layout>;
+}
+
+export default function Dashboard() {
+  return (
+    <DashboardFilterProvider>
+      <DashboardContent />
+    </DashboardFilterProvider>
+  );
 }

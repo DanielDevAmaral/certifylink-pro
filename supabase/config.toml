@@ -1,13 +1,13 @@
 project_id = "fxfmswnvfqqdsgrcgvhl"
 
 [functions.test-ai-provider]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cleanup-notifications]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fix-notification-links]
-verify_jwt = false
+verify_jwt = true
 
 [functions.notification-retry-system]
-verify_jwt = false
+verify_jwt = true

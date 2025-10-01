@@ -170,6 +170,12 @@ export default function Auth() {
           <h1 className="text-2xl font-bold text-foreground">
             CertBase
           </h1>
+
+           <div className="flex h-20 items-center border-b border-border px-6">
+          <CertBaseLogo variant="full" size={285} />
+        </div>
+
+          
           <p className="text-muted-foreground">
             Plataforma de Gestão de Certificações e Documentos
           </p>

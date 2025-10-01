@@ -218,40 +218,35 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
         });
       }
 
-      // Category breakdown - using database status field (exclude deactivated documents from counts)
-      const activeCertifications = certifications.filter(c => c.status !== 'deactivated');
-      const activeAttestations = attestations.filter(a => a.status !== 'deactivated');
-      const activeLegalDocuments = documents.filter(d => d.status !== 'deactivated');
-      const activeBadges = badges.filter(b => b.status !== 'deactivated');
-      
+      // Category breakdown - using filtered documents to respect all active filters
       const categoryBreakdown = [
         {
           category: 'Certificações',
-          count: activeCertifications.length,
-          expired: activeCertifications.filter(c => c.status === 'expired').length,
-          expiring: activeCertifications.filter(c => c.status === 'expiring').length,
-          valid: activeCertifications.filter(c => c.status === 'valid').length
+          count: filteredDocuments.filter(doc => doc.category === 'Certificações').length,
+          expired: filteredDocuments.filter(doc => doc.category === 'Certificações' && doc.status === 'expired').length,
+          expiring: filteredDocuments.filter(doc => doc.category === 'Certificações' && doc.status === 'expiring').length,
+          valid: filteredDocuments.filter(doc => doc.category === 'Certificações' && doc.status === 'valid').length
         },
         {
           category: 'Atestados',
-          count: activeAttestations.length,
-          expired: activeAttestations.filter(a => a.status === 'expired').length,
-          expiring: activeAttestations.filter(a => a.status === 'expiring').length,
-          valid: activeAttestations.filter(a => a.status === 'valid').length
+          count: filteredDocuments.filter(doc => doc.category === 'Atestados').length,
+          expired: filteredDocuments.filter(doc => doc.category === 'Atestados' && doc.status === 'expired').length,
+          expiring: filteredDocuments.filter(doc => doc.category === 'Atestados' && doc.status === 'expiring').length,
+          valid: filteredDocuments.filter(doc => doc.category === 'Atestados' && doc.status === 'valid').length
         },
         {
           category: 'Documentos',
-          count: activeLegalDocuments.length,
-          expired: activeLegalDocuments.filter(d => d.status === 'expired').length,
-          expiring: activeLegalDocuments.filter(d => d.status === 'expiring').length,
-          valid: activeLegalDocuments.filter(d => d.status === 'valid').length
+          count: filteredDocuments.filter(doc => doc.category === 'Documentos').length,
+          expired: filteredDocuments.filter(doc => doc.category === 'Documentos' && doc.status === 'expired').length,
+          expiring: filteredDocuments.filter(doc => doc.category === 'Documentos' && doc.status === 'expiring').length,
+          valid: filteredDocuments.filter(doc => doc.category === 'Documentos' && doc.status === 'valid').length
         },
         {
           category: 'Badges',
-          count: activeBadges.length,
-          expired: activeBadges.filter(b => b.status === 'expired').length,
-          expiring: activeBadges.filter(b => b.status === 'expiring').length,
-          valid: activeBadges.filter(b => b.status === 'valid').length
+          count: filteredDocuments.filter(doc => doc.category === 'Badges').length,
+          expired: filteredDocuments.filter(doc => doc.category === 'Badges' && doc.status === 'expired').length,
+          expiring: filteredDocuments.filter(doc => doc.category === 'Badges' && doc.status === 'expiring').length,
+          valid: filteredDocuments.filter(doc => doc.category === 'Badges' && doc.status === 'valid').length
         }
       ];
 

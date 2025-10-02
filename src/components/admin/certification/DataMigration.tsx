@@ -739,13 +739,27 @@ export function DataMigration() {
                     </div>
                     <div className="flex gap-2">
                       {group.severity === 'duplicate_type' ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewDetails(group, idx)}
-                        >
-                          Ver Detalhes
-                        </Button>
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewDetails(group, idx)}
+                          >
+                            Ver Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedGroup(group);
+                              setExclusionDialogOpen(true);
+                            }}
+                            disabled={isAddingExclusion}
+                          >
+                            <ShieldCheck className="h-4 w-4 mr-1" />
+                            Não é Duplicata
+                          </Button>
+                        </>
                       ) : (
                         <>
                           <Button 

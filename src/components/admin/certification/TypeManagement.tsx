@@ -44,12 +44,19 @@ export function TypeManagement() {
           id: editingType.id,
           ...formData
         });
+        // Fechar modal e resetar após edição
+        setIsDialogOpen(false);
+        resetForm();
       } else {
         await createType.mutateAsync(formData);
+        // Manter modal aberto e apenas limpar os campos para nova criação
+        resetForm();
+        // Focar no primeiro campo após reset
+        setTimeout(() => {
+          const firstInput = document.getElementById('name');
+          firstInput?.focus();
+        }, 100);
       }
-      
-      setIsDialogOpen(false);
-      resetForm();
     } catch (error) {
       console.error('Error saving certification type:', error);
     }

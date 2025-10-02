@@ -478,9 +478,9 @@ export function DataMigration() {
     // Combine exact and similar type duplicates
     const allTypeDuplicates = [...duplicateTypes, ...similarTypeGroups];
 
-    setDuplicates(groups);
+    setDuplicates([...groups, ...allTypeDuplicates]);
     setAnalysisComplete(true);
-    console.log(`Análise completa: ${groups.length} grupos encontrados`);
+    console.log(`Análise completa: ${groups.length} grupos de certificações + ${allTypeDuplicates.length} grupos de tipos`);
 
     if (showProgress) {
       setTimeout(() => setIsAnalyzing(false), 500);

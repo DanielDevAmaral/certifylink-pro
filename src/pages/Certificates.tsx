@@ -110,6 +110,15 @@ export default function Certificates() {
 
   const { data: resolvedCertifications = [] } = useRelatedCertificationResolver(allRelatedCerts);
 
+  // Helper function to format currency values
+  const formatCurrency = (value?: number) => {
+    if (!value) return 'Não informado';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
   // Handle highlighting from notifications
   useEffect(() => {
     const highlighted = getHighlightedDocumentId();
@@ -236,14 +245,6 @@ export default function Certificates() {
   const handleView = (attestation: TechnicalCertificate) => {
     setViewerAttestation(attestation);
     setShowViewer(true);
-  };
-
-  const formatCurrency = (value?: number) => {
-    if (!value) return 'Não informado';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
   };
 
   if (isLoading) {

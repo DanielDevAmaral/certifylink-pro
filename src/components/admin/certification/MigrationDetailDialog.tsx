@@ -176,10 +176,13 @@ export function MigrationDetailDialog({
     }
   };
 
-  const statusStats = group.certifications.reduce((acc, cert) => {
-    acc[cert.status] = (acc[cert.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Only calculate stats if certifications exist
+  const statusStats = (group.certifications && group.certifications.length > 0) 
+    ? group.certifications.reduce((acc, cert) => {
+        acc[cert.status] = (acc[cert.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    : {};
 
   // Regular certification group view
   const getSeverityInfo = () => {
@@ -295,13 +298,18 @@ export function MigrationDetailDialog({
             <h4 className="font-medium mb-3">Certificações do Grupo:</h4>
             <ScrollArea className="h-64">
               <div className="space-y-3">
-                {group.certifications
-                  .sort((a, b) => {
-                    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                    return dateB - dateA;
-                  })
-                  .map((cert, index) => (
+                {(group.certifications && group.certifications.length > 0) ? (
+                  group.certifications
+                    .sort((a, b) => {
+                      try {
+                        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                        return dateB - dateA;
+                      } catch {
+                        return 0;
+                      }
+                    })
+                    .map((cert, index) => (
                   <Card key={cert.id} className={`p-3 ${
                     index === 0 && group.severity === 'exact' ? 'border-green-300 bg-green-50' : ''
                   }`}>
@@ -354,7 +362,12 @@ export function MigrationDetailDialog({
                       </div>
                     </div>
                   </Card>
-                ))}
+                    ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Nenhuma certificação encontrada neste grupo.
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </div>

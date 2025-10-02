@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CertificationSelectorCombobox } from "@/components/ui/certification-selector-combobox";
 import { UserSelectorCombobox } from "@/components/ui/user-selector-combobox";
@@ -13,6 +14,8 @@ import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { TagManager } from '@/components/forms/TagManager';
 import { HoursBreakdownManager } from '@/components/forms/HoursBreakdownManager';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
+import { useBusinessVerticals } from '@/hooks/useBusinessVerticals';
+import { useTechPlatforms } from '@/hooks/useTechPlatforms';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
 import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import { useRelatedCertificationResolver } from '@/hooks/useRelatedCertificationResolver';
@@ -31,6 +34,9 @@ const attestationSchema = z.object({
   project_value: z.string().optional(),
   project_period_start: z.string().optional(),
   project_period_end: z.string().optional(),
+  document_type: z.enum(['technical_attestation', 'project_case', 'success_case']).optional(),
+  business_vertical_id: z.string().optional(),
+  tech_platform_id: z.string().optional(),
   related_certifications: z.array(z.object({
     certification_id: z.string(),
     user_id: z.string()
@@ -61,6 +67,8 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   const uploadMutation = useUploadFile();
   const { invalidateSpecificDocument } = useCacheInvalidation();
   const { toast } = useToast();
+  const { data: businessVerticals = [] } = useBusinessVerticals();
+  const { data: techPlatforms = [] } = useTechPlatforms();
 
   const form = useForm<AttestationFormData>({
     resolver: zodResolver(attestationSchema),
@@ -74,6 +82,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       issuer_position: attestation?.issuer_position || '',
       issuer_contact: attestation?.issuer_contact || '',
       validity_date: attestation?.validity_date || '',
+      document_type: (attestation?.document_type as any) || 'technical_attestation',
+      business_vertical_id: attestation?.business_vertical_id || '',
+      tech_platform_id: attestation?.tech_platform_id || '',
       related_certifications: attestation?.related_certifications || [],
       tags: attestation?.tags || [],
       hours_breakdown: attestation?.hours_breakdown || {},
@@ -129,6 +140,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         validity_date: data.validity_date || '',
         status: attestation?.status || 'valid',
         document_url: documentUrl || '',
+        document_type: data.document_type || 'technical_attestation',
+        business_vertical_id: data.business_vertical_id || null,
+        tech_platform_id: data.tech_platform_id || null,
         related_certifications: (data.related_certifications || []) as any,
         tags,
         hours_breakdown: hoursBreakdown,
@@ -242,6 +256,82 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6">
+            {/* Document Type, Vertical, and Platform */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="document_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Documento</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="technical_attestation">Atestado Técnico</SelectItem>
+                        <SelectItem value="project_case">Case de Projeto</SelectItem>
+                        <SelectItem value="success_case">Caso de Sucesso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="business_vertical_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vertical de Negócio</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a vertical" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {businessVerticals.map((vertical) => (
+                          <SelectItem key={vertical.id} value={vertical.id}>
+                            {vertical.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tech_platform_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Plataforma</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a plataforma" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {techPlatforms.map((platform) => (
+                          <SelectItem key={platform.id} value={platform.id}>
+                            {platform.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

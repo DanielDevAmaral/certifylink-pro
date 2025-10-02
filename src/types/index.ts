@@ -54,6 +54,25 @@ export interface RelatedCertification {
   user_id: string;
 }
 
+export interface BusinessVertical {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TechPlatform {
+  id: string;
+  name: string;
+  description?: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TechnicalCertificate {
   id: string;
   user_id: string;
@@ -72,9 +91,17 @@ export interface TechnicalCertificate {
   tags?: string[];
   hours_breakdown?: Record<string, number>;
   total_hours?: number;
+  document_type?: TechnicalDocumentType;
+  business_vertical_id?: string;
+  tech_platform_id?: string;
   created_at: string;
   updated_at: string;
 }
+
+export type TechnicalDocumentType = 
+  | 'technical_attestation'
+  | 'project_case' 
+  | 'success_case';
 
 export type DocumentSubtype = 
   // Legal Qualification

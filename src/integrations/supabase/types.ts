@@ -113,6 +113,33 @@ export type Database = {
         }
         Relationships: []
       }
+      business_verticals: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       certification_categories: {
         Row: {
           created_at: string
@@ -273,6 +300,36 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      duplicate_exclusions: {
+        Row: {
+          created_at: string
+          created_by: string
+          exclusion_type: Database["public"]["Enums"]["duplicate_exclusion_type"]
+          id: string
+          item1_id: string
+          item2_id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          exclusion_type: Database["public"]["Enums"]["duplicate_exclusion_type"]
+          id?: string
+          item1_id: string
+          item2_id: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          exclusion_type?: Database["public"]["Enums"]["duplicate_exclusion_type"]
+          id?: string
+          item1_id?: string
+          item2_id?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       legal_documents: {
         Row: {
@@ -589,10 +646,42 @@ export type Database = {
         }
         Relationships: []
       }
+      tech_platforms: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       technical_attestations: {
         Row: {
+          business_vertical_id: string | null
           client_name: string
           created_at: string
+          document_type: string | null
           document_url: string | null
           hours_breakdown: Json | null
           id: string
@@ -606,14 +695,17 @@ export type Database = {
           related_certifications: Json[] | null
           status: Database["public"]["Enums"]["document_status"]
           tags: string[] | null
+          tech_platform_id: string | null
           total_hours: number | null
           updated_at: string
           user_id: string
           validity_date: string | null
         }
         Insert: {
+          business_vertical_id?: string | null
           client_name: string
           created_at?: string
+          document_type?: string | null
           document_url?: string | null
           hours_breakdown?: Json | null
           id?: string
@@ -627,14 +719,17 @@ export type Database = {
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           tags?: string[] | null
+          tech_platform_id?: string | null
           total_hours?: number | null
           updated_at?: string
           user_id: string
           validity_date?: string | null
         }
         Update: {
+          business_vertical_id?: string | null
           client_name?: string
           created_at?: string
+          document_type?: string | null
           document_url?: string | null
           hours_breakdown?: Json | null
           id?: string
@@ -648,12 +743,27 @@ export type Database = {
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           tags?: string[] | null
+          tech_platform_id?: string | null
           total_hours?: number | null
           updated_at?: string
           user_id?: string
           validity_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "technical_attestations_business_vertical_id_fkey"
+            columns: ["business_vertical_id"]
+            isOneToOne: false
+            referencedRelation: "business_verticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technical_attestations_tech_platform_id_fkey"
+            columns: ["tech_platform_id"]
+            isOneToOne: false
+            referencedRelation: "tech_platforms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "technical_attestations_user_id_fkey"
             columns: ["user_id"]
@@ -831,6 +941,7 @@ export type Database = {
         | "expired"
         | "pending"
         | "deactivated"
+      duplicate_exclusion_type: "certification" | "certification_type"
       legal_document_type:
         | "legal_qualification"
         | "fiscal_regularity"
@@ -976,6 +1087,7 @@ export const Constants = {
         "pending",
         "deactivated",
       ],
+      duplicate_exclusion_type: ["certification", "certification_type"],
       legal_document_type: [
         "legal_qualification",
         "fiscal_regularity",

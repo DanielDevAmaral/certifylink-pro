@@ -16,7 +16,11 @@ export function useTechnicalAttestations() {
 
       let query = supabase
         .from('technical_attestations')
-        .select('*')
+        .select(`
+          *,
+          business_vertical:business_verticals(id, name, description),
+          tech_platform:tech_platforms(id, name, description, logo_url)
+        `)
         .order('created_at', { ascending: false });
 
       // All authenticated users can see all technical attestations (RLS handles access control)

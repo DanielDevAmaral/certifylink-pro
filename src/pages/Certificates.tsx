@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown, Settings } from 'lucide-react';
 import { DocumentViewer } from '@/components/common/DocumentViewer';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -36,6 +37,16 @@ import {
 
 // Filter configurations for certificates
 const filterConfigs = [
+  {
+    key: 'document_type',
+    label: 'Tipo de Documento',
+    type: 'select' as const,
+    options: [
+      { value: 'technical_attestation', label: 'Atestado Técnico' },
+      { value: 'project_case', label: 'Case de Projeto' },
+      { value: 'success_case', label: 'Caso de Sucesso' }
+    ]
+  },
   {
     key: 'status',
     label: 'Status',
@@ -196,6 +207,10 @@ export default function Certificates() {
       if (!matchesSearch) return false;
     }
 
+    // Document type filter
+    const documentTypeFilter = filters.document_type;
+    if (documentTypeFilter && cert.document_type !== documentTypeFilter) return false;
+
     // Status filter
     const statusFilter = filters.status;
     if (statusFilter && cert.status !== statusFilter) return false;
@@ -350,11 +365,18 @@ export default function Certificates() {
               {/* Main Info */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <FileCheck className="h-5 w-5 text-primary" />
                     </div>
                     <StatusBadge status={certificate.status} />
+                    {certificate.document_type && (
+                      <Badge variant="outline">
+                        {certificate.document_type === 'technical_attestation' && 'Atestado Técnico'}
+                        {certificate.document_type === 'project_case' && 'Case de Projeto'}
+                        {certificate.document_type === 'success_case' && 'Caso de Sucesso'}
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
@@ -369,6 +391,24 @@ export default function Certificates() {
                   </div>
 
                   <div className="space-y-2 text-sm">
+                    {(certificate as any).business_vertical && (
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="secondary">
+                          {(certificate as any).business_vertical.name}
+                        </Badge>
+                      </div>
+                    )}
+                    
+                    {(certificate as any).tech_platform && (
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="secondary">
+                          {(certificate as any).tech_platform.name}
+                        </Badge>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>Período: {certificate.project_period_start} a {certificate.project_period_end}</span>

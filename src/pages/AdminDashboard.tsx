@@ -7,6 +7,8 @@ import { NotificationSystemCard } from '@/components/admin/NotificationSystemCar
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
 import { NotificationMetricsCard } from '@/components/admin/NotificationMetricsCard';
 import { RetryQueueMonitor } from '@/components/admin/RetryQueueMonitor';
+import { BusinessVerticalManagement } from '@/components/admin/BusinessVerticalManagement';
+import { TechPlatformManagement } from '@/components/admin/TechPlatformManagement';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +23,8 @@ import {
   Settings,
   Database,
   Bell,
-  FileText
+  FileText,
+  Building
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -221,6 +224,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="documents" className="space-y-6 mt-6">
             <DocumentStatusManager />
+          </TabsContent>
+
+          <TabsContent value="verticals" className="space-y-6 mt-6">
+            <BusinessVerticalManagement />
+          </TabsContent>
+
+          <TabsContent value="platforms" className="space-y-6 mt-6">
+            <TechPlatformManagement />
           </TabsContent>
         </Tabs>
       </div>

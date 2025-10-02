@@ -535,11 +535,13 @@ export function DataMigration() {
             open={detailDialogOpen}
             onOpenChange={setDetailDialogOpen}
             group={selectedGroup}
+            groupIndex={0}
           />
           <StandardizationApplyDialog
             open={applyDialogOpen}
             onOpenChange={setApplyDialogOpen}
             group={selectedGroup}
+            groupIndex={0}
             onSuccess={() => {
               setApplyDialogOpen(false);
               // Trigger re-analysis after a short delay

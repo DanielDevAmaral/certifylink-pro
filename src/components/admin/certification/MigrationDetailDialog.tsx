@@ -10,8 +10,8 @@ interface DuplicateGroup {
   names: string[];
   certifications: any[];
   suggestedType?: any;
-  severity: 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type';
-  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation' | 'duplicate_type';
+  severity: 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
+  irregularityType: 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
 }
 
 interface MigrationDetailDialogProps {
@@ -67,7 +67,7 @@ export function MigrationDetailDialog({
           color: 'bg-orange-600 text-white',
           description: 'Nomes parecidos com mesma função - recomendado padronizar'
         };
-      case 'function_mismatch':
+      case 'function_variation':
         return {
           label: 'VARIAÇÃO DE FUNÇÃO',
           color: 'bg-yellow-600 text-white',

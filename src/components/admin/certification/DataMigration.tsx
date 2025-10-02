@@ -12,6 +12,7 @@ import { MigrationDetailDialog } from './MigrationDetailDialog';
 import { StandardizationApplyDialog } from './StandardizationApplyDialog';
 import { DuplicateMergeDialog } from './DuplicateMergeDialog';
 import { DuplicateExclusionDialog } from './DuplicateExclusionDialog';
+import { ExclusionsAppliedSection } from './ExclusionsAppliedSection';
 import { useMigrationOperations } from '@/hooks/useMigrationOperations';
 
 type SeverityType = 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
@@ -214,7 +215,7 @@ function findBestMatchingType(certs: any[], types: any[]): any | undefined {
 export function DataMigration() {
   const { data: certifications = [], isLoading: loadingCerts } = useCertifications();
   const { data: types = [], isLoading: loadingTypes } = useCertificationTypes();
-  const { isExcluded, addExclusion, isAdding: isAddingExclusion, isLoading: isLoadingExclusions } = useDuplicateExclusions();
+  const { isExcluded, addExclusion, isAdding: isAddingExclusion, isLoading: isLoadingExclusions, exclusions, removeExclusion, isRemoving } = useDuplicateExclusions();
   const { applyStandardization, isApplying, mergeDuplicates, isMerging } = useMigrationOperations();
 
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
@@ -848,6 +849,18 @@ export function DataMigration() {
           onConfirm={handleConfirmMerge}
         />
       )}
+
+      <ExclusionsAppliedSection
+        exclusions={exclusions}
+        onRevert={(id) => {
+          removeExclusion(id, {
+            onSuccess: () => {
+              analyzeDuplicates(true);
+            },
+          });
+        }}
+        isReverting={isRemoving}
+      />
 
       <DuplicateExclusionDialog
         open={exclusionDialogOpen}

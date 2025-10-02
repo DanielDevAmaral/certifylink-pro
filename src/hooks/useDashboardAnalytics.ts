@@ -215,7 +215,7 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
         monthlyTrend.push({
           month: monthName,
           total: monthTotal,
-          compliance: monthTotal > 0 ? Math.round((monthCompliant / monthTotal) * 100) : 100
+          compliance: monthTotal > 0 ? Math.round((monthCompliant / monthTotal) * 100) : 0
         });
       }
 

@@ -247,6 +247,7 @@ export function DataMigration() {
           irregularityType: 'duplicate_type',
           names: typeNames,
           certifications: [],
+          types: typeGroup,
           reason: `${typeGroup.length} tipos com mesmo nome na mesma plataforma`
         });
       }
@@ -260,6 +261,7 @@ export function DataMigration() {
           irregularityType: 'duplicate_type',
           names: typeNames,
           certifications: [],
+          types: typeGroup,
           reason: `${typeGroup.length} tipos com mesmo nome completo na mesma plataforma`
         });
       }

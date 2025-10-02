@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,8 +54,8 @@ export function TypeMigrationDialog({
   });
 
   // Auto-select the type with most certifications or most recent
-  useState(() => {
-    if (certCounts && !selectedTypeId) {
+  useEffect(() => {
+    if (certCounts && !selectedTypeId && types.length > 0) {
       const typeWithMostCerts = types.reduce((max, type) => {
         const maxCount = certCounts[max.id] || 0;
         const typeCount = certCounts[type.id] || 0;
@@ -63,7 +63,7 @@ export function TypeMigrationDialog({
       }, types[0]);
       setSelectedTypeId(typeWithMostCerts.id);
     }
-  });
+  }, [certCounts, types, selectedTypeId]);
 
   const handleMigrate = async () => {
     if (!confirmed) {

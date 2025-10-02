@@ -14,6 +14,7 @@ export function useSessionTimeoutInLayout(config: SessionTimeoutConfig) {
   const { toast } = useToast();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
+  const warningShownRef = useRef<boolean>(false);
   const lastActivityRef = useRef<number>(Date.now());
 
   const clearTimers = useCallback(() => {
@@ -25,6 +26,7 @@ export function useSessionTimeoutInLayout(config: SessionTimeoutConfig) {
       clearTimeout(warningRef.current);
       warningRef.current = null;
     }
+    warningShownRef.current = false;
   }, []);
 
   const handleTimeout = useCallback(async () => {
@@ -41,7 +43,8 @@ export function useSessionTimeoutInLayout(config: SessionTimeoutConfig) {
   }, [user, signOut, toast, config]);
 
   const handleWarning = useCallback(() => {
-    if (user) {
+    if (user && !warningShownRef.current) {
+      warningShownRef.current = true;
       toast({
         variant: 'destructive',
         title: 'Sessão expirando',
@@ -56,6 +59,7 @@ export function useSessionTimeoutInLayout(config: SessionTimeoutConfig) {
     if (!user) return;
     
     lastActivityRef.current = Date.now();
+    warningShownRef.current = false;
     clearTimers();
 
     // Set warning timer

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { subMonths, endOfMonth, subDays, parseISO, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export interface AnalyticsData {
   totalDocuments: number;
@@ -191,30 +193,43 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
       const complianceRate = totalDocuments > 0 ? 
         Math.round((compliantDocuments / totalDocuments) * 100) : 0;
 
-      // Generate monthly trend (last 6 months)
+      // Generate monthly trend (last 6 months) - considering historical status
       const monthlyTrend = [];
       for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
+        const targetDate = subMonths(new Date(), i);
+        const monthName = format(targetDate, 'MMM/yy', { locale: ptBR });
+        const endOfTargetMonth = endOfMonth(targetDate);
         
-        // Only count active documents in monthly trends
-        const monthDocs = filteredDocuments.filter(doc => {
-          const docDate = new Date(doc.created_at);
-          return docDate.getMonth() === date.getMonth() && 
-                 docDate.getFullYear() === date.getFullYear();
+        // Get all documents that existed up to this month (created before or during)
+        const existingDocs = filteredDocuments.filter(doc => {
+          const docDate = parseISO(doc.created_at);
+          return docDate <= endOfTargetMonth;
         });
 
-        const monthValid = monthDocs.filter(doc => doc.status === 'valid').length;
-        const monthExpiring = monthDocs.filter(doc => doc.status === 'expiring').length;
-        const monthCompliant = monthValid + monthExpiring; // Conformidade inclui válidos + vencendo
-        const monthCompliance = monthDocs.length > 0 ? 
-          Math.round((monthCompliant / monthDocs.length) * 100) : 0;
-
+        // Calculate what the status would have been in that specific month
+        const monthCompliant = existingDocs.filter(doc => {
+          // Get validity date based on document type
+          const validityDate = (doc as any).validity_date || (doc as any).expiry_date;
+          
+          if (!validityDate) return true; // Documents without expiry are always valid
+          
+          const validity = parseISO(validityDate);
+          
+          // Check if document was expired at the end of target month
+          if (validity < endOfTargetMonth) {
+            return false; // Was already expired - not compliant
+          }
+          
+          // Document was either valid or expiring - both count as compliant
+          return true;
+        }).length;
+        
+        const monthTotal = existingDocs.length;
+        
         monthlyTrend.push({
           month: monthName,
-          total: monthDocs.length,
-          compliance: monthCompliance
+          total: monthTotal,
+          compliance: monthTotal > 0 ? Math.round((monthCompliant / monthTotal) * 100) : 100
         });
       }
 

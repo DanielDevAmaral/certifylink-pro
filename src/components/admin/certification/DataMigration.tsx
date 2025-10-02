@@ -25,6 +25,7 @@ interface DuplicateGroup {
     user_id: string;
     creator_name?: string;
   }>;
+  types?: any[]; // For duplicate_type groups
   suggestedType?: {
     id: string;
     name: string;
@@ -316,13 +317,15 @@ export function DataMigration() {
     analyzeDuplicates(true);
   };
 
-  const handleViewDetails = (group: DuplicateGroup) => {
+  const handleViewDetails = (group: DuplicateGroup, index: number) => {
     setSelectedGroup(group);
+    setSelectedGroupIndex(index);
     setDetailDialogOpen(true);
   };
 
-  const handleApplyStandardization = (group: DuplicateGroup) => {
+  const handleApplyStandardization = (group: DuplicateGroup, index: number) => {
     setSelectedGroup(group);
+    setSelectedGroupIndex(index);
     setApplyDialogOpen(true);
   };
 
@@ -487,15 +490,19 @@ export function DataMigration() {
                     </div>
                     <div className="flex gap-2">
                       {group.severity === 'duplicate_type' ? (
-                        <Button variant="outline" size="sm" disabled>
-                          Corrigir na aba Tipos
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetails(group, idx)}
+                        >
+                          Ver Detalhes
                         </Button>
                       ) : (
                         <>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleViewDetails(group)}
+                            onClick={() => handleViewDetails(group, idx)}
                           >
                             Ver Detalhes
                           </Button>
@@ -512,7 +519,7 @@ export function DataMigration() {
                           {(group.severity === 'similar' || group.severity === 'function_variation') && (
                             <Button 
                               size="sm"
-                              onClick={() => handleApplyStandardization(group)}
+                              onClick={() => handleApplyStandardization(group, idx)}
                               disabled={isApplying}
                             >
                               {isApplying ? 'Aplicando...' : 'Aplicar Padronização'}
@@ -535,13 +542,13 @@ export function DataMigration() {
             open={detailDialogOpen}
             onOpenChange={setDetailDialogOpen}
             group={selectedGroup}
-            groupIndex={0}
+            groupIndex={selectedGroupIndex}
           />
           <StandardizationApplyDialog
             open={applyDialogOpen}
             onOpenChange={setApplyDialogOpen}
             group={selectedGroup}
-            groupIndex={0}
+            groupIndex={selectedGroupIndex}
             onSuccess={() => {
               setApplyDialogOpen(false);
               // Trigger re-analysis after a short delay

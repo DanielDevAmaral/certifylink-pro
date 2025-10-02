@@ -1,14 +1,19 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, User, AlertCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Button } from '@/components/ui/button';
+import { TypeMigrationDialog } from './TypeMigrationDialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface DuplicateGroup {
   names: string[];
   certifications: any[];
+  types?: any[];
   suggestedType?: any;
   severity: 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
   irregularityType: 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
@@ -24,10 +29,117 @@ interface MigrationDetailDialogProps {
 export function MigrationDetailDialog({ 
   open, 
   onOpenChange, 
-  group, 
+  group,
   groupIndex 
 }: MigrationDetailDialogProps) {
+  const [typeMigrationOpen, setTypeMigrationOpen] = useState(false);
+
   if (!group) return null;
+
+  // If it's a duplicate type group, show type-specific information
+  if (group.severity === 'duplicate_type' && group.types && group.types.length > 0) {
+    const platform = group.types[0].certification_platforms;
+    
+    return (
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+                Tipos Duplicados #{groupIndex + 1}
+              </DialogTitle>
+              <DialogDescription>
+                Múltiplos tipos com o mesmo nome completo na plataforma
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Platform Info */}
+              <Card className="p-4 bg-muted/50">
+                <div className="flex items-center gap-3">
+                  {platform?.logo_url && (
+                    <img src={platform.logo_url} alt={platform.name} className="h-8 w-8 object-contain" />
+                  )}
+                  <div>
+                    <p className="font-medium">{platform?.name || 'Sem Plataforma'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Nome Completo: {group.types[0].full_name}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Types List */}
+              <div className="space-y-3">
+                <h3 className="font-semibold">Tipos Encontrados ({group.types.length})</h3>
+                <div className="space-y-2">
+                  {group.types.map((type: any, index: number) => (
+                    <Card key={type.id} className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Tipo {index + 1}</Badge>
+                            <span className="font-medium">{type.name}</span>
+                          </div>
+                          <Badge variant={type.is_active ? 'default' : 'secondary'}>
+                            {type.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </div>
+                        {type.function && (
+                          <p className="text-sm text-muted-foreground">Função: {type.function}</p>
+                        )}
+                        {type.aliases && type.aliases.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Aliases: {type.aliases.join(', ')}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground font-mono">ID: {type.id}</p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Hint */}
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Use o botão abaixo para migrar todas as certificações para um único tipo e desativar os duplicados.
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  setTypeMigrationOpen(true);
+                  onOpenChange(false);
+                }}
+              >
+                Migrar Certificações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <TypeMigrationDialog
+          open={typeMigrationOpen}
+          onOpenChange={setTypeMigrationOpen}
+          types={group.types}
+          onSuccess={() => {
+            // Could trigger a refresh here if needed
+          }}
+        />
+      </>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,6 +165,7 @@ export function MigrationDetailDialog({
     return acc;
   }, {} as Record<string, number>);
 
+  // Regular certification group view
   const getSeverityInfo = () => {
     switch (group.severity) {
       case 'exact':

@@ -148,10 +148,77 @@ export function useMigrationOperations() {
     },
   });
 
+  const migrateAndConsolidateTypes = useMutation({
+    mutationFn: async ({ 
+      keepTypeId, 
+      keepTypeName,
+      discardTypeIds,
+      discardTypeNames
+    }: { 
+      keepTypeId: string;
+      keepTypeName: string;
+      discardTypeIds: string[];
+      discardTypeNames: string[];
+    }) => {
+      // Update all certifications using discarded types to use the kept type
+      const { data: certsToUpdate, error: fetchError } = await supabase
+        .from('certifications')
+        .select('id, name')
+        .in('name', discardTypeNames);
+
+      if (fetchError) throw fetchError;
+
+      if (certsToUpdate && certsToUpdate.length > 0) {
+        const updatePromises = certsToUpdate.map(cert =>
+          supabase
+            .from('certifications')
+            .update({ name: keepTypeName })
+            .eq('id', cert.id)
+        );
+
+        const results = await Promise.all(updatePromises);
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+          throw new Error(`Erro ao atualizar ${errors.length} certificações`);
+        }
+      }
+
+      // Deactivate discarded types
+      const { error: deactivateError } = await supabase
+        .from('certification_types')
+        .update({ is_active: false })
+        .in('id', discardTypeIds);
+
+      if (deactivateError) throw deactivateError;
+
+      return {
+        migratedCount: certsToUpdate?.length || 0,
+        deactivatedTypes: discardTypeIds.length,
+        keptTypeName: keepTypeName
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['certifications'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-types'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-search'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      
+      toast.success(
+        `Migração concluída! ${result.migratedCount} certificações migradas para "${result.keptTypeName}". ${result.deactivatedTypes} tipo(s) desativado(s).`
+      );
+    },
+    onError: (error) => {
+      console.error('Error migrating types:', error);
+      toast.error('Erro ao migrar tipos. Tente novamente.');
+    },
+  });
+
   return {
     applyStandardization,
     isApplying: applyStandardization.isPending,
     mergeDuplicates,
-    isMerging: mergeDuplicates.isPending
+    isMerging: mergeDuplicates.isPending,
+    migrateAndConsolidateTypes,
+    isMigratingTypes: migrateAndConsolidateTypes.isPending
   };
 }

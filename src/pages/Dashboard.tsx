@@ -161,10 +161,16 @@ function DashboardContent() {
           value: 5,
           isPositive: false
         }} />
-            <StatsCard title="Taxa de Conformidade" value={`${stats?.completion_percentage || 0}%`} description={`${stats?.expiring_alert || 0} documentos vencendo em breve`} icon={TrendingUp} trend={{
-          value: 3,
-          isPositive: true
-        }} />
+            <StatsCard 
+              title="Taxa de Conformidade" 
+              value={`${stats?.completion_percentage || 0}%`} 
+              description="Status atual: válidos + vencendo como conformes" 
+              icon={TrendingUp} 
+              trend={{
+                value: 3,
+                isPositive: true
+              }} 
+            />
           </>}
       </div>
 

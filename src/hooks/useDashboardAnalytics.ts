@@ -193,7 +193,7 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
       const complianceRate = totalDocuments > 0 ? 
         Math.round((compliantDocuments / totalDocuments) * 100) : 0;
 
-      // Generate monthly trend (last 6 months) - considering historical status
+      // Generate monthly trend (last 6 months) - based on current document status
       const monthlyTrend = [];
       for (let i = 5; i >= 0; i--) {
         const targetDate = subMonths(new Date(), i);
@@ -206,24 +206,10 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
           return docDate <= endOfTargetMonth;
         });
 
-        // Calculate what the status would have been in that specific month
-        const monthCompliant = existingDocs.filter(doc => {
-          // Get validity date based on document type
-          const validityDate = (doc as any).validity_date || (doc as any).expiry_date;
-          
-          if (!validityDate) return true; // Documents without expiry are always valid
-          
-          const validity = parseISO(validityDate);
-          
-          // Check if document was expired at the end of target month
-          if (validity < endOfTargetMonth) {
-            return false; // Was already expired - not compliant
-          }
-          
-          // Document was either valid or expiring - both count as compliant
-          return true;
-        }).length;
-        
+        // Count documents with current valid or expiring status (real current status)
+        const monthValid = existingDocs.filter(doc => doc.status === 'valid').length;
+        const monthExpiring = existingDocs.filter(doc => doc.status === 'expiring').length;
+        const monthCompliant = monthValid + monthExpiring; // Compliance includes valid + expiring
         const monthTotal = existingDocs.length;
         
         monthlyTrend.push({

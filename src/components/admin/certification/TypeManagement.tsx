@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +13,8 @@ import { useCertificationTypes, useCreateCertificationType, useUpdateCertificati
 import { useCertificationPlatforms } from "@/hooks/useCertificationPlatforms";
 import { useCertificationCategories } from "@/hooks/useCertificationCategories";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { AdvancedSearchBar } from "@/components/common/AdvancedSearchBar";
+import { useTypeFilters } from "@/hooks/useTypeFilters";
 
 export function TypeManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +36,9 @@ export function TypeManagement() {
   const createType = useCreateCertificationType();
   const updateType = useUpdateCertificationType();
   const deleteType = useDeleteCertificationType();
+  
+  const { filters, filteredTypes, updateFilters, resetFilters } = useTypeFilters(types);
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,22 +125,40 @@ export function TypeManagement() {
 
   if (isLoading) return <LoadingSpinner />;
 
+  const hasActiveFilters = !!filters.platformId || !!filters.categoryId || filters.isActive !== undefined || !!filters.dateRange;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium">Tipos de Certificação ({types.length})</h3>
+          <h3 className="text-lg font-medium">
+            Tipos de Certificação ({filteredTypes.length}{types.length !== filteredTypes.length && ` de ${types.length}`})
+          </h3>
           <p className="text-sm text-muted-foreground">
             Gerencie os tipos específicos de certificação por plataforma
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Tipo
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={hasActiveFilters ? "border-primary" : ""}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+            {hasActiveFilters && (
+              <Badge variant="secondary" className="ml-2">
+                {[!!filters.platformId, !!filters.categoryId, filters.isActive !== undefined, !!filters.dateRange].filter(Boolean).length}
+              </Badge>
+            )}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Tipo
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
@@ -262,7 +285,117 @@ export function TypeManagement() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Barra de Busca */}
+      <AdvancedSearchBar
+        value={filters.searchTerm}
+        onChange={(value) => updateFilters({ searchTerm: value })}
+        onSearch={(value) => updateFilters({ searchTerm: value })}
+        placeholder="Buscar por nome, função ou alias..."
+        showClearButton
+      />
+
+      {/* Painel de Filtros */}
+      {showFilters && (
+        <div className="p-4 border rounded-lg bg-card space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="font-medium">Filtros Avançados</h4>
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              <X className="h-4 w-4 mr-2" />
+              Limpar
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label>Plataforma</Label>
+              <Select
+                value={filters.platformId || "all"}
+                onValueChange={(value) => 
+                  updateFilters({ platformId: value === "all" ? undefined : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {platforms.map(platform => (
+                    <SelectItem key={platform.id} value={platform.id}>
+                      {platform.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Categoria</Label>
+              <Select
+                value={filters.categoryId || "all"}
+                onValueChange={(value) => 
+                  updateFilters({ categoryId: value === "all" ? undefined : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={filters.isActive === undefined ? "all" : filters.isActive ? "active" : "inactive"}
+                onValueChange={(value) => 
+                  updateFilters({ 
+                    isActive: value === "all" ? undefined : value === "active" 
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Ordenar Por</Label>
+              <Select
+                value={filters.sortBy}
+                onValueChange={(value: any) => updateFilters({ sortBy: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name_asc">Nome (A-Z)</SelectItem>
+                  <SelectItem value="name_desc">Nome (Z-A)</SelectItem>
+                  <SelectItem value="platform_asc">Plataforma (A-Z)</SelectItem>
+                  <SelectItem value="platform_desc">Plataforma (Z-A)</SelectItem>
+                  <SelectItem value="created_desc">Mais Recentes</SelectItem>
+                  <SelectItem value="created_asc">Mais Antigas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Table>
         <TableHeader>
@@ -276,8 +409,15 @@ export function TypeManagement() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {types.map((type) => (
-            <TableRow key={type.id}>
+          {filteredTypes.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                Nenhum tipo de certificação encontrado
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredTypes.map((type) => (
+              <TableRow key={type.id}>
               <TableCell>
                 <div>
                   <div className="font-medium">{type.name}</div>
@@ -329,7 +469,8 @@ export function TypeManagement() {
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+            ))
+          )}
         </TableBody>
       </Table>
     </div>

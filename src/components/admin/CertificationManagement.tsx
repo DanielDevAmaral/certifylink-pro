@@ -23,7 +23,7 @@ export function CertificationManagement() {
           <TabsTrigger value="platforms">Plataformas</TabsTrigger>
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="types">Tipos</TabsTrigger>
-          <TabsTrigger value="migration">Migração</TabsTrigger>
+          <TabsTrigger value="migration">Inconsistências</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platforms" className="space-y-4">
@@ -71,9 +71,9 @@ export function CertificationManagement() {
         <TabsContent value="migration" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Migração de Dados</CardTitle>
+              <CardTitle>Inconsistências</CardTitle>
               <CardDescription>
-                Padronize certificações existentes usando os novos tipos cadastrados
+                Detecta e corrige inconsistências, duplicatas e tipos não padronizados
               </CardDescription>
             </CardHeader>
             <CardContent>

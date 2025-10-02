@@ -12,6 +12,87 @@ export interface MigrationOperation {
 export function useMigrationOperations() {
   const queryClient = useQueryClient();
 
+  const mergeDuplicates = useMutation({
+    mutationFn: async ({ certificationIds, keepStrategy = 'newest' }: { 
+      certificationIds: string[]; 
+      keepStrategy?: 'newest' | 'oldest' 
+    }) => {
+      if (certificationIds.length < 2) {
+        throw new Error('Pelo menos 2 certificações são necessárias para mesclar');
+      }
+
+      // Fetch all certifications to merge
+      const { data: certs, error: fetchError } = await supabase
+        .from('certifications')
+        .select('*')
+        .in('id', certificationIds)
+        .order('created_at', { ascending: keepStrategy === 'oldest' });
+
+      if (fetchError) throw fetchError;
+      if (!certs || certs.length === 0) {
+        throw new Error('Nenhuma certificação encontrada para mesclar');
+      }
+
+      // Keep the first one (newest or oldest depending on strategy)
+      const keepId = certs[0].id;
+      const idsToDelete = certs.slice(1).map(c => c.id);
+
+      // Optionally merge missing fields into the kept certification
+      const keepCert = certs[0];
+      const updates: any = {};
+      
+      // Check if we can fill in missing fields from other certs
+      for (const cert of certs.slice(1)) {
+        if (!keepCert.validity_date && cert.validity_date) {
+          updates.validity_date = cert.validity_date;
+        }
+        if (!keepCert.screenshot_url && cert.screenshot_url) {
+          updates.screenshot_url = cert.screenshot_url;
+        }
+        if (!keepCert.public_link && cert.public_link) {
+          updates.public_link = cert.public_link;
+        }
+      }
+
+      // Update the kept certification if there are missing fields to fill
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from('certifications')
+          .update(updates)
+          .eq('id', keepId);
+        
+        if (updateError) {
+          console.error('Error updating kept certification:', updateError);
+        }
+      }
+
+      // Delete the duplicates
+      const { error: deleteError } = await supabase
+        .from('certifications')
+        .delete()
+        .in('id', idsToDelete);
+
+      if (deleteError) throw deleteError;
+
+      return {
+        keptId: keepId,
+        deletedCount: idsToDelete.length,
+        totalProcessed: certificationIds.length
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['certifications'] });
+      queryClient.invalidateQueries({ queryKey: ['certification-search'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      
+      toast.success(`Mesclagem concluída! ${result.deletedCount} duplicata(s) removida(s).`);
+    },
+    onError: (error) => {
+      console.error('Error merging duplicates:', error);
+      toast.error('Erro ao mesclar duplicatas. Tente novamente.');
+    },
+  });
+
   const applyStandardization = useMutation({
     mutationFn: async (operation: MigrationOperation) => {
       const { certificationIds, targetTypeId, targetTypeName } = operation;
@@ -69,6 +150,8 @@ export function useMigrationOperations() {
 
   return {
     applyStandardization,
-    isApplying: applyStandardization.isPending
+    isApplying: applyStandardization.isPending,
+    mergeDuplicates,
+    isMerging: mergeDuplicates.isPending
   };
 }

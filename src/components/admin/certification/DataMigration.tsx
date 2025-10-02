@@ -1,708 +1,570 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertCircle, RefreshCw, Eye, X, Filter } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCertifications } from "@/hooks/useCertifications";
-import { useCertificationTypes } from "@/hooks/useCertificationTypes";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { toast } from "sonner";
-import { MigrationDetailDialog } from "./MigrationDetailDialog";
-import { StandardizationApplyDialog } from "./StandardizationApplyDialog";
-import { EditableTypeSelector } from "./EditableTypeSelector";
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useCertificationSearch } from '@/hooks/useCertificationSearch';
+import { useCertificationTypes } from '@/hooks/useCertificationTypes';
+import { AlertCircle, CheckCircle2, FileWarning, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MigrationDetailDialog } from './MigrationDetailDialog';
+import { StandardizationApplyDialog } from './StandardizationApplyDialog';
+import { DuplicateMergeDialog } from './DuplicateMergeDialog';
+import { useMigrationOperations } from '@/hooks/useMigrationOperations';
+
+type SeverityType = 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
 
 interface DuplicateGroup {
+  severity: SeverityType;
+  irregularityType: SeverityType; // Alias for compatibility
   names: string[];
-  certifications: any[];
-  suggestedType?: any;
-  severity: 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type';
-  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation' | 'duplicate_type';
+  certifications: Array<{
+    id: string;
+    name: string;
+    function: string;
+    user_id: string;
+    creator_name?: string;
+  }>;
+  suggestedType?: {
+    id: string;
+    name: string;
+    fullName: string;
+  };
+  reason: string;
+}
+
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function areSimilar(text1: string, text2: string, userId1: string, userId2: string): boolean {
+  // Only flag as duplicate if same user
+  if (userId1 !== userId2) return false;
+  
+  const norm1 = normalizeText(text1);
+  const norm2 = normalizeText(text2);
+  
+  if (norm1 === norm2) return true;
+  
+  const words1 = norm1.split(' ');
+  const words2 = norm2.split(' ');
+  const commonWords = words1.filter(w => words2.includes(w) && w.length > 3);
+  
+  return commonWords.length >= Math.min(words1.length, words2.length) * 0.7;
+}
+
+function areExactDuplicates(cert1: any, cert2: any): boolean {
+  // Must be same user AND same name/function
+  return cert1.user_id === cert2.user_id &&
+         normalizeText(cert1.name) === normalizeText(cert2.name) &&
+         normalizeText(cert1.function) === normalizeText(cert2.function);
+}
+
+// Stable signature builders
+function buildCertsSignature(certs: any[]): string {
+  if (!certs || certs.length === 0) return 'empty-certs';
+  
+  const sorted = [...certs].sort((a, b) => a.id.localeCompare(b.id));
+  return sorted
+    .map(c => `${c.id}|${c.user_id}|${normalizeText(c.name)}|${normalizeText(c.function)}|${c.updated_at}`)
+    .join('::');
+}
+
+function buildTypesSignature(types: any[]): string {
+  if (!types || types.length === 0) return 'empty-types';
+  
+  const sorted = [...types].sort((a, b) => a.id.localeCompare(b.id));
+  return sorted
+    .map(t => `${t.id}|${t.platform_id}|${normalizeText(t.name)}|${normalizeText(t.full_name)}|${t.updated_at}`)
+    .join('::');
 }
 
 export function DataMigration() {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { data: certifications = [], isLoading: loadingCerts } = useCertificationSearch();
+  const { data: types = [], isLoading: loadingTypes } = useCertificationTypes();
+  const { applyStandardization, isApplying, mergeDuplicates, isMerging } = useMigrationOperations();
+
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [selectedDetailGroup, setSelectedDetailGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
-  const [selectedApplyGroup, setSelectedApplyGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type'>('all');
-  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<DuplicateGroup | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [selectedGroupForMerge, setSelectedGroupForMerge] = useState<DuplicateGroup | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<SeverityType | 'all'>('all');
 
-  const { data: certifications = [], isLoading: isCertificationsLoading } = useCertifications();
-  const { data: types = [] } = useCertificationTypes();
-  
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialLoadRef = useRef(true);
+  // Refs for stable analysis
+  const lastCertsSigRef = useRef<string>('');
+  const lastTypesSigRef = useRef<string>('');
+  const lastAnalysisAtRef = useRef<number>(0);
+  const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Função para calcular similaridade usando Levenshtein distance
-  const levenshteinDistance = (str1: string, str2: string): number => {
-    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-    
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-    
-    for (let j = 1; j <= str2.length; j++) {
-      for (let i = 1; i <= str1.length; i++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1,
-          matrix[j - 1][i] + 1,
-          matrix[j - 1][i - 1] + cost
-        );
+  const analyzeDuplicates = useCallback((showProgress = false) => {
+    if (showProgress) {
+      setIsAnalyzing(true);
+    }
+
+    const groups: DuplicateGroup[] = [];
+
+    // FASE 1: Duplicatas exatas (mesmo user_id + nome + função)
+    const exactDuplicates = new Map<string, typeof certifications>();
+    certifications.forEach(cert => {
+      certifications.forEach(other => {
+        if (cert.id !== other.id && areExactDuplicates(cert, other)) {
+          const key = `${cert.user_id}-${normalizeText(cert.name)}-${normalizeText(cert.function)}`;
+          if (!exactDuplicates.has(key)) {
+            exactDuplicates.set(key, []);
+          }
+          const existing = exactDuplicates.get(key)!;
+          if (!existing.find(c => c.id === cert.id)) {
+            existing.push(cert);
+          }
+          if (!existing.find(c => c.id === other.id)) {
+            existing.push(other);
+          }
+        }
+      });
+    });
+
+    exactDuplicates.forEach(certs => {
+      if (certs.length > 1) {
+        const uniqueNames = [...new Set(certs.map(c => c.name))];
+        groups.push({
+          severity: 'exact',
+          irregularityType: 'exact',
+          names: uniqueNames,
+          certifications: certs,
+          reason: `${certs.length} certificações idênticas do mesmo usuário`
+        });
+      }
+    });
+
+    // FASE 2: Nomes similares (mesmo user_id)
+    const similarGroups = new Map<string, typeof certifications>();
+    for (let i = 0; i < certifications.length; i++) {
+      for (let j = i + 1; j < certifications.length; j++) {
+        const cert1 = certifications[i];
+        const cert2 = certifications[j];
+        
+        // Only if same user
+        if (cert1.user_id === cert2.user_id && 
+            areSimilar(cert1.name, cert2.name, cert1.user_id, cert2.user_id) &&
+            !areExactDuplicates(cert1, cert2)) {
+          const key = `${cert1.user_id}-similar-${Math.min(i, j)}`;
+          if (!similarGroups.has(key)) {
+            similarGroups.set(key, [cert1, cert2]);
+          } else {
+            const group = similarGroups.get(key)!;
+            if (!group.find(c => c.id === cert1.id)) group.push(cert1);
+            if (!group.find(c => c.id === cert2.id)) group.push(cert2);
+          }
+        }
       }
     }
-    
-    return matrix[str2.length][str1.length];
-  };
 
-  // Função para normalizar nomes para comparação
-  const normalizeForComparison = (name: string): string => {
-    return name.toLowerCase()
-      .replace(/\s+/g, ' ')
-      .replace(/[^\w\s]/g, '')
-      .trim();
-  };
+    similarGroups.forEach(certs => {
+      const uniqueNames = [...new Set(certs.map(c => c.name))];
+      groups.push({
+        severity: 'similar',
+        irregularityType: 'similar',
+        names: uniqueNames,
+        certifications: certs,
+        reason: `Nomes similares que podem ser o mesmo tipo (mesmo usuário)`
+      });
+    });
 
-  // Função para verificar se são duplicatas exatas (mesmo usuário)
-  const areExactDuplicates = (cert1: any, cert2: any): boolean => {
-    const normalized1 = normalizeForComparison(cert1.name);
-    const normalized2 = normalizeForComparison(cert2.name);
-    const func1 = normalizeForComparison(cert1.function || '');
-    const func2 = normalizeForComparison(cert2.function || '');
-    
-    // Only duplicates if same name, function AND same user
-    return normalized1 === normalized2 && func1 === func2 && cert1.user_id === cert2.user_id;
-  };
-
-  // Função para verificar se dois nomes são similares
-  const areSimilar = (name1: string, name2: string): boolean => {
-    const normalized1 = normalizeForComparison(name1);
-    const normalized2 = normalizeForComparison(name2);
-    
-    if (normalized1 === normalized2) return false;
-    
-    const maxLength = Math.max(normalized1.length, normalized2.length);
-    const distance = levenshteinDistance(normalized1, normalized2);
-    const similarity = (maxLength - distance) / maxLength;
-    
-    return similarity > 0.8 && similarity < 1.0;
-  };
-
-  const analyzeDuplicates = useCallback((isAuto = false) => {
-    setIsAnalyzing(true);
-    setIsAutoRefresh(isAuto);
-    
-    setTimeout(() => {
-      const potentialGroups: DuplicateGroup[] = [];
-      const processedCerts = new Set<string>();
-      
-      // FASE 1: Detectar duplicatas EXATAS (máxima prioridade)
-      certifications.forEach((cert, index) => {
-        if (processedCerts.has(cert.id)) return;
-        
-        const exactDuplicates = [cert];
-        processedCerts.add(cert.id);
-        
-        certifications.slice(index + 1).forEach(otherCert => {
-          if (processedCerts.has(otherCert.id)) return;
-          
-          if (areExactDuplicates(cert, otherCert)) {
-            exactDuplicates.push(otherCert);
-            processedCerts.add(otherCert.id);
+    // FASE 3: Variações de função (mesmo user_id + mesmo nome normalizado)
+    const functionVariations = new Map<string, typeof certifications>();
+    certifications.forEach(cert => {
+      const normName = normalizeText(cert.name);
+      certifications.forEach(other => {
+        if (cert.id !== other.id && 
+            cert.user_id === other.user_id &&
+            normalizeText(other.name) === normName && 
+            normalizeText(cert.function) !== normalizeText(other.function)) {
+          const key = `${cert.user_id}-${normName}`;
+          if (!functionVariations.has(key)) {
+            functionVariations.set(key, []);
           }
-        });
-        
-        if (exactDuplicates.length > 1) {
-          const names = [...new Set(exactDuplicates.map(c => c.name))];
-          
-          // Encontrar tipo correspondente
-          const suggestedType = types.find(type => 
-            normalizeForComparison(type.full_name).includes(normalizeForComparison(names[0])) ||
-            normalizeForComparison(names[0]).includes(normalizeForComparison(type.full_name))
-          );
-          
-          potentialGroups.push({
-            names,
-            certifications: exactDuplicates,
-            suggestedType,
-            severity: 'exact',
-            irregularityType: 'exact_duplicate'
-          });
+          const existing = functionVariations.get(key)!;
+          if (!existing.find(c => c.id === cert.id)) existing.push(cert);
+          if (!existing.find(c => c.id === other.id)) existing.push(other);
         }
       });
-      
-      // FASE 2: Detectar certificações SIMILARES
-      const remainingCerts = certifications.filter(cert => !processedCerts.has(cert.id));
-      
-      remainingCerts.forEach((cert, index) => {
-        if (processedCerts.has(cert.id)) return;
-        
-        const similarCerts = [cert];
-        processedCerts.add(cert.id);
-        
-        remainingCerts.slice(index + 1).forEach(otherCert => {
-          if (processedCerts.has(otherCert.id)) return;
-          
-          const namesSimilar = areSimilar(cert.name, otherCert.name);
-          const functionsMatch = normalizeForComparison(cert.function || '') === 
-                                normalizeForComparison(otherCert.function || '');
-          const sameUser = cert.user_id === otherCert.user_id;
-          
-          // Only similar if same user
-          if (namesSimilar && functionsMatch && sameUser) {
-            similarCerts.push(otherCert);
-            processedCerts.add(otherCert.id);
-          }
-        });
-        
-        if (similarCerts.length > 1) {
-          const names = [...new Set(similarCerts.map(c => c.name))];
-          
-          if (names.length > 1) {
-            const functionCounts = similarCerts.reduce((acc, cert) => {
-              acc[cert.function] = (acc[cert.function] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
-            
-            const mostCommonFunction = Object.entries(functionCounts)
-              .sort(([,a], [,b]) => b - a)[0]?.[0];
-            
-            const suggestedType = types.find(type => {
-              const typeFullName = `${type.name} - ${type.function}`;
-              const certFullName = `${names[0]} - ${mostCommonFunction}`;
-              
-              return type.aliases?.some(alias => 
-                normalizeForComparison(alias).includes(normalizeForComparison(names[0])) ||
-                normalizeForComparison(names[0]).includes(normalizeForComparison(alias))
-              ) ||
-              normalizeForComparison(typeFullName).includes(normalizeForComparison(certFullName)) ||
-              normalizeForComparison(certFullName).includes(normalizeForComparison(typeFullName));
-            });
-            
-            potentialGroups.push({
-              names,
-              certifications: similarCerts,
-              suggestedType,
-              severity: 'similar',
-              irregularityType: 'similar_names'
-            });
-          }
-        }
-      });
-      
-      // FASE 3: Detectar mesma certificação com funções diferentes (mesmo usuário)
-      const certsByNameAndUser = certifications.reduce((acc, cert) => {
-        const normalized = normalizeForComparison(cert.name);
-        const key = `${normalized}|${cert.user_id}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(cert);
-        return acc;
-      }, {} as Record<string, any[]>);
-      
-      Object.entries(certsByNameAndUser).forEach(([key, certs]) => {
-        if (certs.length < 2) return;
-        
-        // Verificar se já foi processado
-        if (certs.every(cert => processedCerts.has(cert.id))) return;
-        
-        const functions = [...new Set(certs.map(c => normalizeForComparison(c.function || '')))];
-        
-        if (functions.length > 1) {
-          certs.forEach(cert => processedCerts.add(cert.id));
-          
-          potentialGroups.push({
-            names: [certs[0].name],
-            certifications: certs,
-            suggestedType: undefined,
-            severity: 'function_mismatch',
-            irregularityType: 'function_variation'
-          });
-        }
-      });
+    });
 
-      // FASE 4: Detectar tipos duplicados
-      if (types && types.length > 0) {
-        const typesByPlatformAndName = types.reduce((acc, type) => {
-          const normalized = normalizeForComparison(type.name);
-          const key = `${type.platform_id}|${normalized}`;
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(type);
-          return acc;
-        }, {} as Record<string, any[]>);
-        
-        Object.entries(typesByPlatformAndName).forEach(([key, typeGroup]) => {
-          if (typeGroup.length < 2) return;
-          
-          // Check for similar full names or overlapping aliases
-          const hasDuplicates = typeGroup.some((t1, i) => 
-            typeGroup.slice(i + 1).some(t2 => {
-              const fullName1 = normalizeForComparison(t1.full_name || t1.name);
-              const fullName2 = normalizeForComparison(t2.full_name || t2.name);
-              const similarFullNames = levenshteinDistance(fullName1, fullName2) <= 3;
-              
-              const hasOverlappingAliases = t1.aliases && t2.aliases && 
-                t1.aliases.some((a: string) => t2.aliases?.some((b: string) => 
-                  normalizeForComparison(a) === normalizeForComparison(b)
-                ));
-              
-              return similarFullNames || hasOverlappingAliases;
-            })
-          );
-          
-          if (hasDuplicates) {
-            potentialGroups.push({
-              names: typeGroup.map(t => `${t.name} (${t.full_name})`),
-              certifications: [], // No certifications for type duplicates
-              suggestedType: null,
-              severity: 'duplicate_type',
-              irregularityType: 'duplicate_type'
-            });
-          }
+    functionVariations.forEach(certs => {
+      if (certs.length > 1) {
+        const uniqueNames = [...new Set(certs.map(c => c.name))];
+        const functions = [...new Set(certs.map(c => c.function))];
+        groups.push({
+          severity: 'function_variation',
+          irregularityType: 'function_variation',
+          names: uniqueNames,
+          certifications: certs,
+          reason: `Mesmo nome com ${functions.length} funções diferentes (mesmo usuário): ${functions.join(', ')}`
         });
       }
+    });
 
-      // Ordenar: Tipos duplicados primeiro, depois exatas, similares e variações
-      const sortedGroups = potentialGroups.sort((a, b) => {
-        const severityOrder = { duplicate_type: 0, exact: 1, similar: 2, function_mismatch: 3 };
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      });
+    // FASE 4: Tipos duplicados - simplificada
+    const typesByPlatformAndName = new Map<string, typeof types>();
+    const typesByPlatformAndFullName = new Map<string, typeof types>();
 
-      setDuplicates(sortedGroups);
-      setAnalysisComplete(true);
-      setIsAnalyzing(false);
-      setIsAutoRefresh(false);
-      
-      const typeCount = sortedGroups.filter(g => g.severity === 'duplicate_type').length;
-      const exactCount = sortedGroups.filter(g => g.severity === 'exact').length;
-      const similarCount = sortedGroups.filter(g => g.severity === 'similar').length;
-      const functionCount = sortedGroups.filter(g => g.severity === 'function_mismatch').length;
-      
-      if (!isAuto) {
-        toast.success(
-          `Análise concluída! ${typeCount} tipos duplicados, ${exactCount} duplicatas exatas, ${similarCount} similares, ${functionCount} variações de função.`
-        );
+    types.forEach(type => {
+      // Group by platform + normalized name
+      const keyByName = `${type.platform_id}-${normalizeText(type.name)}`;
+      if (!typesByPlatformAndName.has(keyByName)) {
+        typesByPlatformAndName.set(keyByName, []);
       }
-    }, 2000);
+      typesByPlatformAndName.get(keyByName)!.push(type);
+
+      // Group by platform + normalized full_name
+      const keyByFullName = `${type.platform_id}-${normalizeText(type.full_name)}`;
+      if (!typesByPlatformAndFullName.has(keyByFullName)) {
+        typesByPlatformAndFullName.set(keyByFullName, []);
+      }
+      typesByPlatformAndFullName.get(keyByFullName)!.push(type);
+    });
+
+    // Detect duplicates: any group with 2+ types
+    const typeDuplicateKeys = new Set<string>();
+    
+    typesByPlatformAndName.forEach((typeGroup, key) => {
+      if (typeGroup.length > 1) {
+        typeDuplicateKeys.add(key);
+        const typeNames = typeGroup.map(t => `${t.name} (${t.full_name})`);
+        groups.push({
+          severity: 'duplicate_type',
+          irregularityType: 'duplicate_type',
+          names: typeNames,
+          certifications: [],
+          reason: `${typeGroup.length} tipos com mesmo nome na mesma plataforma`
+        });
+      }
+    });
+
+    typesByPlatformAndFullName.forEach((typeGroup, key) => {
+      if (typeGroup.length > 1 && !typeDuplicateKeys.has(key)) {
+        const typeNames = typeGroup.map(t => `${t.name} (${t.full_name})`);
+        groups.push({
+          severity: 'duplicate_type',
+          irregularityType: 'duplicate_type',
+          names: typeNames,
+          certifications: [],
+          reason: `${typeGroup.length} tipos com mesmo nome completo na mesma plataforma`
+        });
+      }
+    });
+
+    setDuplicates(groups);
+    setAnalysisComplete(true);
+
+    if (showProgress) {
+      setTimeout(() => setIsAnalyzing(false), 500);
+    }
   }, [certifications, types]);
 
-  const handleRemoveName = (groupIndex: number, nameToRemove: string) => {
-    setDuplicates(prev => prev.map((group, index) => {
-      if (index === groupIndex) {
-        const updatedNames = group.names.filter(name => name !== nameToRemove);
-        
-        // Remove certifications with this name
-        const updatedCertifications = group.certifications.filter(cert => cert.name !== nameToRemove);
-        
-        // If less than 2 names remain, mark for removal by returning null
-        if (updatedNames.length < 2) {
-          toast.success(`Grupo ${index + 1} removido (menos de 2 nomes restantes)`);
-          return null;
-        }
-        
-        toast.success(`Nome "${nameToRemove}" removido do grupo ${index + 1}`);
-        return {
-          ...group,
-          names: updatedNames,
-          certifications: updatedCertifications
-        };
-      }
-      return group;
-    }).filter(Boolean) as DuplicateGroup[]);
-  };
-
-  const handleTypeChange = (groupIndex: number, newType: any) => {
-    setDuplicates(prev => prev.map((group, index) => {
-      if (index === groupIndex) {
-        return {
-          ...group,
-          suggestedType: newType
-        };
-      }
-      return group;
-    }));
-    toast.success(`Tipo padronizado atualizado para o grupo ${groupIndex + 1}`);
-  };
-
-  const handleViewDetails = (group: DuplicateGroup, index: number) => {
-    setSelectedDetailGroup({ group, index });
-  };
-
-  const handleApplyStandardization = (group: DuplicateGroup, index: number) => {
-    setSelectedApplyGroup({ group, index });
-  };
-
-  const handleStandardizationSuccess = () => {
-    // Trigger auto-refresh after a short delay
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      analyzeDuplicates(true);
-    }, 1500);
-  };
-
-  const handleManualRefresh = () => {
-    analyzeDuplicates(false);
-  };
-
-  // Auto-refresh when certifications data changes (after initial load)
+  // Stable auto-refresh with cooldown
   useEffect(() => {
-    // Skip initial load
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      return;
-    }
+    if (loadingCerts || loadingTypes) return;
 
-    // Skip if no analysis has been done yet
-    if (!analysisComplete) {
-      return;
-    }
+    const certsSig = buildCertsSignature(certifications);
+    const typesSig = buildTypesSignature(types);
+    const now = Date.now();
+    const COOLDOWN_MS = 10000; // 10 seconds cooldown
 
-    // Skip if currently analyzing
-    if (isAnalyzing) {
-      return;
-    }
+    const sigChanged = certsSig !== lastCertsSigRef.current || typesSig !== lastTypesSigRef.current;
+    const cooldownPassed = (now - lastAnalysisAtRef.current) > COOLDOWN_MS;
 
-    // Debounce the auto-refresh
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
+    if (sigChanged && cooldownPassed && !isAnalyzing) {
       console.log('[DataMigration] Auto-refreshing analysis due to data changes...');
-      analyzeDuplicates(true);
-    }, 500);
+      
+      // Clear any pending timeout
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current);
+      }
+
+      // Debounce the analysis
+      analysisTimeoutRef.current = setTimeout(() => {
+        lastCertsSigRef.current = certsSig;
+        lastTypesSigRef.current = typesSig;
+        lastAnalysisAtRef.current = Date.now();
+        analyzeDuplicates(false);
+      }, 500);
+    }
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current);
       }
     };
-  }, [certifications, analyzeDuplicates, analysisComplete, isAnalyzing]);
+  }, [certifications, types, loadingCerts, loadingTypes, isAnalyzing, analyzeDuplicates]);
 
-  const getStats = () => {
-    const totalCertifications = certifications.length;
-    const duplicatedCertifications = duplicates.reduce((acc, group) => acc + group.certifications.length, 0);
-    const uniqueNames = duplicates.reduce((acc, group) => acc + group.names.length, 0);
-    const duplicateTypes = duplicates.filter(g => g.severity === 'duplicate_type').length;
-    const exactDuplicates = duplicates.filter(g => g.severity === 'exact').length;
-    const similarDuplicates = duplicates.filter(g => g.severity === 'similar').length;
-    const functionMismatches = duplicates.filter(g => g.severity === 'function_mismatch').length;
-    
-    return {
-      totalCertifications,
-      duplicatedCertifications,
-      uniqueNames,
-      duplicateGroups: duplicates.length,
-      duplicateTypes,
-      exactDuplicates,
-      similarDuplicates,
-      functionMismatches
-    };
+  const handleAnalyze = () => {
+    const certsSig = buildCertsSignature(certifications);
+    const typesSig = buildTypesSignature(types);
+    lastCertsSigRef.current = certsSig;
+    lastTypesSigRef.current = typesSig;
+    lastAnalysisAtRef.current = Date.now();
+    analyzeDuplicates(true);
   };
 
-  const filteredDuplicates = severityFilter === 'all' 
-    ? duplicates 
-    : duplicates.filter(g => g.severity === severityFilter);
+  const handleViewDetails = (group: DuplicateGroup) => {
+    setSelectedGroup(group);
+    setDetailDialogOpen(true);
+  };
 
-  const stats = getStats();
+  const handleApplyStandardization = (group: DuplicateGroup) => {
+    setSelectedGroup(group);
+    setApplyDialogOpen(true);
+  };
+
+  const handleMerge = (group: DuplicateGroup) => {
+    setSelectedGroupForMerge(group);
+    setMergeDialogOpen(true);
+  };
+
+  const handleConfirmMerge = async () => {
+    if (!selectedGroupForMerge) return;
+    
+    await mergeDuplicates.mutateAsync({
+      certificationIds: selectedGroupForMerge.certifications.map(c => c.id),
+      keepStrategy: 'newest'
+    });
+
+    // Remove group from list immediately
+    setDuplicates(prev => prev.filter(g => g !== selectedGroupForMerge));
+    setSelectedGroupForMerge(null);
+  };
+
+  const filteredDuplicates = useMemo(() => {
+    if (severityFilter === 'all') return duplicates;
+    return duplicates.filter(d => d.severity === severityFilter);
+  }, [duplicates, severityFilter]);
+
+  const getSeverityBadge = (severity: SeverityType) => {
+    const config = {
+      exact: { label: 'Duplicata Exata', variant: 'destructive' as const },
+      similar: { label: 'Similar', variant: 'default' as const },
+      function_variation: { label: 'Variação de Função', variant: 'secondary' as const },
+      duplicate_type: { label: 'Tipo Duplicado', variant: 'outline' as const }
+    };
+    
+    const { label, variant } = config[severity];
+    return <Badge variant={variant}>{label}</Badge>;
+  };
+
+  const stats = {
+    exact: duplicates.filter(d => d.severity === 'exact').length,
+    similar: duplicates.filter(d => d.severity === 'similar').length,
+    function_variation: duplicates.filter(d => d.severity === 'function_variation').length,
+    duplicate_type: duplicates.filter(d => d.severity === 'duplicate_type').length,
+    total: duplicates.length
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCertifications}</div>
-            <p className="text-xs text-muted-foreground">Certificações</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Com Problemas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.duplicatedCertifications}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.duplicatedCertifications / stats.totalCertifications) * 100).toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-800">Duplicatas Exatas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.exactDuplicates}</div>
-            <p className="text-xs text-red-600">Prioridade ALTA</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">Similares</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.similarDuplicates}</div>
-            <p className="text-xs text-orange-600">Prioridade MÉDIA</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-800">Variações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.functionMismatches}</div>
-            <p className="text-xs text-yellow-600">Função diferente</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-purple-200 bg-purple-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">Tipos Duplicados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.duplicateTypes}</div>
-            <p className="text-xs text-purple-600">Tipos a corrigir</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Grupos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.duplicateGroups}</div>
-            <p className="text-xs text-muted-foreground">Para corrigir</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Análise de Duplicações</CardTitle>
-              <CardDescription>
-                Identifique certificações com nomes similares que podem ser padronizadas
-              </CardDescription>
-            </div>
-            {analysisComplete && (
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={handleManualRefresh} 
-                disabled={isAnalyzing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-            )}
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <FileWarning className="h-5 w-5" />
+            Análise de Inconsistências
+          </CardTitle>
+          <CardDescription>
+            Detecta certificações duplicadas, nomes similares, variações de função e tipos duplicados
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!analysisComplete && (
+          <div className="flex items-center gap-4">
             <Button 
-              onClick={() => analyzeDuplicates(false)} 
-              disabled={isAnalyzing || isCertificationsLoading}
-              className="w-full"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || loadingCerts || loadingTypes}
             >
               {isAnalyzing ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Analisando...
                 </>
-              ) : isCertificationsLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Carregando dados...
-                </>
               ) : (
-                "Iniciar Análise de Duplicações"
+                'Analisar Duplicações'
               )}
             </Button>
-          )}
 
-          {isAnalyzing && (
-            <div className="space-y-2">
-              <Progress value={75} />
-              <p className="text-sm text-muted-foreground text-center">
-                {isAutoRefresh ? 'Atualizando análise...' : 'Analisando certificações e identificando padrões...'}
-              </p>
-            </div>
-          )}
+            {isAnalyzing && (
+              <div className="flex-1">
+                <Progress value={undefined} className="h-2" />
+              </div>
+            )}
+
+            {analysisComplete && !isAnalyzing && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Análise concluída
+              </div>
+            )}
+          </div>
 
           {analysisComplete && (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Análise concluída! Encontrados {duplicates.length} grupos com possíveis duplicações.
-                Revise os resultados abaixo e padronize conforme necessário.
-              </AlertDescription>
-            </Alert>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-destructive">{stats.exact}</div>
+                  <div className="text-xs text-muted-foreground">Duplicatas Exatas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{stats.similar}</div>
+                  <div className="text-xs text-muted-foreground">Similares</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-secondary">{stats.function_variation}</div>
+                  <div className="text-xs text-muted-foreground">Variações de Função</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold text-orange-600">{stats.duplicate_type}</div>
+                  <div className="text-xs text-muted-foreground">Tipos Duplicados</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {analysisComplete && duplicates.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Irregularidades Detectadas</h3>
-            
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={severityFilter} onValueChange={(value: any) => setSeverityFilter(value)}>
-                <SelectTrigger className="w-[200px]">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Grupos de Duplicação Encontrados</CardTitle>
+              <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as any)}>
+                <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">
-                    Todas ({duplicates.length})
-                  </SelectItem>
-                  <SelectItem value="duplicate_type">
-                    Tipos Duplicados ({stats.duplicateTypes})
-                  </SelectItem>
-                  <SelectItem value="exact">
-                    Duplicatas Exatas ({stats.exactDuplicates})
-                  </SelectItem>
-                  <SelectItem value="similar">
-                    Similares ({stats.similarDuplicates})
-                  </SelectItem>
-                  <SelectItem value="function_mismatch">
-                    Variações de Função ({stats.functionMismatches})
-                  </SelectItem>
+                  <SelectItem value="all">Todos ({stats.total})</SelectItem>
+                  <SelectItem value="exact">Duplicatas Exatas ({stats.exact})</SelectItem>
+                  <SelectItem value="similar">Similares ({stats.similar})</SelectItem>
+                  <SelectItem value="function_variation">Variações de Função ({stats.function_variation})</SelectItem>
+                  <SelectItem value="duplicate_type">Tipos Duplicados ({stats.duplicate_type})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          
-          {filteredDuplicates.map((group, index) => (
-            <Card key={index} className={
-              group.severity === 'duplicate_type' ? 'border-purple-300' :
-              group.severity === 'exact' ? 'border-red-300' :
-              group.severity === 'similar' ? 'border-orange-300' :
-              'border-yellow-300'
-            }>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>Grupo {duplicates.indexOf(group) + 1}</span>
-                    <Badge 
-                      variant={group.severity === 'exact' ? 'destructive' : 'secondary'}
-                      className={
-                        group.severity === 'duplicate_type' ? 'bg-purple-600 text-white' :
-                        group.severity === 'exact' ? 'bg-red-600' :
-                        group.severity === 'similar' ? 'bg-orange-600 text-white' :
-                        'bg-yellow-600 text-white'
-                      }
-                    >
-                      {group.severity === 'duplicate_type' ? 'TIPO DUPLICADO' :
-                       group.severity === 'exact' ? 'DUPLICATA EXATA' :
-                       group.severity === 'similar' ? 'SIMILAR' :
-                       'VARIAÇÃO DE FUNÇÃO'}
-                    </Badge>
-                  </div>
-                  <Badge variant="outline">
-                    {group.certifications.length} certificações
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Nomes encontrados:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {group.names.map((name, nameIndex) => (
-                      <Badge key={nameIndex} variant="secondary" className="relative group">
-                        {name}
-                        <button
-                          onClick={() => handleRemoveName(index, name)}
-                          className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remover este nome"
-                        >
-                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                
-                <EditableTypeSelector
-                  suggestedType={group.suggestedType}
-                  onTypeChange={(newType) => handleTypeChange(index, newType)}
-                  groupNames={group.names}
-                />
-                
-                <div className="flex space-x-2">
-                  {group.severity !== 'duplicate_type' ? (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewDetails(group, index)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Detalhes
-                      </Button>
-                      {group.suggestedType && (
-                        <Button 
-                          size="sm"
-                          onClick={() => handleApplyStandardization(group, index)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Aplicar Padronização
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {filteredDuplicates.map((group, idx) => (
+              <Card key={idx}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getSeverityBadge(group.severity)}
+                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {group.names.slice(0, 3).join(' / ')}
+                          {group.names.length > 3 && ` (+${group.names.length - 3})`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{group.reason}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {group.severity === 'duplicate_type' ? (
+                        <Button variant="outline" size="sm" disabled>
+                          Corrigir na aba Tipos
                         </Button>
+                      ) : (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewDetails(group)}
+                          >
+                            Ver Detalhes
+                          </Button>
+                          {group.severity === 'exact' && (
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleMerge(group)}
+                              disabled={isMerging}
+                            >
+                              {isMerging ? 'Mesclando...' : 'Mesclar Duplicatas'}
+                            </Button>
+                          )}
+                          {(group.severity === 'similar' || group.severity === 'function_variation') && (
+                            <Button 
+                              size="sm"
+                              onClick={() => handleApplyStandardization(group)}
+                              disabled={isApplying}
+                            >
+                              {isApplying ? 'Aplicando...' : 'Aplicar Padronização'}
+                            </Button>
+                          )}
+                        </>
                       )}
-                    </>
-                  ) : (
-                    <Alert className="mb-0">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Acesse a gestão de Tipos de Certificação para corrigir manualmente estes tipos duplicados.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {analysisComplete && duplicates.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhuma Duplicação Encontrada</h3>
-            <p className="text-muted-foreground">
-              Todas as certificações parecem ter nomes únicos e padronizados.
-            </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </CardContent>
         </Card>
       )}
 
-      {/* Dialogs */}
-      <MigrationDetailDialog
-        open={!!selectedDetailGroup}
-        onOpenChange={(open) => !open && setSelectedDetailGroup(null)}
-        group={selectedDetailGroup?.group || null}
-        groupIndex={selectedDetailGroup?.index || 0}
-      />
+      {selectedGroup && (
+        <>
+          <MigrationDetailDialog
+            open={detailDialogOpen}
+            onOpenChange={setDetailDialogOpen}
+            group={selectedGroup}
+          />
+          <StandardizationApplyDialog
+            open={applyDialogOpen}
+            onOpenChange={setApplyDialogOpen}
+            group={selectedGroup}
+            onSuccess={() => {
+              setApplyDialogOpen(false);
+              // Trigger re-analysis after a short delay
+              setTimeout(() => {
+                const certsSig = buildCertsSignature(certifications);
+                const typesSig = buildTypesSignature(types);
+                lastCertsSigRef.current = certsSig;
+                lastTypesSigRef.current = typesSig;
+                lastAnalysisAtRef.current = Date.now();
+                analyzeDuplicates(false);
+              }, 1000);
+            }}
+          />
+        </>
+      )}
 
-      <StandardizationApplyDialog
-        open={!!selectedApplyGroup}
-        onOpenChange={(open) => !open && setSelectedApplyGroup(null)}
-        group={selectedApplyGroup?.group || null}
-        groupIndex={selectedApplyGroup?.index || 0}
-        onSuccess={handleStandardizationSuccess}
-      />
+      {selectedGroupForMerge && (
+        <DuplicateMergeDialog
+          open={mergeDialogOpen}
+          onOpenChange={setMergeDialogOpen}
+          certificationIds={selectedGroupForMerge.certifications.map(c => c.id)}
+          certificationNames={selectedGroupForMerge.names}
+          onConfirm={handleConfirmMerge}
+        />
+      )}
     </div>
   );
 }

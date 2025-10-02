@@ -28,7 +28,9 @@ import {
   FileCheck, 
   Calendar,
   DollarSign,
-  Building
+  Building,
+  Tag,
+  Clock
 } from "lucide-react";
 
 // Filter configurations for certificates
@@ -374,6 +376,36 @@ export default function Certificates() {
                         {formatCurrency(certificate.project_value)}
                       </span>
                     </div>
+
+                    {certificate.tags && certificate.tags.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Tag className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex flex-wrap gap-1">
+                          {certificate.tags.slice(0, 4).map((tag, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-muted text-muted-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {certificate.tags.length > 4 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{certificate.tags.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {certificate.total_hours && certificate.total_hours > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Total: <span className="font-medium">{certificate.total_hours}h</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

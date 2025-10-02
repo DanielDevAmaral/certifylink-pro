@@ -94,6 +94,7 @@ export function DataMigration() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<DuplicateGroup | null>(null);
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number>(0);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);

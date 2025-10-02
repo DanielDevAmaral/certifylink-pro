@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, User, AlertCircle, AlertTriangle } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from '@/components/ui/button';
 import { TypeMigrationDialog } from './TypeMigrationDialog';
@@ -35,6 +35,22 @@ export function MigrationDetailDialog({
   const [typeMigrationOpen, setTypeMigrationOpen] = useState(false);
 
   if (!group) return null;
+
+  // Helper function to safely format dates
+  const formatSafeDate = (dateValue: any, formatStr: string = 'dd/MM/yyyy HH:mm'): string => {
+    if (!dateValue) return 'Data não informada';
+    
+    try {
+      const date = typeof dateValue === 'string' ? parseISO(dateValue) : new Date(dateValue);
+      if (isValid(date)) {
+        return format(date, formatStr, { locale: ptBR });
+      }
+    } catch (error) {
+      console.error('Error formatting date:', dateValue, error);
+    }
+    
+    return 'Data inválida';
+  };
 
   // If it's a duplicate type group, show type-specific information
   if (group.severity === 'duplicate_type' && group.types && group.types.length > 0) {
@@ -280,7 +296,11 @@ export function MigrationDetailDialog({
             <ScrollArea className="h-64">
               <div className="space-y-3">
                 {group.certifications
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .sort((a, b) => {
+                    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                    return dateB - dateA;
+                  })
                   .map((cert, index) => (
                   <Card key={cert.id} className={`p-3 ${
                     index === 0 && group.severity === 'exact' ? 'border-green-300 bg-green-50' : ''
@@ -318,7 +338,7 @@ export function MigrationDetailDialog({
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3" />
                             <span>
-                              Criada em: {format(new Date(cert.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                              Criada em: {formatSafeDate(cert.created_at)}
                             </span>
                           </div>
                           
@@ -326,7 +346,7 @@ export function MigrationDetailDialog({
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3 w-3" />
                               <span>
-                                Válida até: {format(new Date(cert.validity_date), 'dd/MM/yyyy', { locale: ptBR })}
+                                Válida até: {formatSafeDate(cert.validity_date, 'dd/MM/yyyy')}
                               </span>
                             </div>
                           )}

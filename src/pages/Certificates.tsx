@@ -146,12 +146,40 @@ export default function Certificates() {
 
   // Apply search and filters
   let filteredCertificates = attestations.filter(cert => {
-    // Search filter
-    const matchesSearch = cert.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.project_object?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.issuer_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    // Search filter - comprehensive search across all fields
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      
+      // Find related certification names for this attestation
+      const relatedCertNames = cert.related_certifications?.map((rc: any) => {
+        const resolved = resolvedCertifications.find(
+          r => r.certification_id === rc.certification_id && r.user_id === rc.user_id
+        );
+        return resolved ? `${resolved.user_name} ${resolved.certification_name}` : '';
+      }).join(' ').toLowerCase() || '';
 
-    if (!matchesSearch) return false;
+      // Search in tags
+      const tagMatch = cert.tags?.some(tag => tag.toLowerCase().includes(term)) || false;
+
+      // Format values for text search
+      const formattedValue = cert.project_value ? formatCurrency(cert.project_value).toLowerCase() : '';
+      const formattedValidity = cert.validity_date || '';
+      const formattedPeriod = `${cert.project_period_start || ''} ${cert.project_period_end || ''}`.toLowerCase();
+
+      const matchesSearch = 
+        cert.client_name?.toLowerCase().includes(term) ||
+        cert.project_object?.toLowerCase().includes(term) ||
+        cert.issuer_name?.toLowerCase().includes(term) ||
+        cert.issuer_position?.toLowerCase().includes(term) ||
+        cert.issuer_contact?.toLowerCase().includes(term) ||
+        tagMatch ||
+        formattedValue.includes(term) ||
+        formattedValidity.includes(term) ||
+        formattedPeriod.includes(term) ||
+        relatedCertNames.includes(term);
+
+      if (!matchesSearch) return false;
+    }
 
     // Status filter
     const statusFilter = filters.status;
@@ -286,7 +314,7 @@ export default function Certificates() {
       <Card className="card-corporate mb-6">
         <div className="flex items-center gap-4">
           <SearchBar
-            placeholder="Buscar por cliente, objeto ou responsável..."
+            placeholder="Buscar por empresa, descrição, emissor, tags, certificações, valor, período ou validade..."
             value={searchTerm}
             onChange={setSearchTerm}
             className="flex-1"

@@ -154,7 +154,9 @@ export function useTechnicalAttestationSearch(filters: SearchFilters) {
       }
 
       if (filters.searchTerm) {
-        query = query.or(`client_name.ilike.%${filters.searchTerm}%,project_object.ilike.%${filters.searchTerm}%,issuer_name.ilike.%${filters.searchTerm}%`);
+        // Comprehensive search including tags using array contains operator
+        const term = filters.searchTerm;
+        query = query.or(`client_name.ilike.%${term}%,project_object.ilike.%${term}%,issuer_name.ilike.%${term}%,issuer_position.ilike.%${term}%,issuer_contact.ilike.%${term}%,tags.cs.{${term}}`);
       }
 
       if (filters.status) {

@@ -46,7 +46,21 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-function areSimilar(text1: string, text2: string, userId1: string, userId2: string): boolean {
+// Keywords that indicate different certification types
+const DIFFERENTIATING_KEYWORDS = [
+  'architect', 'developer', 'administrator', 'engineer', 'specialist',
+  'leader', 'associate', 'professional', 'expert', 'practitioner',
+  'junior', 'senior', 'master', 'advanced', 'beginner', 'intermediate',
+  'foundation', 'fundamentals', 'essentials', 'core', 'plus'
+];
+
+function areSimilar(
+  text1: string, 
+  text2: string, 
+  userId1: string, 
+  userId2: string,
+  types: any[] = []
+): boolean {
   // Only flag as duplicate if same user
   if (userId1 !== userId2) return false;
   
@@ -55,8 +69,35 @@ function areSimilar(text1: string, text2: string, userId1: string, userId2: stri
   
   if (norm1 === norm2) return true;
   
+  // Check for differentiating keywords
   const words1 = norm1.split(' ');
   const words2 = norm2.split(' ');
+  
+  for (const keyword of DIFFERENTIATING_KEYWORDS) {
+    const hasKeyword1 = words1.some(w => w.includes(keyword));
+    const hasKeyword2 = words2.some(w => w.includes(keyword));
+    
+    // If only one has a differentiating keyword, they're likely different types
+    if (hasKeyword1 !== hasKeyword2) {
+      return false;
+    }
+  }
+  
+  // Check if they match different certification types with different platforms
+  const matchingTypes1 = types.filter(t => normalizeText(t.name).includes(norm1) || norm1.includes(normalizeText(t.name)));
+  const matchingTypes2 = types.filter(t => normalizeText(t.name).includes(norm2) || norm2.includes(normalizeText(t.name)));
+  
+  if (matchingTypes1.length > 0 && matchingTypes2.length > 0) {
+    const platforms1 = new Set(matchingTypes1.map(t => t.platform_id));
+    const platforms2 = new Set(matchingTypes2.map(t => t.platform_id));
+    
+    // If they match types from different platforms, they're not similar
+    const hasCommonPlatform = [...platforms1].some(p => platforms2.has(p));
+    if (!hasCommonPlatform) {
+      return false;
+    }
+  }
+  
   const commonWords = words1.filter(w => words2.includes(w) && w.length > 3);
   
   return commonWords.length >= Math.min(words1.length, words2.length) * 0.7;
@@ -86,6 +127,61 @@ function buildTypesSignature(types: any[]): string {
   return sorted
     .map(t => `${t.id}|${t.platform_id}|${normalizeText(t.name)}|${normalizeText(t.full_name)}|${t.updated_at}`)
     .join('::');
+}
+
+// Find the best matching certification type for a group of certifications
+function findBestMatchingType(certs: any[], types: any[]): { id: string; name: string; fullName: string } | undefined {
+  if (!types || types.length === 0) return undefined;
+  
+  const certNames = certs.map(c => normalizeText(c.name));
+  const matchScores = new Map<string, number>();
+  
+  // Score each type based on how well it matches the certification names
+  types.forEach(type => {
+    const typeNameNorm = normalizeText(type.name);
+    const typeFullNameNorm = normalizeText(type.full_name);
+    
+    let score = 0;
+    certNames.forEach(certName => {
+      // Exact match on name
+      if (certName === typeNameNorm) score += 10;
+      // Exact match on full name
+      else if (certName === typeFullNameNorm) score += 8;
+      // Contains type name
+      else if (certName.includes(typeNameNorm)) score += 5;
+      // Type name contains cert name
+      else if (typeNameNorm.includes(certName)) score += 3;
+      // Contains type full name
+      else if (certName.includes(typeFullNameNorm)) score += 4;
+      // Type full name contains cert name
+      else if (typeFullNameNorm.includes(certName)) score += 2;
+      
+      // Word overlap bonus
+      const certWords = certName.split(' ').filter(w => w.length > 3);
+      const typeWords = typeNameNorm.split(' ').filter(w => w.length > 3);
+      const commonWords = certWords.filter(w => typeWords.includes(w));
+      score += commonWords.length;
+    });
+    
+    if (score > 0) {
+      matchScores.set(type.id, score);
+    }
+  });
+  
+  // Find the type with the highest score
+  if (matchScores.size === 0) return undefined;
+  
+  const bestTypeId = Array.from(matchScores.entries())
+    .sort((a, b) => b[1] - a[1])[0][0];
+  
+  const bestType = types.find(t => t.id === bestTypeId);
+  if (!bestType) return undefined;
+  
+  return {
+    id: bestType.id,
+    name: bestType.name,
+    fullName: bestType.full_name
+  };
 }
 
 export function DataMigration() {
@@ -159,7 +255,7 @@ export function DataMigration() {
         
         // Only if same user
         if (cert1.user_id === cert2.user_id && 
-            areSimilar(cert1.name, cert2.name, cert1.user_id, cert2.user_id) &&
+            areSimilar(cert1.name, cert2.name, cert1.user_id, cert2.user_id, types) &&
             !areExactDuplicates(cert1, cert2)) {
           const key = `${cert1.user_id}-similar-${Math.min(i, j)}`;
           if (!similarGroups.has(key)) {
@@ -175,11 +271,16 @@ export function DataMigration() {
 
     similarGroups.forEach(certs => {
       const uniqueNames = [...new Set(certs.map(c => c.name))];
+      
+      // Find the best matching certification type
+      const suggestedType = findBestMatchingType(certs, types);
+      
       groups.push({
         severity: 'similar',
         irregularityType: 'similar',
         names: uniqueNames,
         certifications: certs,
+        suggestedType,
         reason: `Nomes similares que podem ser o mesmo tipo (mesmo usuário)`
       });
     });
@@ -208,11 +309,16 @@ export function DataMigration() {
       if (certs.length > 1) {
         const uniqueNames = [...new Set(certs.map(c => c.name))];
         const functions = [...new Set(certs.map(c => c.function))];
+        
+        // Find the best matching certification type
+        const suggestedType = findBestMatchingType(certs, types);
+        
         groups.push({
           severity: 'function_variation',
           irregularityType: 'function_variation',
           names: uniqueNames,
           certifications: certs,
+          suggestedType,
           reason: `Mesmo nome com ${functions.length} funções diferentes (mesmo usuário): ${functions.join(', ')}`
         });
       }

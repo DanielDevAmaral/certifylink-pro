@@ -54,7 +54,7 @@ export function MigrationDetailDialog({
 
   // If it's a duplicate type group, show type-specific information
   if (group.severity === 'duplicate_type' && group.types && group.types.length > 0) {
-    const platform = group.types[0].certification_platforms;
+    const platform = group.types[0].platform;
     
     return (
       <>

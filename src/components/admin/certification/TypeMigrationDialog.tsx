@@ -93,7 +93,7 @@ export function TypeMigrationDialog({
 
   if (!types || types.length === 0) return null;
 
-  const platform = types[0].certification_platforms;
+  const platform = types[0].platform;
   const totalCerts = certCounts ? Object.values(certCounts).reduce((sum, count) => sum + count, 0) : 0;
 
   return (

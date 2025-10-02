@@ -46,6 +46,29 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+// Stopwords for similarity detection - generic cloud provider terms
+const STOPWORDS = new Set([
+  'google', 'aws', 'amazon', 'microsoft', 'azure', 'ibm', 'oracle', 'cloud',
+  'certification', 'certified', 'professional', 'associate', 'expert', 
+  'specialty', 'exam', 'official', 'foundation', 'practitioner'
+]);
+
+// Tokenize and filter stopwords
+function tokenizeName(text: string): Set<string> {
+  const normalized = normalizeText(text);
+  const tokens = normalized.split(/\s+/).filter(word => 
+    word.length > 2 && !STOPWORDS.has(word)
+  );
+  return new Set(tokens);
+}
+
+// Jaccard similarity between two sets
+function jaccardSimilarity(setA: Set<string>, setB: Set<string>): number {
+  const intersection = new Set([...setA].filter(x => setB.has(x)));
+  const union = new Set([...setA, ...setB]);
+  return union.size === 0 ? 0 : intersection.size / union.size;
+}
+
 // Keywords that indicate different certification types
 const DIFFERENTIATING_KEYWORDS = [
   'architect', 'developer', 'administrator', 'engineer', 'specialist',
@@ -130,7 +153,7 @@ function buildTypesSignature(types: any[]): string {
 }
 
 // Find the best matching certification type for a group of certifications
-function findBestMatchingType(certs: any[], types: any[]): { id: string; name: string; fullName: string } | undefined {
+function findBestMatchingType(certs: any[], types: any[]): any | undefined {
   if (!types || types.length === 0) return undefined;
   
   const certNames = certs.map(c => normalizeText(c.name));
@@ -180,7 +203,9 @@ function findBestMatchingType(certs: any[], types: any[]): { id: string; name: s
   return {
     id: bestType.id,
     name: bestType.name,
-    fullName: bestType.full_name
+    fullName: bestType.full_name,
+    platform: bestType.platform,
+    function: bestType.function
   };
 }
 
@@ -324,60 +349,138 @@ export function DataMigration() {
       }
     });
 
-    // FASE 4: Tipos duplicados - simplificada
-    const typesByPlatformAndName = new Map<string, typeof types>();
-    const typesByPlatformAndFullName = new Map<string, typeof types>();
-
-    types.forEach(type => {
-      // Group by platform + normalized name
-      const keyByName = `${type.platform_id}-${normalizeText(type.name)}`;
-      if (!typesByPlatformAndName.has(keyByName)) {
-        typesByPlatformAndName.set(keyByName, []);
-      }
-      typesByPlatformAndName.get(keyByName)!.push(type);
-
-      // Group by platform + normalized full_name
-      const keyByFullName = `${type.platform_id}-${normalizeText(type.full_name)}`;
-      if (!typesByPlatformAndFullName.has(keyByFullName)) {
-        typesByPlatformAndFullName.set(keyByFullName, []);
-      }
-      typesByPlatformAndFullName.get(keyByFullName)!.push(type);
-    });
-
-    // Detect duplicates: any group with 2+ types
-    const typeDuplicateKeys = new Set<string>();
+    // FASE 4: Identificar tipos duplicados
+    // Group types by platform + category + normalized name/full_name (exact matches)
+    const typesByKey = new Map<string, typeof types>();
     
-    typesByPlatformAndName.forEach((typeGroup, key) => {
-      if (typeGroup.length > 1) {
-        typeDuplicateKeys.add(key);
-        const typeNames = typeGroup.map(t => `${t.name} (${t.full_name})`);
-        groups.push({
-          severity: 'duplicate_type',
-          irregularityType: 'duplicate_type',
-          names: typeNames,
-          certifications: [],
-          types: typeGroup,
-          reason: `${typeGroup.length} tipos com mesmo nome na mesma plataforma`
-        });
+    types.forEach(type => {
+      const categoryId = type.category_id || 'none';
+      const nameKey = `${type.platform_id}-${categoryId}-${normalizeText(type.name)}`;
+      const fullNameKey = `${type.platform_id}-${categoryId}-${normalizeText(type.full_name)}`;
+      
+      if (!typesByKey.has(nameKey)) {
+        typesByKey.set(nameKey, []);
+      }
+      if (!typesByKey.has(fullNameKey)) {
+        typesByKey.set(fullNameKey, []);
+      }
+      
+      typesByKey.get(nameKey)!.push(type);
+      typesByKey.get(fullNameKey)!.push(type);
+    });
+
+    // Find exact duplicate types (same platform, category, and name)
+    const duplicateTypes: DuplicateGroup[] = [];
+    const processedTypeIds = new Set<string>();
+
+    typesByKey.forEach((typesGroup, key) => {
+      if (typesGroup.length > 1) {
+        // Get unique types (avoid duplicates from name and full_name matching)
+        const uniqueTypes = Array.from(
+          new Map(typesGroup.map(t => [t.id, t])).values()
+        );
+        
+        if (uniqueTypes.length > 1) {
+          // Check if we haven't processed these types yet
+          const typeIds = uniqueTypes.map(t => t.id).sort().join('-');
+          if (!processedTypeIds.has(typeIds)) {
+            processedTypeIds.add(typeIds);
+            
+            duplicateTypes.push({
+              names: uniqueTypes.map(t => t.name),
+              certifications: [],
+              types: uniqueTypes,
+              severity: 'duplicate_type',
+              irregularityType: 'duplicate_type',
+              reason: 'Tipos com nomes idênticos na mesma plataforma e categoria'
+            });
+          }
+        }
       }
     });
 
-    typesByPlatformAndFullName.forEach((typeGroup, key) => {
-      if (typeGroup.length > 1 && !typeDuplicateKeys.has(key)) {
-        const typeNames = typeGroup.map(t => `${t.name} (${t.full_name})`);
-        groups.push({
-          severity: 'duplicate_type',
-          irregularityType: 'duplicate_type',
-          names: typeNames,
-          certifications: [],
-          types: typeGroup,
-          reason: `${typeGroup.length} tipos com mesmo nome completo na mesma plataforma`
-        });
+    console.log(`✓ Encontrados ${duplicateTypes.length} grupos de tipos duplicados (exatos)`);
+
+    // FASE 4b: Detectar tipos similares (não exatos) na mesma plataforma e categoria
+    const similarTypeGroups: DuplicateGroup[] = [];
+    const typesGroupedByPlatformCategory = new Map<string, typeof types>();
+
+    // Group types by platform + category
+    types.forEach(type => {
+      const categoryId = type.category_id || 'none';
+      const key = `${type.platform_id}-${categoryId}`;
+      if (!typesGroupedByPlatformCategory.has(key)) {
+        typesGroupedByPlatformCategory.set(key, []);
+      }
+      typesGroupedByPlatformCategory.get(key)!.push(type);
+    });
+
+    // Check for similar types within each platform-category group
+    typesGroupedByPlatformCategory.forEach((groupTypes, key) => {
+      if (groupTypes.length < 2) return;
+
+      const checked = new Set<string>();
+
+      for (let i = 0; i < groupTypes.length; i++) {
+        const typeA = groupTypes[i];
+        if (checked.has(typeA.id)) continue;
+
+        const similarGroup: typeof types = [typeA];
+
+        for (let j = i + 1; j < groupTypes.length; j++) {
+          const typeB = groupTypes[j];
+          if (checked.has(typeB.id)) continue;
+
+          // Check if already in an exact duplicate group
+          const alreadyInExactGroup = processedTypeIds.has(
+            [typeA.id, typeB.id].sort().join('-')
+          );
+          if (alreadyInExactGroup) continue;
+
+          const nameA = normalizeText(typeA.full_name || typeA.name);
+          const nameB = normalizeText(typeB.full_name || typeB.name);
+
+          // Check if one name contains the other
+          const containsMatch = nameA.includes(nameB) || nameB.includes(nameA);
+
+          // Check Jaccard similarity
+          const tokensA = tokenizeName(typeA.full_name || typeA.name);
+          const tokensB = tokenizeName(typeB.full_name || typeB.name);
+          const similarity = jaccardSimilarity(tokensA, tokensB);
+
+          // Check alias overlap
+          const aliasesA = new Set(typeA.aliases || []);
+          const aliasesB = new Set(typeB.aliases || []);
+          const aliasOverlap = [...aliasesA].some(a => aliasesB.has(a));
+
+          if (containsMatch || similarity >= 0.8 || aliasOverlap) {
+            similarGroup.push(typeB);
+            checked.add(typeB.id);
+          }
+        }
+
+        if (similarGroup.length > 1) {
+          checked.add(typeA.id);
+          similarTypeGroups.push({
+            names: similarGroup.map(t => t.name),
+            certifications: [],
+            types: similarGroup,
+            severity: 'duplicate_type',
+            irregularityType: 'duplicate_type',
+            reason: 'Tipos com nomes semelhantes na mesma plataforma e categoria'
+          });
+        }
       }
     });
+
+    console.log(`✓ Encontrados ${similarTypeGroups.length} grupos de tipos similares`);
+
+    // Combine exact and similar type duplicates
+    const allTypeDuplicates = [...duplicateTypes, ...similarTypeGroups];
 
     setDuplicates(groups);
     setAnalysisComplete(true);
+    console.log(`Análise completa: ${groups.length} grupos encontrados`);
 
     if (showProgress) {
       setTimeout(() => setIsAnalyzing(false), 500);
@@ -632,7 +735,7 @@ export function DataMigration() {
                             <Button 
                               size="sm"
                               onClick={() => handleApplyStandardization(group, idx)}
-                              disabled={isApplying}
+                              disabled={!group.suggestedType || isApplying}
                             >
                               {isApplying ? 'Aplicando...' : 'Aplicar Padronização'}
                             </Button>

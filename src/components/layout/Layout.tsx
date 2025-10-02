@@ -19,7 +19,7 @@ export function Layout({ children }: LayoutProps) {
   // Memoize config object to prevent recreation on every render
   const sessionConfig = useMemo(() => ({
     timeout: sessionTimeoutMinutes * 60 * 1000, // Convert minutes to milliseconds
-    warningTime: 5 * 60 * 1000, // 5 minutes warning
+    warningTime: 30 * 1000, // 30 seconds warning
     onTimeout: () => {
       signOut();
     },

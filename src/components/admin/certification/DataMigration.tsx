@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useCertificationSearch } from '@/hooks/useCertificationSearch';
+import { useCertifications } from '@/hooks/useCertifications';
 import { useCertificationTypes } from '@/hooks/useCertificationTypes';
 import { AlertCircle, CheckCircle2, FileWarning, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -24,6 +24,9 @@ interface DuplicateGroup {
     function: string;
     user_id: string;
     creator_name?: string;
+    status?: string;
+    created_at?: string;
+    validity_date?: string;
   }>;
   types?: any[]; // For duplicate_type groups
   suggestedType?: {
@@ -86,7 +89,7 @@ function buildTypesSignature(types: any[]): string {
 }
 
 export function DataMigration() {
-  const { data: certifications = [], isLoading: loadingCerts } = useCertificationSearch();
+  const { data: certifications = [], isLoading: loadingCerts } = useCertifications();
   const { data: types = [], isLoading: loadingTypes } = useCertificationTypes();
   const { applyStandardization, isApplying, mergeDuplicates, isMerging } = useMigrationOperations();
 

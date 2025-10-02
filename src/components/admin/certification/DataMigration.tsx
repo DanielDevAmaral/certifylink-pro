@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useCertifications } from '@/hooks/useCertifications';
 import { useCertificationTypes } from '@/hooks/useCertificationTypes';
-import { AlertCircle, CheckCircle2, FileWarning, Loader2 } from 'lucide-react';
+import { useDuplicateExclusions } from '@/hooks/useDuplicateExclusions';
+import { AlertCircle, CheckCircle2, FileWarning, Loader2, ShieldCheck } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MigrationDetailDialog } from './MigrationDetailDialog';
 import { StandardizationApplyDialog } from './StandardizationApplyDialog';
 import { DuplicateMergeDialog } from './DuplicateMergeDialog';
+import { DuplicateExclusionDialog } from './DuplicateExclusionDialog';
 import { useMigrationOperations } from '@/hooks/useMigrationOperations';
 
 type SeverityType = 'exact' | 'similar' | 'function_variation' | 'duplicate_type';
@@ -212,6 +214,7 @@ function findBestMatchingType(certs: any[], types: any[]): any | undefined {
 export function DataMigration() {
   const { data: certifications = [], isLoading: loadingCerts } = useCertifications();
   const { data: types = [], isLoading: loadingTypes } = useCertificationTypes();
+  const { isExcluded, addExclusion, isAdding: isAddingExclusion, isLoading: isLoadingExclusions } = useDuplicateExclusions();
   const { applyStandardization, isApplying, mergeDuplicates, isMerging } = useMigrationOperations();
 
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
@@ -223,6 +226,7 @@ export function DataMigration() {
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [selectedGroupForMerge, setSelectedGroupForMerge] = useState<DuplicateGroup | null>(null);
+  const [exclusionDialogOpen, setExclusionDialogOpen] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<SeverityType | 'all'>('all');
 
   // Refs for stable analysis
@@ -243,6 +247,11 @@ export function DataMigration() {
     certifications.forEach(cert => {
       certifications.forEach(other => {
         if (cert.id !== other.id && areExactDuplicates(cert, other)) {
+          // Skip if this pair is excluded
+          if (isExcluded('certification', cert.id, other.id)) {
+            return;
+          }
+          
           const key = `${cert.user_id}-${normalizeText(cert.name)}-${normalizeText(cert.function)}`;
           if (!exactDuplicates.has(key)) {
             exactDuplicates.set(key, []);
@@ -277,6 +286,11 @@ export function DataMigration() {
       for (let j = i + 1; j < certifications.length; j++) {
         const cert1 = certifications[i];
         const cert2 = certifications[j];
+        
+        // Skip if this pair is excluded
+        if (isExcluded('certification', cert1.id, cert2.id)) {
+          continue;
+        }
         
         // Only if same user
         if (cert1.user_id === cert2.user_id && 
@@ -319,6 +333,11 @@ export function DataMigration() {
             cert.user_id === other.user_id &&
             normalizeText(other.name) === normName && 
             normalizeText(cert.function) !== normalizeText(other.function)) {
+          // Skip if this pair is excluded
+          if (isExcluded('certification', cert.id, other.id)) {
+            return;
+          }
+          
           const key = `${cert.user_id}-${normName}`;
           if (!functionVariations.has(key)) {
             functionVariations.set(key, []);
@@ -381,19 +400,29 @@ export function DataMigration() {
         );
         
         if (uniqueTypes.length > 1) {
-          // Check if we haven't processed these types yet
-          const typeIds = uniqueTypes.map(t => t.id).sort().join('-');
-          if (!processedTypeIds.has(typeIds)) {
-            processedTypeIds.add(typeIds);
-            
-            duplicateTypes.push({
-              names: uniqueTypes.map(t => t.name),
-              certifications: [],
-              types: uniqueTypes,
-              severity: 'duplicate_type',
-              irregularityType: 'duplicate_type',
-              reason: 'Tipos com nomes idênticos na mesma plataforma e categoria'
+          // Filter out excluded pairs
+          const filteredTypes = uniqueTypes.filter((type, i) => {
+            return uniqueTypes.every((otherType, j) => {
+              if (i >= j) return true;
+              return !isExcluded('certification_type', type.id, otherType.id);
             });
+          });
+          
+          if (filteredTypes.length > 1) {
+            // Check if we haven't processed these types yet
+            const typeIds = filteredTypes.map(t => t.id).sort().join('-');
+            if (!processedTypeIds.has(typeIds)) {
+              processedTypeIds.add(typeIds);
+              
+              duplicateTypes.push({
+                names: filteredTypes.map(t => t.name),
+                certifications: [],
+                types: filteredTypes,
+                severity: 'duplicate_type',
+                irregularityType: 'duplicate_type',
+                reason: 'Tipos com nomes idênticos na mesma plataforma e categoria'
+              });
+            }
           }
         }
       }
@@ -430,6 +459,11 @@ export function DataMigration() {
         for (let j = i + 1; j < groupTypes.length; j++) {
           const typeB = groupTypes[j];
           if (checked.has(typeB.id)) continue;
+
+          // Skip if this pair is excluded
+          if (isExcluded('certification_type', typeA.id, typeB.id)) {
+            continue;
+          }
 
           // Check if already in an exact duplicate group
           const alreadyInExactGroup = processedTypeIds.has(
@@ -485,11 +519,11 @@ export function DataMigration() {
     if (showProgress) {
       setTimeout(() => setIsAnalyzing(false), 500);
     }
-  }, [certifications, types]);
+  }, [certifications, types, isExcluded]);
 
   // Stable auto-refresh with cooldown
   useEffect(() => {
-    if (loadingCerts || loadingTypes) return;
+    if (loadingCerts || loadingTypes || isLoadingExclusions) return;
 
     const certsSig = buildCertsSignature(certifications);
     const typesSig = buildTypesSignature(types);
@@ -521,7 +555,7 @@ export function DataMigration() {
         clearTimeout(analysisTimeoutRef.current);
       }
     };
-  }, [certifications, types, loadingCerts, loadingTypes, isAnalyzing, analyzeDuplicates]);
+  }, [certifications, types, loadingCerts, loadingTypes, isLoadingExclusions, isAnalyzing, analyzeDuplicates]);
 
   const handleAnalyze = () => {
     const certsSig = buildCertsSignature(certifications);
@@ -740,6 +774,17 @@ export function DataMigration() {
                               {isApplying ? 'Aplicando...' : 'Aplicar Padronização'}
                             </Button>
                           )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedGroup(group);
+                              setExclusionDialogOpen(true);
+                            }}
+                          >
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Não é Duplicata
+                          </Button>
                         </>
                       )}
                     </div>
@@ -789,6 +834,37 @@ export function DataMigration() {
           onConfirm={handleConfirmMerge}
         />
       )}
+
+      <DuplicateExclusionDialog
+        open={exclusionDialogOpen}
+        onOpenChange={setExclusionDialogOpen}
+        itemNames={selectedGroup?.names || []}
+        onConfirm={(reason) => {
+          if (!selectedGroup) return;
+          
+          const type = selectedGroup.severity === 'duplicate_type' 
+            ? 'certification_type' 
+            : 'certification';
+          
+          const ids = selectedGroup.severity === 'duplicate_type'
+            ? (selectedGroup.types?.map(t => t.id) || [])
+            : selectedGroup.certifications.map(c => c.id);
+          
+          if (ids.length >= 2) {
+            addExclusion(
+              { type, id1: ids[0], id2: ids[1], reason },
+              {
+                onSuccess: () => {
+                  setExclusionDialogOpen(false);
+                  setSelectedGroup(null);
+                  analyzeDuplicates(true);
+                },
+              }
+            );
+          }
+        }}
+        isLoading={isAddingExclusion}
+      />
     </div>
   );
 }

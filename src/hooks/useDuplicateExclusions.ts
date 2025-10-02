@@ -17,21 +17,29 @@ interface DuplicateExclusion {
 export function useDuplicateExclusions() {
   const queryClient = useQueryClient();
 
-  // Fetch all exclusions
+  // Fetch all exclusions - temporary implementation using any until migration is applied
   const { data: exclusions = [], isLoading } = useQuery({
     queryKey: ['duplicate-exclusions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('duplicate_exclusions')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('duplicate_exclusions' as any)
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data as DuplicateExclusion[];
+        if (error) {
+          console.warn('Exclusions table not yet available:', error.message);
+          return [];
+        }
+        return (data || []) as unknown as DuplicateExclusion[];
+      } catch (err) {
+        console.warn('Error fetching exclusions:', err);
+        return [];
+      }
     },
   });
 
-  // Add exclusion
+  // Add exclusion - temporary implementation using any until migration is applied
   const addExclusion = useMutation({
     mutationFn: async ({
       type,
@@ -51,14 +59,14 @@ export function useDuplicateExclusions() {
       const [item1_id, item2_id] = [id1, id2].sort();
 
       const { data, error } = await supabase
-        .from('duplicate_exclusions')
+        .from('duplicate_exclusions' as any)
         .insert({
           exclusion_type: type,
           item1_id,
           item2_id,
           created_by: session.session.user.id,
           reason,
-        })
+        } as any)
         .select()
         .single();
 
@@ -75,11 +83,11 @@ export function useDuplicateExclusions() {
     },
   });
 
-  // Remove exclusion
+  // Remove exclusion - temporary implementation using any until migration is applied
   const removeExclusion = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('duplicate_exclusions')
+        .from('duplicate_exclusions' as any)
         .delete()
         .eq('id', id);
 

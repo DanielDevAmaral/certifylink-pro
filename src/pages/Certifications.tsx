@@ -21,6 +21,7 @@ import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Filter, Award, Calendar, ExternalLink, Eye, Edit, Trash2, FileDown, ChevronDown, BarChart3 } from "lucide-react";
+import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 
 // Smart filter configurations for certifications
 const smartFilterConfigs = [{
@@ -86,6 +87,8 @@ export default function Certifications() {
   const [filters, setFilters] = useState<SearchEngineFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  useRealtimeUpdates();
 
   // Use the new search engine
   const {

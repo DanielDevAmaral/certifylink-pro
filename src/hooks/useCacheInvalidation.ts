@@ -35,6 +35,8 @@ export function useCacheInvalidation() {
     queryClient.invalidateQueries({ queryKey: ['badge-search'] });
     queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });
     queryClient.invalidateQueries({ queryKey: ['certification-search'] });
+    queryClient.invalidateQueries({ queryKey: ['certifications-search-engine'] });
+    queryClient.invalidateQueries({ queryKey: ['certification-filter-options'] });
     
     console.log('[Cache Invalidation] Dashboard data invalidated');
   }, [queryClient]);

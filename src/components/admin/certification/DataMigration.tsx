@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,9 +29,13 @@ export function DataMigration() {
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
   const [selectedApplyGroup, setSelectedApplyGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'exact' | 'similar' | 'function_mismatch'>('all');
+  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
 
-  const { data: certifications = [] } = useCertifications();
+  const { data: certifications = [], isLoading: isCertificationsLoading } = useCertifications();
   const { data: types = [] } = useCertificationTypes();
+  
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   // Função para calcular similaridade usando Levenshtein distance
   const levenshteinDistance = (str1: string, str2: string): number => {
@@ -86,8 +90,9 @@ export function DataMigration() {
     return similarity > 0.8 && similarity < 1.0;
   };
 
-  const analyzeDuplicates = () => {
+  const analyzeDuplicates = useCallback((isAuto = false) => {
     setIsAnalyzing(true);
+    setIsAutoRefresh(isAuto);
     
     setTimeout(() => {
       const potentialGroups: DuplicateGroup[] = [];
@@ -223,16 +228,19 @@ export function DataMigration() {
       setDuplicates(sortedGroups);
       setAnalysisComplete(true);
       setIsAnalyzing(false);
+      setIsAutoRefresh(false);
       
       const exactCount = sortedGroups.filter(g => g.severity === 'exact').length;
       const similarCount = sortedGroups.filter(g => g.severity === 'similar').length;
       const functionCount = sortedGroups.filter(g => g.severity === 'function_mismatch').length;
       
-      toast.success(
-        `Análise concluída! ${exactCount} duplicatas exatas, ${similarCount} similares, ${functionCount} variações de função.`
-      );
+      if (!isAuto) {
+        toast.success(
+          `Análise concluída! ${exactCount} duplicatas exatas, ${similarCount} similares, ${functionCount} variações de função.`
+        );
+      }
     }, 2000);
-  };
+  }, [certifications, types]);
 
   const handleRemoveName = (groupIndex: number, nameToRemove: string) => {
     setDuplicates(prev => prev.map((group, index) => {
@@ -281,11 +289,53 @@ export function DataMigration() {
   };
 
   const handleStandardizationSuccess = () => {
-    // Re-run analysis to update the data
-    setTimeout(() => {
-      analyzeDuplicates();
-    }, 1000);
+    // Trigger auto-refresh after a short delay
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      analyzeDuplicates(true);
+    }, 1500);
   };
+
+  const handleManualRefresh = () => {
+    analyzeDuplicates(false);
+  };
+
+  // Auto-refresh when certifications data changes (after initial load)
+  useEffect(() => {
+    // Skip initial load
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Skip if no analysis has been done yet
+    if (!analysisComplete) {
+      return;
+    }
+
+    // Skip if currently analyzing
+    if (isAnalyzing) {
+      return;
+    }
+
+    // Debounce the auto-refresh
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      console.log('[DataMigration] Auto-refreshing analysis due to data changes...');
+      analyzeDuplicates(true);
+    }, 500);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [certifications, analyzeDuplicates, analysisComplete, isAnalyzing]);
 
   const getStats = () => {
     const totalCertifications = certifications.length;
@@ -380,22 +430,42 @@ export function DataMigration() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Análise de Duplicações</CardTitle>
-          <CardDescription>
-            Identifique certificações com nomes similares que podem ser padronizadas
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Análise de Duplicações</CardTitle>
+              <CardDescription>
+                Identifique certificações com nomes similares que podem ser padronizadas
+              </CardDescription>
+            </div>
+            {analysisComplete && (
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh} 
+                disabled={isAnalyzing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {!analysisComplete && (
             <Button 
-              onClick={analyzeDuplicates} 
-              disabled={isAnalyzing}
+              onClick={() => analyzeDuplicates(false)} 
+              disabled={isAnalyzing || isCertificationsLoading}
               className="w-full"
             >
               {isAnalyzing ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   Analisando...
+                </>
+              ) : isCertificationsLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Carregando dados...
                 </>
               ) : (
                 "Iniciar Análise de Duplicações"
@@ -407,7 +477,7 @@ export function DataMigration() {
             <div className="space-y-2">
               <Progress value={75} />
               <p className="text-sm text-muted-foreground text-center">
-                Analisando certificações e identificando padrões...
+                {isAutoRefresh ? 'Atualizando análise...' : 'Analisando certificações e identificando padrões...'}
               </p>
             </div>
           )}

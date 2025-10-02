@@ -11,8 +11,8 @@ interface DuplicateGroup {
   names: string[];
   certifications: any[];
   suggestedType?: any;
-  severity: 'exact' | 'similar' | 'function_mismatch';
-  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation';
+  severity: 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type';
+  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation' | 'duplicate_type';
 }
 
 interface StandardizationApplyDialogProps {

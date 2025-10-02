@@ -18,8 +18,8 @@ interface DuplicateGroup {
   names: string[];
   certifications: any[];
   suggestedType?: any;
-  severity: 'exact' | 'similar' | 'function_mismatch';
-  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation';
+  severity: 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type';
+  irregularityType: 'exact_duplicate' | 'similar_names' | 'function_variation' | 'duplicate_type';
 }
 
 export function DataMigration() {
@@ -28,7 +28,7 @@ export function DataMigration() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
   const [selectedApplyGroup, setSelectedApplyGroup] = useState<{ group: DuplicateGroup; index: number } | null>(null);
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'exact' | 'similar' | 'function_mismatch'>('all');
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'exact' | 'similar' | 'function_mismatch' | 'duplicate_type'>('all');
   const [isAutoRefresh, setIsAutoRefresh] = useState(false);
 
   const { data: certifications = [], isLoading: isCertificationsLoading } = useCertifications();
@@ -66,14 +66,15 @@ export function DataMigration() {
       .trim();
   };
 
-  // Função para verificar se são duplicatas exatas
+  // Função para verificar se são duplicatas exatas (mesmo usuário)
   const areExactDuplicates = (cert1: any, cert2: any): boolean => {
     const normalized1 = normalizeForComparison(cert1.name);
     const normalized2 = normalizeForComparison(cert2.name);
     const func1 = normalizeForComparison(cert1.function || '');
     const func2 = normalizeForComparison(cert2.function || '');
     
-    return normalized1 === normalized2 && func1 === func2;
+    // Only duplicates if same name, function AND same user
+    return normalized1 === normalized2 && func1 === func2 && cert1.user_id === cert2.user_id;
   };
 
   // Função para verificar se dois nomes são similares
@@ -148,8 +149,10 @@ export function DataMigration() {
           const namesSimilar = areSimilar(cert.name, otherCert.name);
           const functionsMatch = normalizeForComparison(cert.function || '') === 
                                 normalizeForComparison(otherCert.function || '');
+          const sameUser = cert.user_id === otherCert.user_id;
           
-          if (namesSimilar && functionsMatch) {
+          // Only similar if same user
+          if (namesSimilar && functionsMatch && sameUser) {
             similarCerts.push(otherCert);
             processedCerts.add(otherCert.id);
           }
@@ -190,15 +193,16 @@ export function DataMigration() {
         }
       });
       
-      // FASE 3: Detectar mesma certificação com funções diferentes
-      const certsByName = certifications.reduce((acc, cert) => {
+      // FASE 3: Detectar mesma certificação com funções diferentes (mesmo usuário)
+      const certsByNameAndUser = certifications.reduce((acc, cert) => {
         const normalized = normalizeForComparison(cert.name);
-        if (!acc[normalized]) acc[normalized] = [];
-        acc[normalized].push(cert);
+        const key = `${normalized}|${cert.user_id}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(cert);
         return acc;
       }, {} as Record<string, any[]>);
       
-      Object.entries(certsByName).forEach(([normalizedName, certs]) => {
+      Object.entries(certsByNameAndUser).forEach(([key, certs]) => {
         if (certs.length < 2) return;
         
         // Verificar se já foi processado
@@ -219,9 +223,50 @@ export function DataMigration() {
         }
       });
 
-      // Ordenar: Exatas primeiro, depois similares, depois variações de função
+      // FASE 4: Detectar tipos duplicados
+      if (types && types.length > 0) {
+        const typesByPlatformAndName = types.reduce((acc, type) => {
+          const normalized = normalizeForComparison(type.name);
+          const key = `${type.platform_id}|${normalized}`;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(type);
+          return acc;
+        }, {} as Record<string, any[]>);
+        
+        Object.entries(typesByPlatformAndName).forEach(([key, typeGroup]) => {
+          if (typeGroup.length < 2) return;
+          
+          // Check for similar full names or overlapping aliases
+          const hasDuplicates = typeGroup.some((t1, i) => 
+            typeGroup.slice(i + 1).some(t2 => {
+              const fullName1 = normalizeForComparison(t1.full_name || t1.name);
+              const fullName2 = normalizeForComparison(t2.full_name || t2.name);
+              const similarFullNames = levenshteinDistance(fullName1, fullName2) <= 3;
+              
+              const hasOverlappingAliases = t1.aliases && t2.aliases && 
+                t1.aliases.some((a: string) => t2.aliases?.some((b: string) => 
+                  normalizeForComparison(a) === normalizeForComparison(b)
+                ));
+              
+              return similarFullNames || hasOverlappingAliases;
+            })
+          );
+          
+          if (hasDuplicates) {
+            potentialGroups.push({
+              names: typeGroup.map(t => `${t.name} (${t.full_name})`),
+              certifications: [], // No certifications for type duplicates
+              suggestedType: null,
+              severity: 'duplicate_type',
+              irregularityType: 'duplicate_type'
+            });
+          }
+        });
+      }
+
+      // Ordenar: Tipos duplicados primeiro, depois exatas, similares e variações
       const sortedGroups = potentialGroups.sort((a, b) => {
-        const severityOrder = { exact: 0, similar: 1, function_mismatch: 2 };
+        const severityOrder = { duplicate_type: 0, exact: 1, similar: 2, function_mismatch: 3 };
         return severityOrder[a.severity] - severityOrder[b.severity];
       });
 
@@ -230,13 +275,14 @@ export function DataMigration() {
       setIsAnalyzing(false);
       setIsAutoRefresh(false);
       
+      const typeCount = sortedGroups.filter(g => g.severity === 'duplicate_type').length;
       const exactCount = sortedGroups.filter(g => g.severity === 'exact').length;
       const similarCount = sortedGroups.filter(g => g.severity === 'similar').length;
       const functionCount = sortedGroups.filter(g => g.severity === 'function_mismatch').length;
       
       if (!isAuto) {
         toast.success(
-          `Análise concluída! ${exactCount} duplicatas exatas, ${similarCount} similares, ${functionCount} variações de função.`
+          `Análise concluída! ${typeCount} tipos duplicados, ${exactCount} duplicatas exatas, ${similarCount} similares, ${functionCount} variações de função.`
         );
       }
     }, 2000);
@@ -341,6 +387,7 @@ export function DataMigration() {
     const totalCertifications = certifications.length;
     const duplicatedCertifications = duplicates.reduce((acc, group) => acc + group.certifications.length, 0);
     const uniqueNames = duplicates.reduce((acc, group) => acc + group.names.length, 0);
+    const duplicateTypes = duplicates.filter(g => g.severity === 'duplicate_type').length;
     const exactDuplicates = duplicates.filter(g => g.severity === 'exact').length;
     const similarDuplicates = duplicates.filter(g => g.severity === 'similar').length;
     const functionMismatches = duplicates.filter(g => g.severity === 'function_mismatch').length;
@@ -350,6 +397,7 @@ export function DataMigration() {
       duplicatedCertifications,
       uniqueNames,
       duplicateGroups: duplicates.length,
+      duplicateTypes,
       exactDuplicates,
       similarDuplicates,
       functionMismatches
@@ -414,6 +462,16 @@ export function DataMigration() {
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{stats.functionMismatches}</div>
             <p className="text-xs text-yellow-600">Função diferente</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-purple-800">Tipos Duplicados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.duplicateTypes}</div>
+            <p className="text-xs text-purple-600">Tipos a corrigir</p>
           </CardContent>
         </Card>
         
@@ -509,6 +567,9 @@ export function DataMigration() {
                   <SelectItem value="all">
                     Todas ({duplicates.length})
                   </SelectItem>
+                  <SelectItem value="duplicate_type">
+                    Tipos Duplicados ({stats.duplicateTypes})
+                  </SelectItem>
                   <SelectItem value="exact">
                     Duplicatas Exatas ({stats.exactDuplicates})
                   </SelectItem>
@@ -525,6 +586,7 @@ export function DataMigration() {
           
           {filteredDuplicates.map((group, index) => (
             <Card key={index} className={
+              group.severity === 'duplicate_type' ? 'border-purple-300' :
               group.severity === 'exact' ? 'border-red-300' :
               group.severity === 'similar' ? 'border-orange-300' :
               'border-yellow-300'
@@ -536,12 +598,14 @@ export function DataMigration() {
                     <Badge 
                       variant={group.severity === 'exact' ? 'destructive' : 'secondary'}
                       className={
+                        group.severity === 'duplicate_type' ? 'bg-purple-600 text-white' :
                         group.severity === 'exact' ? 'bg-red-600' :
                         group.severity === 'similar' ? 'bg-orange-600 text-white' :
                         'bg-yellow-600 text-white'
                       }
                     >
-                      {group.severity === 'exact' ? 'DUPLICATA EXATA' :
+                      {group.severity === 'duplicate_type' ? 'TIPO DUPLICADO' :
+                       group.severity === 'exact' ? 'DUPLICATA EXATA' :
                        group.severity === 'similar' ? 'SIMILAR' :
                        'VARIAÇÃO DE FUNÇÃO'}
                     </Badge>
@@ -577,22 +641,33 @@ export function DataMigration() {
                 />
                 
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleViewDetails(group, index)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver Detalhes
-                  </Button>
-                  {group.suggestedType && (
-                    <Button 
-                      size="sm"
-                      onClick={() => handleApplyStandardization(group, index)}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Aplicar Padronização
-                    </Button>
+                  {group.severity !== 'duplicate_type' ? (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewDetails(group, index)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Detalhes
+                      </Button>
+                      {group.suggestedType && (
+                        <Button 
+                          size="sm"
+                          onClick={() => handleApplyStandardization(group, index)}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Aplicar Padronização
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Alert className="mb-0">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Acesse a gestão de Tipos de Certificação para corrigir manualmente estes tipos duplicados.
+                      </AlertDescription>
+                    </Alert>
                   )}
                 </div>
               </CardContent>

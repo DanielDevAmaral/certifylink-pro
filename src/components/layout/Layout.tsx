@@ -3,6 +3,7 @@ import { Sidebar } from "./Sidebar";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { useSessionTimeoutInLayout } from "./AuthenticatedLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/hooks/useSettings";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,10 +11,13 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { signOut } = useAuth();
+  const { data: settings } = useSettings();
   
-  // Session timeout configuration (30 minutes)
+  // Session timeout configuration - reads from settings or defaults to 30 minutes
+  const sessionTimeoutMinutes = settings?.security?.session_timeout ?? 30;
+  
   useSessionTimeoutInLayout({
-    timeout: 30 * 60 * 1000, // 30 minutes
+    timeout: sessionTimeoutMinutes * 60 * 1000, // Convert minutes to milliseconds
     warningTime: 5 * 60 * 1000, // 5 minutes warning
     onTimeout: () => {
       signOut();

@@ -74,7 +74,7 @@ const defaultSettings: SettingsGroup = {
     data_encryption: true,
     audit_logging: true,
     sensitive_access: false,
-    session_timeout: 8
+    session_timeout: 30
   }
 };
 

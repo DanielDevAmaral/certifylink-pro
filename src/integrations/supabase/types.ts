@@ -832,6 +832,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_audit_logs: {
+        Args: { days_to_keep?: number }
+        Returns: number
+      }
       create_system_notification: {
         Args: {
           expires_hours?: number

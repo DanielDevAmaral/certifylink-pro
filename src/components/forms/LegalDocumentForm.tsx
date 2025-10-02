@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateLegalDocument, useUpdateLegalDocument, useUploadFile } from '@/hooks/useLegalDocuments';
 import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
+import { useAuth } from '@/contexts/AuthContext';
 import type { LegalDocument, LegalDocumentType, DocumentSubtype } from '@/types';
 import { Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -47,12 +48,14 @@ const documentSubtypes: Record<LegalDocumentType, DocumentSubtype[]> = {
 
 export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocumentFormProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
+  const { userRole } = useAuth();
   const createMutation = useCreateLegalDocument();
   const updateMutation = useUpdateLegalDocument();
   const uploadMutation = useUploadFile();
   const { invalidateSpecificDocument } = useCacheInvalidation();
   const { toast } = useToast();
+  
+  const isAdmin = userRole === 'admin';
 
   const form = useForm<LegalDocumentFormData>({
     resolver: zodResolver(legalDocumentSchema),
@@ -266,24 +269,64 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
             <FormField
               control={form.control}
               name="is_sensitive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Documento Sensível
-                    </FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      Marque se este documento contém informações confidenciais
-                    </p>
-                  </div>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const isCurrentlySensitive = document?.is_sensitive === true;
+                const canChangeSensitive = isAdmin || !isCurrentlySensitive;
+                
+                return (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          if (isCurrentlySensitive && !isAdmin) {
+                            toast({
+                              title: 'Ação não permitida',
+                              description: 'Apenas administradores podem remover a marcação de documento sensível.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          
+                          if (checked && !field.value) {
+                            // Usuário está marcando como sensível
+                            const confirmed = window.confirm(
+                              'Tem certeza que deseja marcar este documento como sensível?\n\n' +
+                              'Documentos sensíveis têm acesso restrito e apenas administradores podem remover esta marcação posteriormente.'
+                            );
+                            if (confirmed) {
+                              field.onChange(checked);
+                            }
+                          } else {
+                            field.onChange(checked);
+                          }
+                        }}
+                        disabled={!canChangeSensitive}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="flex items-center gap-2">
+                        Documento Sensível
+                        {field.value && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            CONFIDENCIAL
+                          </span>
+                        )}
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        {canChangeSensitive ? (
+                          'Marque se o documento contém informações confidenciais'
+                        ) : (
+                          '⚠️ Apenas administradores podem remover a marcação de documento sensível'
+                        )}
+                      </p>
+                    </div>
+                  </FormItem>
+                );
+              }}
             />
 
             <div className="space-y-4">

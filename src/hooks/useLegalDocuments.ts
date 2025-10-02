@@ -189,3 +189,34 @@ export function useUploadFile() {
     },
   });
 }
+
+// Hook para obter URL assinada para documentos sensíveis
+export function useSignedDocumentUrl(
+  documentId?: string, 
+  documentType: 'legal_document' | 'certification' | 'badge' | 'technical_attestation' = 'legal_document'
+) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['signed-document-url', documentId, documentType],
+    queryFn: async () => {
+      if (!documentId) throw new Error('Document ID required');
+
+      const { data, error } = await supabase.functions.invoke('get-signed-document-url', {
+        body: { documentId, documentType }
+      });
+
+      if (error) throw error;
+      
+      return {
+        signedUrl: data.signedUrl,
+        expiresAt: data.expiresAt,
+        isSensitive: data.isSensitive
+      };
+    },
+    enabled: !!documentId && !!user,
+    // Cache por 45 minutos (URLs expiram em 1 hora)
+    staleTime: 45 * 60 * 1000,
+    gcTime: 45 * 60 * 1000,
+  });
+}

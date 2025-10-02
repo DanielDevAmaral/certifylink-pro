@@ -331,6 +331,44 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_document_sensitivity_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          document_id: string
+          id: string
+          new_is_sensitive: boolean
+          old_is_sensitive: boolean
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          document_id: string
+          id?: string
+          new_is_sensitive: boolean
+          old_is_sensitive: boolean
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          document_id?: string
+          id?: string
+          new_is_sensitive?: boolean
+          old_is_sensitive?: boolean
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_document_sensitivity_audit_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_documents: {
         Row: {
           created_at: string
@@ -341,6 +379,8 @@ export type Database = {
           encrypted_data: string | null
           id: string
           is_sensitive: boolean | null
+          last_sensitivity_change_at: string | null
+          last_sensitivity_change_by: string | null
           status: Database["public"]["Enums"]["document_status"]
           updated_at: string
           user_id: string
@@ -355,6 +395,8 @@ export type Database = {
           encrypted_data?: string | null
           id?: string
           is_sensitive?: boolean | null
+          last_sensitivity_change_at?: string | null
+          last_sensitivity_change_by?: string | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id: string
@@ -369,6 +411,8 @@ export type Database = {
           encrypted_data?: string | null
           id?: string
           is_sensitive?: boolean | null
+          last_sensitivity_change_at?: string | null
+          last_sensitivity_change_by?: string | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id?: string

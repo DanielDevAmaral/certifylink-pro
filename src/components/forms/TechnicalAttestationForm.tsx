@@ -14,6 +14,7 @@ import { TagManager } from '@/components/forms/TagManager';
 import { HoursBreakdownManager } from '@/components/forms/HoursBreakdownManager';
 import { useCreateTechnicalAttestation, useUpdateTechnicalAttestation } from '@/hooks/useTechnicalAttestations';
 import { useUploadFile } from '@/hooks/useLegalDocuments';
+import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import { useRelatedCertificationResolver } from '@/hooks/useRelatedCertificationResolver';
 import { downloadDocument, formatDocumentName, isValidDocumentUrl, getFilenameFromUrl } from '@/lib/utils/documentUtils';
 import type { TechnicalCertificate, RelatedCertification } from '@/types';
@@ -58,6 +59,7 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
   const createMutation = useCreateTechnicalAttestation();
   const updateMutation = useUpdateTechnicalAttestation();
   const uploadMutation = useUploadFile();
+  const { invalidateSpecificDocument } = useCacheInvalidation();
   const { toast } = useToast();
 
   const form = useForm<AttestationFormData>({
@@ -143,6 +145,9 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         console.log('➕ [TechnicalAttestationForm] Creating new attestation');
         await createMutation.mutateAsync(submitData);
       }
+
+      // Invalidate cache to refresh data
+      invalidateSpecificDocument('technical_attestation');
 
       console.log('✅ [TechnicalAttestationForm] Form submitted successfully');
       onSuccess?.();

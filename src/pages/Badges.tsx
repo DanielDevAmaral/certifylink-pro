@@ -22,6 +22,7 @@ import { useDeleteBadge, type BadgeWithProfile, type Badge } from "@/hooks/useBa
 import { usePublicNames } from "@/hooks/usePublicNames";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from '@/hooks/use-toast';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { Award, Plus, Filter, TrendingUp, Users, AlertTriangle, FileDown, BarChart3, ChevronDown } from "lucide-react";
 
 // Smart filter configurations for badges
@@ -72,6 +73,9 @@ export default function Badges() {
   const {
     userRole
   } = useAuth();
+
+  // Enable realtime updates
+  useRealtimeUpdates();
 
   // Use the badge search engine with pagination
   const {

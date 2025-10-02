@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersTab } from "@/components/team/UsersTab";
 import { TeamsTab } from "@/components/team/TeamsTab";
 import { useTeams, useTeamStats } from "@/hooks/useTeams";
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { useState } from "react";
 import { Users, Building2 } from "lucide-react";
 
@@ -15,6 +16,9 @@ export default function Team() {
   const { data: teams = [], isLoading: teamsLoading } = useTeams();
   const { data: stats, isLoading: statsLoading } = useTeamStats();
   const [activeTab, setActiveTab] = useState("users");
+
+  // Enable realtime updates
+  useRealtimeUpdates();
 
   if (teamsLoading || statsLoading) {
     return (

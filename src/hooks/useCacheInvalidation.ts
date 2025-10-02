@@ -20,6 +20,22 @@ export function useCacheInvalidation() {
     queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
     queryClient.invalidateQueries({ queryKey: ['recent-additions'] });
     
+    // Invalida queries de cada tipo de documento
+    queryClient.invalidateQueries({ queryKey: ['certifications'] });
+    queryClient.invalidateQueries({ queryKey: ['technical-attestations'] });
+    queryClient.invalidateQueries({ queryKey: ['legal-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['badges'] });
+    
+    // Invalida queries de equipes e usuários
+    queryClient.invalidateQueries({ queryKey: ['teams'] });
+    queryClient.invalidateQueries({ queryKey: ['team-members'] });
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    
+    // Invalida search engines e filtros
+    queryClient.invalidateQueries({ queryKey: ['badge-search'] });
+    queryClient.invalidateQueries({ queryKey: ['badge-filter-options'] });
+    queryClient.invalidateQueries({ queryKey: ['certification-search'] });
+    
     console.log('[Cache Invalidation] Dashboard data invalidated');
   }, [queryClient]);
 

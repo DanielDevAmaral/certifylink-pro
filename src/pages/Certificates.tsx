@@ -17,6 +17,7 @@ import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useTechnicalAttestations, useDeleteTechnicalAttestation } from "@/hooks/useTechnicalAttestations";
 import { usePublicNames } from "@/hooks/usePublicNames";
 import { useRelatedCertificationResolver, RelatedCertification } from "@/hooks/useRelatedCertificationResolver";
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -111,6 +112,9 @@ export default function Certificates() {
   }, [attestations]);
 
   const { data: resolvedCertifications = [] } = useRelatedCertificationResolver(allRelatedCerts);
+
+  // Enable realtime updates
+  useRealtimeUpdates();
 
   // Helper function to format currency values
   const formatCurrency = (value?: number) => {

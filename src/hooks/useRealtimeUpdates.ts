@@ -22,7 +22,7 @@ export function useRealtimeUpdates() {
       .on(
         'postgres_changes',
         {
-          event: '*', // INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'certifications'
         },
@@ -84,6 +84,57 @@ export function useRealtimeUpdates() {
       )
       .subscribe();
 
+    // Escutar mudanças na tabela de equipes
+    const teamsChannel = supabase
+      .channel('teams-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'teams'
+        },
+        (payload) => {
+          console.log('[Realtime Updates] Teams changed:', payload);
+          invalidateDashboardData();
+        }
+      )
+      .subscribe();
+
+    // Escutar mudanças na tabela de membros de equipes
+    const teamMembersChannel = supabase
+      .channel('team-members-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members'
+        },
+        (payload) => {
+          console.log('[Realtime Updates] Team members changed:', payload);
+          invalidateDashboardData();
+        }
+      )
+      .subscribe();
+
+    // Escutar mudanças na tabela de perfis
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        (payload) => {
+          console.log('[Realtime Updates] Profiles changed:', payload);
+          invalidateDashboardData();
+        }
+      )
+      .subscribe();
+
     console.log('[Realtime Updates] Real-time subscriptions active');
 
     // Cleanup: remover subscriptions quando o componente for desmontado
@@ -93,6 +144,9 @@ export function useRealtimeUpdates() {
       supabase.removeChannel(attestationsChannel);
       supabase.removeChannel(documentsChannel);
       supabase.removeChannel(badgesChannel);
+      supabase.removeChannel(teamsChannel);
+      supabase.removeChannel(teamMembersChannel);
+      supabase.removeChannel(profilesChannel);
     };
   }, [user, invalidateDashboardData]);
 }

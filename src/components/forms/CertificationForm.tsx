@@ -14,6 +14,7 @@ import { ScreenshotUpload } from '@/components/forms/ScreenshotUpload';
 import { SmartCertificationCombobox } from '@/components/ui/smart-certification-combobox';
 import { useCreateCertification, useUpdateCertification } from '@/hooks/useCertifications';
 import { useCreateCertificationType } from '@/hooks/useCertificationTypes';
+import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { Plus, X, Calendar, Award } from 'lucide-react';
@@ -43,6 +44,7 @@ export function CertificationForm({
   const createMutation = useCreateCertification();
   const updateMutation = useUpdateCertification();
   const createTypeMutation = useCreateCertificationType();
+  const { invalidateSpecificDocument } = useCacheInvalidation();
   const { userRole } = useAuth();
   const { toast } = useToast();
   const form = useForm<CertificationFormData>({
@@ -101,6 +103,10 @@ export function CertificationForm({
           approved_equivalence: shouldAutoApprove
         });
       }
+      
+      // Invalidate cache to refresh data
+      invalidateSpecificDocument('certification');
+      
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting certification:', error);

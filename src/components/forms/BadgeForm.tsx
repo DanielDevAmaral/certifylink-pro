@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useCreateBadge, useUpdateBadge } from '@/hooks/useBadges';
+import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import type { Badge } from '@/hooks/useBadges';
 import { Calendar, Award, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +58,7 @@ export function BadgeForm({
 }: BadgeFormProps) {
   const createMutation = useCreateBadge();
   const updateMutation = useUpdateBadge();
+  const { invalidateSpecificDocument } = useCacheInvalidation();
   const { toast } = useToast();
 
   const form = useForm<BadgeFormData>({
@@ -111,6 +113,10 @@ export function BadgeForm({
           updated_at: new Date().toISOString()
         });
       }
+      
+      // Invalidate cache to refresh data
+      invalidateSpecificDocument('badge');
+      
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting badge:', error);

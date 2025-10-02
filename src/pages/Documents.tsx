@@ -20,6 +20,7 @@ import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAdvancedSearch } from "@/hooks/useAdvancedSearch";
 import { useLegalDocuments, useDeleteLegalDocument } from "@/hooks/useLegalDocuments";
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -117,6 +118,9 @@ export default function Documents() {
 
   const { documents = [], isLoading } = useLegalDocuments();
   const deleteMutation = useDeleteLegalDocument();
+
+  // Enable realtime updates
+  useRealtimeUpdates();
 
   // Handle highlighting from notifications
   useEffect(() => {

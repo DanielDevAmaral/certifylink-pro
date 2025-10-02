@@ -7,6 +7,7 @@ import { NotificationSystemCard } from '@/components/admin/NotificationSystemCar
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
 import { NotificationMetricsCard } from '@/components/admin/NotificationMetricsCard';
 import { RetryQueueMonitor } from '@/components/admin/RetryQueueMonitor';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,9 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  // Enable realtime updates
+  useRealtimeUpdates();
+
   const systemStatus = [
     { 
       item: 'Autenticação', 

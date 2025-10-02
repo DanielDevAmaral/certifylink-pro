@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateLegalDocument, useUpdateLegalDocument, useUploadFile } from '@/hooks/useLegalDocuments';
+import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import type { LegalDocument, LegalDocumentType, DocumentSubtype } from '@/types';
 import { Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
   const createMutation = useCreateLegalDocument();
   const updateMutation = useUpdateLegalDocument();
   const uploadMutation = useUploadFile();
+  const { invalidateSpecificDocument } = useCacheInvalidation();
   const { toast } = useToast();
 
   const form = useForm<LegalDocumentFormData>({
@@ -109,6 +111,9 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
       } else {
         await createMutation.mutateAsync(submitData);
       }
+
+      // Invalidate cache to refresh data
+      invalidateSpecificDocument('legal_document');
 
       onSuccess?.();
     } catch (error) {

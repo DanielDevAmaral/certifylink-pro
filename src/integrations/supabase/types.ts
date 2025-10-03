@@ -939,6 +939,13 @@ export type Database = {
           reason: string
         }[]
       }
+      get_users_last_sign_in: {
+        Args: { user_ids: string[] }
+        Returns: {
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
       is_direct_team_leader: {
         Args: { leader_id: string; member_id: string }
         Returns: boolean

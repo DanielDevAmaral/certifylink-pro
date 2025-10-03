@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UseUserSearchParams {
   search?: string;
-  statusFilter?: ('active' | 'inactive' | 'suspended')[];
+  statusFilter?: ('active' | 'inactive' | 'suspended' | 'terminated')[];
   roleFilter?: ('user' | 'leader' | 'admin')[];
   excludeUserIds?: string[];
   limit?: number;
@@ -13,7 +13,7 @@ interface User {
   user_id: string;
   full_name: string;
   email: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'terminated';
   role: 'user' | 'leader' | 'admin';
   position?: string;
   department?: string;
@@ -86,7 +86,7 @@ export function useUserSearch({
         const lastSignIn = lastSignInData?.find(ls => ls.user_id === profile.user_id);
         return {
           ...profile,
-          status: profile.status as 'active' | 'inactive' | 'suspended',
+          status: profile.status as 'active' | 'inactive' | 'suspended' | 'terminated',
           role: (userRole?.role || 'user') as 'user' | 'leader' | 'admin',
           last_sign_in_at: lastSignIn?.last_sign_in_at,
         };
@@ -109,7 +109,7 @@ export function useUserSearch({
 export function useUsers() {
   return useUserSearch({
     search: '',
-    statusFilter: ['active', 'inactive', 'suspended'],
+    statusFilter: ['active', 'inactive', 'suspended', 'terminated'],
     limit: 100,
   });
 }

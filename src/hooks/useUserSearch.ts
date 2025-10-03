@@ -19,6 +19,7 @@ interface User {
   department?: string;
   created_at: string;
   updated_at: string;
+  last_sign_in_at?: string;
 }
 
 export function useUserSearch({
@@ -71,13 +72,23 @@ export function useUserSearch({
 
       if (rolesError) throw rolesError;
 
-      // Combine profiles with roles
+      // Get last sign in data
+      const { data: lastSignInData, error: lastSignInError } = await supabase
+        .rpc('get_users_last_sign_in', { user_ids: userIds });
+
+      if (lastSignInError) {
+        console.error('Error fetching last sign in:', lastSignInError);
+      }
+
+      // Combine profiles with roles and last sign in
       const users: User[] = profiles.map(profile => {
         const userRole = userRoles?.find(role => role.user_id === profile.user_id);
+        const lastSignIn = lastSignInData?.find(ls => ls.user_id === profile.user_id);
         return {
           ...profile,
           status: profile.status as 'active' | 'inactive' | 'suspended',
           role: (userRole?.role || 'user') as 'user' | 'leader' | 'admin',
+          last_sign_in_at: lastSignIn?.last_sign_in_at,
         };
       });
 

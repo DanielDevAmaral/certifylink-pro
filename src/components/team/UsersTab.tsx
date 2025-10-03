@@ -13,7 +13,7 @@ import { useUsers } from '@/hooks/useUserSearch';
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
-import { Users, Crown, Shield, User, Mail, Calendar, FileText, Search, UserCheck, UserX, AlertTriangle, UserMinus } from "lucide-react";
+import { Users, Crown, Shield, User, Mail, Calendar, FileText, Search, UserCheck, UserX, AlertTriangle, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, LogIn } from "lucide-react";
 const roleConfig = {
   admin: {
     label: "Administrador",
@@ -54,6 +54,8 @@ export function UsersTab({
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [activeStatusTab, setActiveStatusTab] = useState("active");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
@@ -111,6 +113,7 @@ export function UsersTab({
       role: user.role
     }],
     joined_at: user.created_at,
+    last_sign_in_at: user.last_sign_in_at,
     team_name: "Sem Equipe",
     team_leader: "N/A",
     user_role: user.role,
@@ -132,11 +135,47 @@ export function UsersTab({
     });
   };
 
-  // Get filtered members for each tab
-  const activeMembers = getFilteredMembers("active");
-  const inactiveMembers = getFilteredMembers("inactive");
-  const suspendedMembers = getFilteredMembers("suspended");
-  const terminatedMembers = getFilteredMembers("terminated");
+  // Sort members
+  const getSortedMembers = (members: any[]) => {
+    return [...members].sort((a, b) => {
+      let compareA, compareB;
+      
+      switch (sortBy) {
+        case 'name':
+          compareA = a.profiles.full_name.toLowerCase();
+          compareB = b.profiles.full_name.toLowerCase();
+          break;
+        case 'email':
+          compareA = a.profiles.email.toLowerCase();
+          compareB = b.profiles.email.toLowerCase();
+          break;
+        case 'team':
+          compareA = a.team_name.toLowerCase();
+          compareB = b.team_name.toLowerCase();
+          break;
+        case 'last_login':
+          compareA = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
+          compareB = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0;
+          break;
+        case 'joined_at':
+          compareA = new Date(a.joined_at).getTime();
+          compareB = new Date(b.joined_at).getTime();
+          break;
+        default:
+          return 0;
+      }
+      
+      if (compareA < compareB) return sortOrder === 'asc' ? -1 : 1;
+      if (compareA > compareB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Get filtered and sorted members for each tab
+  const activeMembers = getSortedMembers(getFilteredMembers("active"));
+  const inactiveMembers = getSortedMembers(getFilteredMembers("inactive"));
+  const suspendedMembers = getSortedMembers(getFilteredMembers("suspended"));
+  const terminatedMembers = getSortedMembers(getFilteredMembers("terminated"));
 
   // Calculate stats for different statuses
   const activeUsers = allMembers.filter(m => m.status === 'active').length;
@@ -251,6 +290,27 @@ export function UsersTab({
                 <SelectItem value="no-team">Sem Equipe</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nome</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="team">Equipe</SelectItem>
+                <SelectItem value="last_login">Último Login</SelectItem>
+                <SelectItem value="joined_at">Data de Entrada</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+            >
+              {sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
       </Card>
@@ -393,6 +453,22 @@ function UsersList({
                   <div className="text-center">
                     <p className="text-2xl font-bold text-foreground">{documentCount}</p>
                     <p className="text-xs text-muted-foreground">Documentos</p>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <LogIn className="h-3 w-3" />
+                      <span>
+                        {member.last_sign_in_at 
+                          ? formatDistanceToNow(new Date(member.last_sign_in_at), {
+                              addSuffix: true,
+                              locale: ptBR
+                            })
+                          : "Nunca"
+                        }
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Último login</p>
                   </div>
 
                   <div className="text-center">

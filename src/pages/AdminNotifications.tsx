@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Bell, Users, TrendingUp, Send, Plus, AlertTriangle, FileText, Award, Shield } from 'lucide-react';
+import { Bell, Users, TrendingUp, Send, Plus, AlertTriangle, FileText, Award, Shield, Activity } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationStatsCard } from '@/components/admin/NotificationStatsCard';
+import { NotificationQueueMonitor } from '@/components/admin/NotificationQueueMonitor';
 import { useAllNotifications, useCreateBulkNotifications } from '@/hooks/useAdminNotifications';
 import { useExpiringDocuments } from '@/hooks/useExpiringDocuments';
 import { format } from 'date-fns';
@@ -149,6 +150,10 @@ export default function AdminNotifications() {
             <TrendingUp className="h-4 w-4" />
             Visão Geral
           </TabsTrigger>
+          <TabsTrigger value="queue-monitor" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Fila de Retry
+          </TabsTrigger>
           <TabsTrigger value="critical-docs" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             Documentos Críticos
@@ -170,6 +175,10 @@ export default function AdminNotifications() {
 
         <TabsContent value="overview">
           <NotificationStatsCard />
+        </TabsContent>
+
+        <TabsContent value="queue-monitor">
+          <NotificationQueueMonitor />
         </TabsContent>
 
         <TabsContent value="critical-docs">

@@ -5,12 +5,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { FileDown, FileSpreadsheet, FileText, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileDown, FileSpreadsheet, FileText, AlertCircle, Settings, Eye } from 'lucide-react';
 import { generateReport, getFieldMappings } from '@/lib/utils/reports';
 import { ReportConfig, ReportDataType, ReportSummary } from '@/types/reports';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/hooks/useSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { ReportPreview } from './ReportPreview';
+import { ReportTemplates } from './ReportTemplates';
 
 interface ReportGeneratorProps {
   data: any[];
@@ -23,6 +26,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
   const { toast } = useToast();
   const { data: settings } = useSettings();
   const [loading, setLoading] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     dateFrom: null as Date | null,
     dateTo: null as Date | null,
@@ -30,6 +34,14 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
     includeExpired: false,
     pdfStyle: 'synthetic' as 'synthetic' | 'detailed', // New PDF style option
   });
+
+  // Get available columns based on report type
+  const availableColumns = getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
+
+  // Initialize selected columns with all columns
+  if (selectedColumns.length === 0 && availableColumns.length > 0) {
+    setSelectedColumns(availableColumns.map(col => col.key));
+  }
 
   // Enhanced data processing with user names
   const enrichedData = data.map(item => ({
@@ -152,7 +164,7 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
     });
   };
 
-  const handleExport = async (format: 'excel' | 'csv' | 'pdf') => {
+  const handleExport = async (format: 'excel' | 'csv' | 'pdf', customColumns?: string[]) => {
     setLoading(true);
     try {
       const filteredData = filterData();
@@ -173,8 +185,10 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
         dataToExport = await enrichWithCertificationNames(filteredData);
       }
 
-      // Get field mappings based on type
-      const fields = getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
+      // Get field mappings based on type and filter by selected columns
+      const allFields = getFieldMappings[type as keyof typeof getFieldMappings]?.() || [];
+      const columnsToUse = customColumns || selectedColumns;
+      const fields = allFields.filter(field => columnsToUse.includes(field.key));
 
       const summary = generateSummary(dataToExport);
       const timestamp = new Date().toISOString().split('T')[0];
@@ -221,173 +235,217 @@ export function ReportGenerator({ data, type, title, userNames = {} }: ReportGen
     }
   };
 
+  const handleLoadTemplate = (template: any) => {
+    setSelectedColumns(template.selectedColumns);
+    setFilters(template.filters);
+  };
+
   const filteredData = filterData();
 
   return (
-    <Card className="card-corporate">
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Gerador de Relatórios</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure os filtros e exporte os dados em diferentes formatos
-          </p>
-        </div>
+    <Tabs defaultValue="filters" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="filters" className="gap-2">
+          <Settings className="h-4 w-4" />
+          Filtros
+        </TabsTrigger>
+        <TabsTrigger value="preview" className="gap-2">
+          <Eye className="h-4 w-4" />
+          Preview & Colunas
+        </TabsTrigger>
+        <TabsTrigger value="templates" className="gap-2">
+          <FileText className="h-4 w-4" />
+          Templates
+        </TabsTrigger>
+      </TabsList>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="valid">Válido</SelectItem>
-                <SelectItem value="expired">Vencido</SelectItem>
-                <SelectItem value="expiring">Vencendo em Breve</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Data Inicial</Label>
-            <DatePicker
-              date={filters.dateFrom}
-              onDateChange={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Data Final</Label>
-            <DatePicker
-              date={filters.dateTo}
-              onDateChange={(date) => setFilters(prev => ({ ...prev, dateTo: date }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tipo de Relatório PDF</Label>
-            <Select value={filters.pdfStyle} onValueChange={(value: 'synthetic' | 'detailed') => setFilters(prev => ({ ...prev, pdfStyle: value }))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="synthetic">Sintético (Tabela)</SelectItem>
-                <SelectItem value="detailed">
-                  Detalhado (Com imagens{type === 'attestations' ? ' e anexos' : ''})
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="includeExpired"
-            checked={filters.includeExpired}
-            onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeExpired: !!checked }))}
-          />
-          <Label htmlFor="includeExpired" className="text-sm">
-            Incluir vencidos
-          </Label>
-        </div>
-
-        {/* Summary */}
-        <div className="bg-muted rounded-lg p-4">
-          <h4 className="font-medium text-foreground mb-2">Resumo dos Dados Filtrados</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <TabsContent value="filters" className="space-y-6 mt-6">
+        <Card className="card-corporate">
+          <div className="space-y-6">
             <div>
-              <span className="text-muted-foreground">Total de registros:</span>
-              <div className="font-semibold text-primary">{filteredData.length}</div>
+              <h3 className="text-lg font-semibold text-foreground">Gerador de Relatórios</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure os filtros e exporte os dados em diferentes formatos
+              </p>
             </div>
-            {type !== 'attestations' && type !== 'dashboard' && (
-              <>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="valid">Válido</SelectItem>
+                    <SelectItem value="expired">Vencido</SelectItem>
+                    <SelectItem value="expiring">Vencendo em Breve</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Data Inicial</Label>
+                <DatePicker
+                  date={filters.dateFrom}
+                  onDateChange={(date) => setFilters(prev => ({ ...prev, dateFrom: date }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Data Final</Label>
+                <DatePicker
+                  date={filters.dateTo}
+                  onDateChange={(date) => setFilters(prev => ({ ...prev, dateTo: date }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo de Relatório PDF</Label>
+                <Select value={filters.pdfStyle} onValueChange={(value: 'synthetic' | 'detailed') => setFilters(prev => ({ ...prev, pdfStyle: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="synthetic">Sintético (Tabela)</SelectItem>
+                    <SelectItem value="detailed">
+                      Detalhado (Com imagens{type === 'attestations' ? ' e anexos' : ''})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="includeExpired"
+                checked={filters.includeExpired}
+                onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeExpired: !!checked }))}
+              />
+              <Label htmlFor="includeExpired" className="text-sm">
+                Incluir vencidos
+              </Label>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-muted rounded-lg p-4">
+              <h4 className="font-medium text-foreground mb-2">Resumo dos Dados Filtrados</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Válidos:</span>
-                  <div className="font-semibold text-success">
-                    {filteredData.filter(item => item.status === 'valid').length}
-                  </div>
+                  <span className="text-muted-foreground">Total de registros:</span>
+                  <div className="font-semibold text-primary">{filteredData.length}</div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Vencidos:</span>
-                  <div className="font-semibold text-danger">
-                    {filteredData.filter(item => item.status === 'expired').length}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Vencendo:</span>
-                  <div className="font-semibold text-warning">
-                    {filteredData.filter(item => item.status === 'expiring').length}
-                  </div>
-                </div>
-              </>
-            )}
-            {type === 'dashboard' && (
-              <>
-                <div>
-                  <span className="text-muted-foreground">Certificações:</span>
-                  <div className="font-semibold text-primary">
-                    {filteredData.filter(item => item.type === 'certification').length}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Atestados:</span>
-                  <div className="font-semibold text-secondary">
-                    {filteredData.filter(item => item.type === 'certificate').length}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Documentos:</span>
-                  <div className="font-semibold text-accent">
-                    {filteredData.filter(item => item.type === 'document').length}
-                  </div>
-                </div>
-              </>
+                {type !== 'attestations' && type !== 'dashboard' && (
+                  <>
+                    <div>
+                      <span className="text-muted-foreground">Válidos:</span>
+                      <div className="font-semibold text-success">
+                        {filteredData.filter(item => item.status === 'valid').length}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Vencidos:</span>
+                      <div className="font-semibold text-danger">
+                        {filteredData.filter(item => item.status === 'expired').length}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Vencendo:</span>
+                      <div className="font-semibold text-warning">
+                        {filteredData.filter(item => item.status === 'expiring').length}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {type === 'dashboard' && (
+                  <>
+                    <div>
+                      <span className="text-muted-foreground">Certificações:</span>
+                      <div className="font-semibold text-primary">
+                        {filteredData.filter(item => item.type === 'certification').length}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Atestados:</span>
+                      <div className="font-semibold text-secondary">
+                        {filteredData.filter(item => item.type === 'certificate').length}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Documentos:</span>
+                      <div className="font-semibold text-accent">
+                        {filteredData.filter(item => item.type === 'document').length}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Export Buttons */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => handleExport('pdf')}
+                disabled={loading || filteredData.length === 0}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Exportar PDF
+              </Button>
+
+              <Button
+                onClick={() => handleExport('excel')}
+                disabled={loading || filteredData.length === 0}
+                variant="outline"
+                className="gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+
+              <Button
+                onClick={() => handleExport('csv')}
+                disabled={loading || filteredData.length === 0}
+                variant="outline"
+                className="gap-2"
+              >
+                <FileDown className="h-4 w-4" />
+                Exportar CSV
+              </Button>
+            </div>
+
+            {filteredData.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium mb-1">Nenhum dado encontrado</p>
+                <p className="text-sm">Ajuste os filtros para incluir mais dados no relatório</p>
+              </div>
             )}
           </div>
-        </div>
+        </Card>
+      </TabsContent>
 
-        {/* Export Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={() => handleExport('pdf')}
-            disabled={loading || filteredData.length === 0}
-            className="gap-2"
-          >
-            <FileText className="h-4 w-4" />
-            Exportar PDF
-          </Button>
+      <TabsContent value="preview" className="space-y-6 mt-6">
+        <ReportPreview
+          data={filteredData}
+          availableColumns={availableColumns}
+          onExport={(cols) => handleExport('pdf', cols)}
+          isExporting={loading}
+        />
+      </TabsContent>
 
-          <Button
-            onClick={() => handleExport('excel')}
-            disabled={loading || filteredData.length === 0}
-            variant="outline"
-            className="gap-2"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Exportar Excel
-          </Button>
-
-          <Button
-            onClick={() => handleExport('csv')}
-            disabled={loading || filteredData.length === 0}
-            variant="outline"
-            className="gap-2"
-          >
-            <FileDown className="h-4 w-4" />
-            Exportar CSV
-          </Button>
-        </div>
-
-        {filteredData.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium mb-1">Nenhum dado encontrado</p>
-            <p className="text-sm">Ajuste os filtros para incluir mais dados no relatório</p>
-          </div>
-        )}
-      </div>
-    </Card>
+      <TabsContent value="templates" className="space-y-6 mt-6">
+        <ReportTemplates
+          reportType={type}
+          currentConfig={{
+            selectedColumns,
+            filters,
+          }}
+          onLoadTemplate={handleLoadTemplate}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }

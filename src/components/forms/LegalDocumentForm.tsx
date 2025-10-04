@@ -22,6 +22,7 @@ const legalDocumentSchema = z.object({
   validity_date: z.string().optional(),
   status: z.enum(['valid', 'expiring', 'expired', 'pending', 'deactivated']),
   document_url: z.string().optional(),
+  public_link: z.string().url("URL inválida").optional().or(z.literal('')),
   is_sensitive: z.boolean().default(false),
 }).refine((data) => {
   // At least one of document_url or file upload is required (handled in component)
@@ -29,6 +30,15 @@ const legalDocumentSchema = z.object({
 }, {
   message: "É necessário fornecer uma URL ou fazer upload de um arquivo",
   path: ["document_url"]
+}).refine((data) => {
+  // If document is sensitive, public_link should be empty
+  if (data.is_sensitive && data.public_link) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Documentos sensíveis não podem ter link público",
+  path: ["public_link"]
 });
 
 type LegalDocumentFormData = z.infer<typeof legalDocumentSchema>;
@@ -66,6 +76,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
       validity_date: document?.validity_date || '',
       status: document?.status || 'valid',
       document_url: document?.document_url || '',
+      public_link: (document as any)?.public_link || '',
       is_sensitive: document?.is_sensitive || false,
     },
   });
@@ -103,6 +114,7 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
         document_url: documentUrl,
         validity_date: data.validity_date,
         status: data.status,
+        public_link: data.is_sensitive ? null : (data.public_link || null),
         is_sensitive: data.is_sensitive || false,
       };
 
@@ -264,6 +276,32 @@ export function LegalDocumentForm({ document, onSuccess, onCancel }: LegalDocume
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={form.control}
+              name="public_link"
+              render={({ field }) => {
+                const isSensitive = form.watch('is_sensitive');
+                return (
+                  <FormItem>
+                    <FormLabel>Link Público (QR Code)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="https://exemplo.com/documento"
+                        disabled={isSensitive}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {isSensitive 
+                        ? "Documentos sensíveis não podem ter link público" 
+                        : "Link para compartilhamento via QR Code"}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField

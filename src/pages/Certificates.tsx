@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown, Settings } from 'lucide-react';
+import { Plus, Edit, Eye, Download, Trash2, FileDown, ChevronDown, Settings, QrCode } from 'lucide-react';
 import { DocumentViewer } from '@/components/common/DocumentViewer';
+import { QRCodeDialog } from '@/components/common/QRCodeDialog';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export default function Certificates() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [viewerAttestation, setViewerAttestation] = useState<TechnicalCertificate | null>(null);
   const [showViewer, setShowViewer] = useState(false);
+  const [qrCode, setQrCode] = useState<{ url: string; title: string } | null>(null);
 
   const {
     searchTerm,
@@ -498,15 +500,29 @@ export default function Certificates() {
                   </p>
                 </div>
 
-                <DocumentActionButtons
-                  documentUserId={certificate.user_id}
-                  onEdit={() => handleEdit(certificate)}
-                  onDelete={() => handleDelete(certificate.id)}
-                  onView={() => handleView(certificate)}
-                  documentUrl={certificate.document_url}
-                  documentName={`${certificate.client_name} - ${certificate.project_object}`}
-                  showDownload={true}
-                />
+                <div className="flex gap-2 flex-wrap">
+                  {(certificate as any).public_link && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => setQrCode({ 
+                        url: (certificate as any).public_link!, 
+                        title: `${certificate.client_name} - ${certificate.project_object}` 
+                      })}
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <DocumentActionButtons
+                    documentUserId={certificate.user_id}
+                    onEdit={() => handleEdit(certificate)}
+                    onDelete={() => handleDelete(certificate.id)}
+                    onView={() => handleView(certificate)}
+                    documentUrl={certificate.document_url}
+                    documentName={`${certificate.client_name} - ${certificate.project_object}`}
+                    showDownload={true}
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -556,6 +572,17 @@ export default function Certificates() {
         documentName={viewerAttestation ? `${viewerAttestation.client_name} - ${viewerAttestation.project_object}` : undefined}
         documentId={viewerAttestation?.id}
       />
+
+      {/* QR Code Dialog */}
+      {qrCode && (
+        <QRCodeDialog
+          open={!!qrCode}
+          onOpenChange={(open) => !open && setQrCode(null)}
+          url={qrCode.url}
+          title={qrCode.title}
+          description="Escaneie para acessar o atestado técnico"
+        />
+      )}
       
       </Layout>
     </ErrorBoundary>

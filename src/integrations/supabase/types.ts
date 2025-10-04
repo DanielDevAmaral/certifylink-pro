@@ -381,6 +381,7 @@ export type Database = {
           is_sensitive: boolean | null
           last_sensitivity_change_at: string | null
           last_sensitivity_change_by: string | null
+          public_link: string | null
           status: Database["public"]["Enums"]["document_status"]
           updated_at: string
           user_id: string
@@ -397,6 +398,7 @@ export type Database = {
           is_sensitive?: boolean | null
           last_sensitivity_change_at?: string | null
           last_sensitivity_change_by?: string | null
+          public_link?: string | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id: string
@@ -413,6 +415,7 @@ export type Database = {
           is_sensitive?: boolean | null
           last_sensitivity_change_at?: string | null
           last_sensitivity_change_by?: string | null
+          public_link?: string | null
           status?: Database["public"]["Enums"]["document_status"]
           updated_at?: string
           user_id?: string
@@ -736,6 +739,7 @@ export type Database = {
           project_period_end: string | null
           project_period_start: string | null
           project_value: number | null
+          public_link: string | null
           related_certifications: Json[] | null
           status: Database["public"]["Enums"]["document_status"]
           tags: string[] | null
@@ -760,6 +764,7 @@ export type Database = {
           project_period_end?: string | null
           project_period_start?: string | null
           project_value?: number | null
+          public_link?: string | null
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           tags?: string[] | null
@@ -784,6 +789,7 @@ export type Database = {
           project_period_end?: string | null
           project_period_start?: string | null
           project_value?: number | null
+          public_link?: string | null
           related_certifications?: Json[] | null
           status?: Database["public"]["Enums"]["document_status"]
           tags?: string[] | null

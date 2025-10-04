@@ -13,6 +13,7 @@ import { SkeletonList } from "@/components/common/SkeletonCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
+import { QRCodeDialog } from "@/components/common/QRCodeDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCertificationSearchEngine, useCertificationFilterOptions, type SearchEngineFilters } from "@/hooks/useCertificationSearchEngine";
 import { useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
@@ -20,7 +21,7 @@ import { usePublicNames } from "@/hooks/usePublicNames";
 import { DocumentActionButtons } from "@/components/ui/document-action-buttons";
 import { getHighlightedDocumentId, clearHighlight } from '@/lib/utils/navigation';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Filter, Award, Calendar, ExternalLink, Eye, Edit, Trash2, FileDown, ChevronDown, BarChart3 } from "lucide-react";
+import { Plus, Filter, Award, Calendar, ExternalLink, Eye, Edit, Trash2, FileDown, ChevronDown, BarChart3, QrCode } from "lucide-react";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 
 // Smart filter configurations for certifications
@@ -87,6 +88,7 @@ export default function Certifications() {
   const [filters, setFilters] = useState<SearchEngineFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [qrCode, setQrCode] = useState<{ url: string; title: string } | null>(null);
 
   useRealtimeUpdates();
 
@@ -311,8 +313,19 @@ export default function Certifications() {
                   {!certification.approved_equivalence && <p className="text-xs text-warning">⚠️ Aguardando aprovação das equivalências</p>}
                 </div>}
 
-              <div className="pt-2 border-t border-border">
-                <DocumentActionButtons documentUserId={certification.user_id} onEdit={() => handleEdit(certification)} onDelete={() => handleDelete(certification.id)} externalLink={certification.public_link || undefined} />
+              <div className="pt-2 border-t border-border flex items-center gap-2 flex-wrap">
+                {certification.public_link && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setQrCode({ url: certification.public_link!, title: certification.name })}
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </Button>
+                )}
+                <div className="flex-1">
+                  <DocumentActionButtons documentUserId={certification.user_id} onEdit={() => handleEdit(certification)} onDelete={() => handleDelete(certification.id)} externalLink={certification.public_link || undefined} />
+                </div>
               </div>
             </div>
           </Card>)}
@@ -324,6 +337,17 @@ export default function Certifications() {
       {totalItems > 0 && <div className="mt-6">
           <PaginationControls currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
         </div>}
+      
+      {/* QR Code Dialog */}
+      {qrCode && (
+        <QRCodeDialog
+          open={!!qrCode}
+          onOpenChange={(open) => !open && setQrCode(null)}
+          url={qrCode.url}
+          title={qrCode.title}
+          description="Escaneie para acessar a certificação"
+        />
+      )}
       </Layout>
     </ErrorBoundary>;
 }

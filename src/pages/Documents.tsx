@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, FileText, Calendar, Shield, Edit, Trash2, Scale, Building, Receipt, UserCheck, TrendingUp, Briefcase, AlertTriangle } from 'lucide-react';
+import { Plus, FileText, Calendar, Shield, Edit, Trash2, Scale, Building, Receipt, UserCheck, TrendingUp, Briefcase, AlertTriangle, QrCode } from 'lucide-react';
 import { DocumentViewer } from '@/components/common/DocumentViewer';
+import { QRCodeDialog } from '@/components/common/QRCodeDialog';
 import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ export default function Documents() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [viewerDocument, setViewerDocument] = useState<LegalDocument | null>(null);
   const [showViewer, setShowViewer] = useState(false);
+  const [qrCode, setQrCode] = useState<{ url: string; title: string } | null>(null);
 
   const {
     searchTerm,
@@ -356,15 +358,29 @@ export default function Documents() {
                       </div>
                     )}
 
-                    <div className="pt-2 border-t border-border">
-                      <DocumentActionButtons
-                        documentUserId={document.user_id}
-                        onEdit={() => handleEdit(document)}
-                        onDelete={() => handleDelete(document.id)}
-                        onView={() => handleView(document)}
-                        documentUrl={document.document_url}
-                        documentName={document.document_name}
-                      />
+                    <div className="pt-2 border-t border-border flex items-center gap-2 flex-wrap">
+                      {!document.is_sensitive && (document as any).public_link && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setQrCode({ 
+                            url: (document as any).public_link!, 
+                            title: document.document_name 
+                          })}
+                        >
+                          <QrCode className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <div className="flex-1">
+                        <DocumentActionButtons
+                          documentUserId={document.user_id}
+                          onEdit={() => handleEdit(document)}
+                          onDelete={() => handleDelete(document.id)}
+                          onView={() => handleView(document)}
+                          documentUrl={document.document_url}
+                          documentName={document.document_name}
+                        />
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -410,6 +426,17 @@ export default function Documents() {
         documentName={viewerDocument?.document_name}
         documentId={viewerDocument?.id}
       />
+
+      {/* QR Code Dialog */}
+      {qrCode && (
+        <QRCodeDialog
+          open={!!qrCode}
+          onOpenChange={(open) => !open && setQrCode(null)}
+          url={qrCode.url}
+          title={qrCode.title}
+          description="Escaneie para acessar o documento"
+        />
+      )}
       
       </Layout>
     </ErrorBoundary>

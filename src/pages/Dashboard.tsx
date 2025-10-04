@@ -164,7 +164,7 @@ function DashboardContent() {
             <StatsCard 
               title="Taxa de Conformidade" 
               value={`${stats?.completion_percentage || 0}%`} 
-              description="Status atual: válidos + vencendo como conformes" 
+              description="Status atual: válidos + vencendo como conformes (inclui badges)" 
               icon={TrendingUp} 
               trend={{
                 value: 3,

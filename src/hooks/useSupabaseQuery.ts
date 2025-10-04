@@ -10,6 +10,8 @@ export interface DashboardStats {
   expiring_certificates: number;
   total_documents: number;
   expiring_documents: number;
+  total_badges: number;
+  expiring_badges: number;
   recent_uploads: number;
   completion_percentage: number;
   expiring_alert: number;
@@ -51,39 +53,45 @@ export function useDashboardStats() {
       let certQuery = supabase.from('certifications').select('status, validity_date');
       let attQuery = supabase.from('technical_attestations').select('status, validity_date');
       let docQuery = supabase.from('legal_documents').select('status, validity_date');
+      let badgeQuery = supabase.from('badges').select('status, expiry_date');
 
       // Filter out deactivated documents for regular users
       if (userRole !== 'admin' && userRole !== 'leader') {
         certQuery = certQuery.neq('status', 'deactivated');
         attQuery = attQuery.neq('status', 'deactivated');
         docQuery = docQuery.neq('status', 'deactivated');
+        badgeQuery = badgeQuery.neq('status', 'deactivated');
       }
 
       // Query paralela para todas as estatísticas
-      const [certificationsResult, attestationsResult, documentsResult] = await Promise.all([
+      const [certificationsResult, attestationsResult, documentsResult, badgesResult] = await Promise.all([
         certQuery,
         attQuery,
-        docQuery
+        docQuery,
+        badgeQuery
       ]);
 
       const certifications = certificationsResult.data || [];
       const attestations = attestationsResult.data || [];
       const documents = documentsResult.data || [];
+      const badges = badgesResult.data || [];
 
       // Filter out deactivated documents from statistics (should already be filtered by query for regular users)
       const activeCertifications = certifications.filter(cert => cert.status !== 'deactivated');
       const activeAttestations = attestations.filter(att => att.status !== 'deactivated');
       const activeDocuments = documents.filter(doc => doc.status !== 'deactivated');
+      const activeBadges = badges.filter(badge => badge.status !== 'deactivated');
 
       // Count only 'expiring' items for "vencendo em breve" - exclude already expired items and deactivated ones
       const expiringCertifications = activeCertifications.filter(cert => cert.status === 'expiring').length;
       const expiringAttestations = activeAttestations.filter(att => att.status === 'expiring').length;
       const expiringDocuments = activeDocuments.filter(doc => doc.status === 'expiring').length;
+      const expiringBadges = activeBadges.filter(badge => badge.status === 'expiring').length;
 
-      const totalDocuments = activeCertifications.length + activeAttestations.length + activeDocuments.length;
-      const validDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments]
+      const totalDocuments = activeCertifications.length + activeAttestations.length + activeDocuments.length + activeBadges.length;
+      const validDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments, ...activeBadges]
         .filter(item => item.status === 'valid').length;
-      const allExpiringDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments]
+      const allExpiringDocuments = [...activeCertifications, ...activeAttestations, ...activeDocuments, ...activeBadges]
         .filter(item => item.status === 'expiring').length;
       
       // Conformidade inclui documentos válidos + vencendo (ainda não vencidos)
@@ -99,6 +107,8 @@ export function useDashboardStats() {
         expiring_certificates: expiringAttestations,
         total_documents: documents.length,
         expiring_documents: expiringDocuments,
+        total_badges: badges.length,
+        expiring_badges: expiringBadges,
         completion_percentage: completionPercentage
       });
 
@@ -109,9 +119,11 @@ export function useDashboardStats() {
         expiring_certificates: expiringAttestations,
         total_documents: activeDocuments.length,
         expiring_documents: expiringDocuments,
+        total_badges: activeBadges.length,
+        expiring_badges: expiringBadges,
         recent_uploads: 0, // Será implementado com auditoria
         completion_percentage: completionPercentage,
-        expiring_alert: expiringCertifications + expiringAttestations + expiringDocuments // Total de documentos vencendo como alerta
+        expiring_alert: expiringCertifications + expiringAttestations + expiringDocuments + expiringBadges // Total de documentos vencendo como alerta
       };
     },
     enabled: !!user,

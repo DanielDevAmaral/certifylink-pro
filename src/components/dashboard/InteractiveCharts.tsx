@@ -257,9 +257,9 @@ const InteractiveCharts = memo(function InteractiveCharts({
       {/* Compliance Trend */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
-          title="Tendência de Compliance" 
-          description="Status atual dos documentos existentes em cada período"
-          explanation="Este gráfico mostra a taxa de conformidade baseada no STATUS ATUAL dos documentos. Documentos com status 'válido' ou 'vencendo' são considerados conformes. A análise considera todos os documentos que existiam em cada mês, usando seu status atual."
+          title="Histórico de Compliance" 
+          description="Taxa de compliance real calculada no último dia de cada mês"
+          explanation="Este gráfico mostra a taxa de conformidade HISTÓRICA baseada no status REAL que cada documento tinha no último dia de cada mês. Documentos com status 'válido' ou 'vencendo' são considerados conformes. A análise considera o status específico de cada documento naquela data passada."
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">

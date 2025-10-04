@@ -193,7 +193,24 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
       const complianceRate = totalDocuments > 0 ? 
         Math.round((compliantDocuments / totalDocuments) * 100) : 0;
 
-      // Generate monthly trend (last 6 months) - based on current document status
+      // Helper function to calculate document status at a specific date
+      const calculateStatusAtDate = (expiryDate: string | null, referenceDate: Date): string => {
+        if (!expiryDate) return 'valid'; // Documents without expiry date are always valid
+        
+        const expiry = parseISO(expiryDate);
+        const thirtyDaysAfterReference = new Date(referenceDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        
+        if (expiry < referenceDate) return 'expired';
+        if (expiry <= thirtyDaysAfterReference) return 'expiring';
+        return 'valid';
+      };
+
+      // Helper function to get expiry date from any document type
+      const getExpiryDate = (doc: any): string | null => {
+        return (doc as any).validity_date || (doc as any).expiry_date || null;
+      };
+
+      // Generate monthly trend (last 6 months) - based on REAL historical status
       const monthlyTrend = [];
       for (let i = 5; i >= 0; i--) {
         const targetDate = subMonths(new Date(), i);
@@ -206,9 +223,17 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
           return docDate <= endOfTargetMonth;
         });
 
-        // Count documents with current valid or expiring status (real current status)
-        const monthValid = existingDocs.filter(doc => doc.status === 'valid').length;
-        const monthExpiring = existingDocs.filter(doc => doc.status === 'expiring').length;
+        // Calculate REAL status for each document at the end of that month
+        const monthValid = existingDocs.filter(doc => {
+          const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth);
+          return statusAtDate === 'valid';
+        }).length;
+        
+        const monthExpiring = existingDocs.filter(doc => {
+          const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth);
+          return statusAtDate === 'expiring';
+        }).length;
+        
         const monthCompliant = monthValid + monthExpiring; // Compliance includes valid + expiring
         const monthTotal = existingDocs.length;
         

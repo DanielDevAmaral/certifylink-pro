@@ -359,18 +359,27 @@ export default function Documents() {
                     )}
 
                     <div className="pt-2 border-t border-border flex items-center gap-2 flex-wrap">
-                      {!document.is_sensitive && (document as any).public_link && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => setQrCode({ 
-                            url: (document as any).public_link!, 
-                            title: document.document_name 
-                          })}
-                        >
-                          <QrCode className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (document.document_url) {
+                            setQrCode({ 
+                              url: document.document_url, 
+                              title: `QR Code - ${document.document_name}`
+                            });
+                          } else {
+                            toast({
+                              title: "Documento não disponível",
+                              description: "Este documento não possui um arquivo anexado.",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                        disabled={document.is_sensitive}
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </Button>
                       <div className="flex-1">
                         <DocumentActionButtons
                           documentUserId={document.user_id}
@@ -434,7 +443,7 @@ export default function Documents() {
           onOpenChange={(open) => !open && setQrCode(null)}
           url={qrCode.url}
           title={qrCode.title}
-          description="Escaneie para acessar o documento"
+          description="Escaneie para fazer download do documento"
         />
       )}
       

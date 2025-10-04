@@ -501,18 +501,26 @@ export default function Certificates() {
                 </div>
 
                 <div className="flex gap-2 flex-wrap">
-                  {(certificate as any).public_link && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => setQrCode({ 
-                        url: (certificate as any).public_link!, 
-                        title: `${certificate.client_name} - ${certificate.project_object}` 
-                      })}
-                    >
-                      <QrCode className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (certificate.document_url) {
+                        setQrCode({ 
+                          url: certificate.document_url, 
+                          title: `QR Code - ${certificate.project_object}`
+                        });
+                      } else {
+                        toast({
+                          title: "Documento não disponível",
+                          description: "Este atestado não possui um arquivo anexado.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </Button>
                   <DocumentActionButtons
                     documentUserId={certificate.user_id}
                     onEdit={() => handleEdit(certificate)}
@@ -580,7 +588,7 @@ export default function Certificates() {
           onOpenChange={(open) => !open && setQrCode(null)}
           url={qrCode.url}
           title={qrCode.title}
-          description="Escaneie para acessar o atestado técnico"
+          description="Escaneie para fazer download do atestado"
         />
       )}
       

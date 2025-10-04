@@ -37,7 +37,6 @@ const attestationSchema = z.object({
   document_type: z.enum(['technical_attestation', 'project_case', 'success_case']).optional(),
   business_vertical_id: z.string().optional(),
   tech_platform_id: z.string().optional(),
-  public_link: z.string().url("URL inválida").optional().or(z.literal('')),
   related_certifications: z.array(z.object({
     certification_id: z.string(),
     user_id: z.string()
@@ -86,7 +85,6 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
       document_type: (attestation?.document_type as any) || 'technical_attestation',
       business_vertical_id: attestation?.business_vertical_id || '',
       tech_platform_id: attestation?.tech_platform_id || '',
-      public_link: (attestation as any)?.public_link || '',
       related_certifications: attestation?.related_certifications || [],
       tags: attestation?.tags || [],
       hours_breakdown: attestation?.hours_breakdown || {},
@@ -145,7 +143,6 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
         document_type: data.document_type || 'technical_attestation',
         business_vertical_id: data.business_vertical_id || null,
         tech_platform_id: data.tech_platform_id || null,
-        public_link: data.public_link || null,
         related_certifications: (data.related_certifications || []) as any,
         tags,
         hours_breakdown: hoursBreakdown,
@@ -364,23 +361,6 @@ export function TechnicalAttestationForm({ attestation, onSuccess, onCancel }: T
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="public_link"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Link Público (QR Code)</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="https://exemplo.com/atestado" />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    Link para compartilhamento via QR Code
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

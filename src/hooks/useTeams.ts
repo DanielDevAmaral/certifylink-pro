@@ -206,6 +206,9 @@ export function useAddTeamMember() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['team-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['team-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['team-stats'] });
       toast.success('Membro adicionado à equipe!');
     },
     onError: (error) => {
@@ -230,6 +233,9 @@ export function useRemoveTeamMember() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['team-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['team-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['team-stats'] });
       toast.success('Membro removido da equipe!');
     },
     onError: (error) => {

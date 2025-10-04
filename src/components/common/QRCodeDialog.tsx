@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, ExternalLink, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getCertbaseLogoDataUrl } from "@/lib/utils/qrcode";
 
 interface QRCodeDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface QRCodeDialogProps {
 
 export function QRCodeDialog({ open, onOpenChange, url, title, description }: QRCodeDialogProps) {
   const { toast } = useToast();
+  const logoDataUrl = getCertbaseLogoDataUrl();
 
   const handleCopyLink = async () => {
     try {
@@ -44,6 +46,14 @@ export function QRCodeDialog({ open, onOpenChange, url, title, description }: QR
               size={256}
               includeMargin={true}
               level="H"
+              imageSettings={{
+                src: logoDataUrl,
+                x: undefined,
+                y: undefined,
+                height: 50,
+                width: 50,
+                excavate: true,
+              }}
             />
           </div>
           {description && (

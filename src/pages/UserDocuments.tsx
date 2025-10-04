@@ -2,14 +2,17 @@ import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { QRCodeDialog } from "@/components/common/QRCodeDialog";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useState } from "react";
 import { 
   ArrowLeft,
   Award,
@@ -19,7 +22,8 @@ import {
   User,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  QrCode
 } from "lucide-react";
 
 interface UserDocument {
@@ -31,6 +35,7 @@ interface UserDocument {
   created_at: string;
   updated_at: string;
   details: any;
+  document_url?: string;
 }
 
 const statusConfig = {
@@ -79,6 +84,8 @@ export default function UserDocuments() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userName = searchParams.get('name') || 'Usuário';
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null);
   
   const handleDocumentClick = (doc: UserDocument) => {
     switch (doc.type) {
@@ -92,6 +99,26 @@ export default function UserDocuments() {
         navigate(`/documents?highlight=${doc.id}`);
         break;
     }
+  };
+
+  const handleQRCodeClick = (e: React.MouseEvent, doc: UserDocument) => {
+    e.stopPropagation();
+    setSelectedDocument(doc);
+    setQrDialogOpen(true);
+  };
+
+  const getQRCodeUrl = (doc: UserDocument) => {
+    if (doc.type === 'certification') {
+      return doc.details.public_link || '';
+    }
+    return doc.document_url || '';
+  };
+
+  const getQRCodeDescription = (doc: UserDocument) => {
+    if (doc.type === 'certification') {
+      return 'Compartilhe este link para validação';
+    }
+    return 'Link para download do documento';
   };
 
   const { data: documents, isLoading, error } = useQuery({
@@ -122,7 +149,8 @@ export default function UserDocuments() {
             details: {
               function: cert.function,
               public_link: cert.public_link
-            }
+            },
+            document_url: cert.public_link
           });
         });
       }
@@ -149,7 +177,8 @@ export default function UserDocuments() {
               client_name: tech.client_name,
               issuer_name: tech.issuer_name,
               project_value: tech.project_value
-            }
+            },
+            document_url: tech.document_url
           });
         });
       }
@@ -176,7 +205,8 @@ export default function UserDocuments() {
               document_type: legal.document_type,
               document_subtype: legal.document_subtype,
               is_sensitive: legal.is_sensitive
-            }
+            },
+            document_url: legal.document_url
           });
         });
       }
@@ -286,6 +316,7 @@ export default function UserDocuments() {
                     {docs.map(doc => {
                       const statusInfo = statusConfig[doc.status];
                       const StatusIcon = statusInfo.icon;
+                      const canShowQRCode = doc.document_url && !(doc.type === 'legal_document' && doc.details.is_sensitive);
 
                       return (
                         <Card 
@@ -294,12 +325,12 @@ export default function UserDocuments() {
                           onClick={() => handleDocumentClick(doc)}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 flex-1">
                               <div className={`p-2 rounded-lg ${config.color}`}>
                                 <TypeIcon className="h-4 w-4" />
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-3">
                                   <h4 className="font-semibold text-foreground">{doc.name}</h4>
                                   <Badge className={statusInfo.color}>
@@ -346,6 +377,17 @@ export default function UserDocuments() {
                                 )}
                               </div>
                             </div>
+
+                            {canShowQRCode && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => handleQRCodeClick(e, doc)}
+                                className="ml-4"
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </Card>
                       );
@@ -370,6 +412,17 @@ export default function UserDocuments() {
             </Card>
           )}
         </div>
+
+        {/* QR Code Dialog */}
+        {selectedDocument && (
+          <QRCodeDialog
+            open={qrDialogOpen}
+            onOpenChange={setQrDialogOpen}
+            url={getQRCodeUrl(selectedDocument)}
+            title={selectedDocument.name}
+            description={getQRCodeDescription(selectedDocument)}
+          />
+        )}
       </Layout>
     </ErrorBoundary>
   );

@@ -23,32 +23,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
 }: InteractiveChartsProps) {
   const { toggleFilter, filters } = useDashboardFilters();
 
-  // Show loading state if data isn't ready yet or filters are being applied
-  if (isLoading || !analytics || !platformData) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[...Array(6)].map((_, i) => (
-          <SkeletonCard key={i} />
-        ))}
-      </div>
-    );
-  }
-
-  // Check if we have any data to display
-  const hasData = analytics.totalDocuments > 0 || platformData.length > 0;
-  
-  if (!hasData) {
-    return (
-      <Card className="p-8">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg mb-2">Nenhum dado encontrado</p>
-          <p className="text-sm">Ajuste os filtros ou adicione novos documentos para visualizar os gráficos.</p>
-        </div>
-      </Card>
-    );
-  }
-
-  // Chart interaction handlers
+  // Chart interaction handlers - MUST be before any conditional returns
   const handleCategoryClick = useCallback((data: any) => {
     if (data && data.category) {
       toggleFilter('categories', data.category);
@@ -77,6 +52,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
 
   // Prepare data for charts with isActive flag for visual feedback
   const documentData = useMemo(() => {
+    if (!analytics) return [];
     return analytics.categoryBreakdown.map(cat => ({
       name: cat.category,
       category: cat.category,
@@ -89,6 +65,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
   }, [analytics, filters]);
 
   const statusData = useMemo(() => {
+    if (!analytics) return [];
     return [
       { 
         name: 'Válidos', 
@@ -112,6 +89,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
   }, [analytics, filters]);
 
   const scatterData = useMemo(() => {
+    if (!analytics) return [];
     return analytics.categoryBreakdown.map(cat => ({
       x: cat.count,
       y: cat.valid + cat.expiring,
@@ -123,11 +101,37 @@ const InteractiveCharts = memo(function InteractiveCharts({
   }, [analytics, filters]);
 
   const platformChartData = useMemo(() => {
+    if (!platformData) return [];
     return platformData.map(platform => ({
       ...platform,
       isActive: !filters.platforms?.length || filters.platforms.includes(platform.platform)
     }));
   }, [platformData, filters]);
+
+  // Show loading state if data isn't ready yet or filters are being applied
+  if (isLoading || !analytics || !platformData) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  // Check if we have any data to display
+  const hasData = analytics.totalDocuments > 0 || platformData.length > 0;
+  
+  if (!hasData) {
+    return (
+      <Card className="p-8">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg mb-2">Nenhum dado encontrado</p>
+          <p className="text-sm">Ajuste os filtros ou adicione novos documentos para visualizar os gráficos.</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

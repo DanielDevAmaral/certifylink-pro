@@ -194,14 +194,15 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
         Math.round((compliantDocuments / totalDocuments) * 100) : 0;
 
       // Helper function to calculate document status at a specific date
-      const calculateStatusAtDate = (expiryDate: string | null, referenceDate: Date): string => {
+      // Uses dynamic alert days based on document type (default 60 days for most types)
+      const calculateStatusAtDate = (expiryDate: string | null, referenceDate: Date, alertDays: number = 60): string => {
         if (!expiryDate) return 'valid'; // Documents without expiry date are always valid
         
         const expiry = parseISO(expiryDate);
-        const thirtyDaysAfterReference = new Date(referenceDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const alertDaysAfterReference = new Date(referenceDate.getTime() + alertDays * 24 * 60 * 60 * 1000);
         
         if (expiry < referenceDate) return 'expired';
-        if (expiry <= thirtyDaysAfterReference) return 'expiring';
+        if (expiry <= alertDaysAfterReference) return 'expiring';
         return 'valid';
       };
 
@@ -210,12 +211,26 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
         return (doc as any).validity_date || (doc as any).expiry_date || null;
       };
 
+      // Helper to get alert days based on document category
+      const getAlertDaysForDoc = (doc: any): number => {
+        // Badges use 30 days, others use 60 days by default
+        if (doc.category === 'Badges') return 30;
+        return 60;
+      };
+
       // Generate monthly trend (last 6 months) - based on REAL historical status
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
       const monthlyTrend = [];
       for (let i = 5; i >= 0; i--) {
         const targetDate = subMonths(new Date(), i);
         const monthName = format(targetDate, 'MMM/yy', { locale: ptBR });
         const endOfTargetMonth = endOfMonth(targetDate);
+        
+        // Check if this is the current month
+        const isCurrentMonth = targetDate.getMonth() === currentMonth && 
+                               targetDate.getFullYear() === currentYear;
         
         // Get all documents that existed up to this month (created before or during)
         const existingDocs = filteredDocuments.filter(doc => {
@@ -223,24 +238,37 @@ export function useDashboardAnalytics(filters?: DashboardFilters) {
           return docDate <= endOfTargetMonth;
         });
 
-        // Calculate REAL status for each document at the end of that month
-        const monthValid = existingDocs.filter(doc => {
-          const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth);
-          return statusAtDate === 'valid';
-        }).length;
+        let compliance: number;
         
-        const monthExpiring = existingDocs.filter(doc => {
-          const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth);
-          return statusAtDate === 'expiring';
-        }).length;
-        
-        const monthCompliant = monthValid + monthExpiring; // Compliance includes valid + expiring
-        const monthTotal = existingDocs.length;
+        if (isCurrentMonth) {
+          // For current month, use CURRENT compliance rate (not projected to end of month)
+          // This matches what's shown in the dashboard stats
+          const currentValid = existingDocs.filter(doc => doc.status === 'valid').length;
+          const currentExpiring = existingDocs.filter(doc => doc.status === 'expiring').length;
+          const currentCompliant = currentValid + currentExpiring;
+          compliance = existingDocs.length > 0 ? Math.round((currentCompliant / existingDocs.length) * 100) : 0;
+        } else {
+          // For past months, calculate REAL status at the end of that month
+          const monthValid = existingDocs.filter(doc => {
+            const alertDays = getAlertDaysForDoc(doc);
+            const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth, alertDays);
+            return statusAtDate === 'valid';
+          }).length;
+          
+          const monthExpiring = existingDocs.filter(doc => {
+            const alertDays = getAlertDaysForDoc(doc);
+            const statusAtDate = calculateStatusAtDate(getExpiryDate(doc), endOfTargetMonth, alertDays);
+            return statusAtDate === 'expiring';
+          }).length;
+          
+          const monthCompliant = monthValid + monthExpiring;
+          compliance = existingDocs.length > 0 ? Math.round((monthCompliant / existingDocs.length) * 100) : 0;
+        }
         
         monthlyTrend.push({
           month: monthName,
-          total: monthTotal,
-          compliance: monthTotal > 0 ? Math.round((monthCompliant / monthTotal) * 100) : 0
+          total: existingDocs.length,
+          compliance: compliance
         });
       }
 

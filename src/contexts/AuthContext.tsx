@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -42,6 +43,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
   const isPageVisible = usePageVisibility();
+  
+  // Session timeout state
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const warningRef = useRef<NodeJS.Timeout | null>(null);
+  const warningShownRef = useRef<boolean>(false);
+  
+  // Fetch session timeout settings
+  const { data: sessionTimeoutSetting } = useQuery({
+    queryKey: ['session_timeout_setting'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'security.session_timeout')
+        .single();
+      
+      if (error) {
+        console.log('No session timeout setting found, using default');
+        return 30; // Default 30 minutes
+      }
+      
+      return data?.setting_value ?? 30;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user, // Only fetch when user is authenticated
+  });
 
   const checkUserStatus = useCallback((profileData: any) => {
     if (!profileData) return true;
@@ -228,8 +255,96 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
+    clearSessionTimers();
     await supabase.auth.signOut();
   };
+  
+  // Session timeout functions
+  const clearSessionTimers = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (warningRef.current) {
+      clearTimeout(warningRef.current);
+      warningRef.current = null;
+    }
+    warningShownRef.current = false;
+  }, []);
+  
+  const handleSessionTimeout = useCallback(async () => {
+    if (user) {
+      toast.error('Sessão expirada', {
+        description: 'Sua sessão foi encerrada por inatividade.',
+      });
+      
+      await signOut();
+    }
+  }, [user]);
+  
+  const handleSessionWarning = useCallback(() => {
+    if (user && !warningShownRef.current) {
+      warningShownRef.current = true;
+      toast.warning('Sessão expirando', {
+        description: 'Sua sessão será encerrada em breve por inatividade.',
+      });
+    }
+  }, [user]);
+  
+  const resetSessionTimer = useCallback(() => {
+    if (!user || !isPageVisible) return;
+    
+    const sessionTimeoutMinutes = typeof sessionTimeoutSetting === 'number' ? sessionTimeoutSetting : 30;
+    const timeoutMs = sessionTimeoutMinutes * 60 * 1000;
+    const warningMs = 30 * 1000; // 30 seconds warning
+    
+    warningShownRef.current = false;
+    clearSessionTimers();
+    
+    // Set warning timer
+    warningRef.current = setTimeout(handleSessionWarning, timeoutMs - warningMs);
+    
+    // Set timeout timer
+    timeoutRef.current = setTimeout(handleSessionTimeout, timeoutMs);
+  }, [user, isPageVisible, sessionTimeoutSetting, clearSessionTimers, handleSessionWarning, handleSessionTimeout]);
+  
+  // Session timeout activity tracking
+  useEffect(() => {
+    if (!user || !isPageVisible) {
+      clearSessionTimers();
+      return;
+    }
+    
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    // Throttle activity tracking to avoid excessive timer resets
+    let throttleTimer: NodeJS.Timeout | null = null;
+    const throttledResetTimer = () => {
+      if (!throttleTimer) {
+        resetSessionTimer();
+        throttleTimer = setTimeout(() => {
+          throttleTimer = null;
+        }, 2000); // 2 second throttle
+      }
+    };
+    
+    events.forEach(event => {
+      document.addEventListener(event, throttledResetTimer, true);
+    });
+    
+    // Start initial timer
+    resetSessionTimer();
+    
+    return () => {
+      clearSessionTimers();
+      events.forEach(event => {
+        document.removeEventListener(event, throttledResetTimer, true);
+      });
+      if (throttleTimer) {
+        clearTimeout(throttleTimer);
+      }
+    };
+  }, [user, isPageVisible, resetSessionTimer, clearSessionTimers]);
 
   const value = {
     user,

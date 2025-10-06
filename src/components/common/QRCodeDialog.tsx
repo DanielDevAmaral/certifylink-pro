@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, ExternalLink, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getCertbaseLogoDataUrl } from "@/lib/utils/qrcode";
+import { getSignetLogoDataUrl } from "@/lib/utils/qrcode";
 
 interface QRCodeDialogProps {
   open: boolean;
@@ -15,7 +15,7 @@ interface QRCodeDialogProps {
 
 export function QRCodeDialog({ open, onOpenChange, url, title, description }: QRCodeDialogProps) {
   const { toast } = useToast();
-  const logoDataUrl = getCertbaseLogoDataUrl();
+  const logoDataUrl = getSignetLogoDataUrl();
 
   const handleCopyLink = async () => {
     try {
@@ -41,8 +41,8 @@ export function QRCodeDialog({ open, onOpenChange, url, title, description }: QR
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="bg-white p-4 rounded-lg border">
-            <QRCodeSVG 
-              value={url} 
+            <QRCodeSVG
+              value={url}
               size={256}
               includeMargin={true}
               level="H"
@@ -56,25 +56,13 @@ export function QRCodeDialog({ open, onOpenChange, url, title, description }: QR
               }}
             />
           </div>
-          {description && (
-            <p className="text-sm text-muted-foreground text-center">
-              {description}
-            </p>
-          )}
+          {description && <p className="text-sm text-muted-foreground text-center">{description}</p>}
           <div className="flex gap-2 w-full">
-            <Button 
-              variant="outline" 
-              onClick={handleCopyLink}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={handleCopyLink} className="flex-1">
               <Copy className="h-4 w-4 mr-2" />
               Copiar Link
             </Button>
-            <Button 
-              variant="outline" 
-              asChild
-              className="flex-1"
-            >
+            <Button variant="outline" asChild className="flex-1">
               <a href={url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Abrir Link

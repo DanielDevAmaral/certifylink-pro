@@ -1,10 +1,10 @@
-interface CertBaseLogoProps {
+interface SignetLogoProps {
   variant?: "full" | "icon";
   className?: string;
   size?: number;
 }
 
-export function CertBaseLogo({ variant = "full", className = "", size = 200 }: CertBaseLogoProps) {
+export function SignetLogo({ variant = "full", className = "", size = 200 }: SignetLogoProps) {
   if (variant === "icon") {
     return (
       <svg 
@@ -101,7 +101,7 @@ export function CertBaseLogo({ variant = "full", className = "", size = 200 }: C
       {/* Text */}
       <text x="140" y="100" fontFamily="'Inter', 'Segoe UI', sans-serif" 
             fontSize="44" fontWeight="700" fill="#141414" letterSpacing="-1">
-        Certbase
+        Signet
       </text>
       
       <text x="140" y="125" fontFamily="'Inter', 'Segoe UI', sans-serif" 

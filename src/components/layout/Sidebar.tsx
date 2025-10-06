@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { CertBaseLogo } from "@/components/ui/certbase-logo";
+import { SignetLogo } from "@/components/ui/signet-logo";
 import {
   LayoutDashboard,
   Award,
@@ -89,7 +89,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-20 items-center border-b border-border px-6">
-          <CertBaseLogo variant="full" size={285} />
+          <SignetLogo variant="full" size={285} />
         </div>
 
         {/* Navigation */}

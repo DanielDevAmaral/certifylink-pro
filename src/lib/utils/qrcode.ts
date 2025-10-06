@@ -1,12 +1,12 @@
 /**
- * Utility functions for QR Code generation with Certbase branding
+ * Utility functions for QR Code generation with Signet branding
  */
 
 /**
- * Converts the Certbase logo icon SVG to a Data URL for embedding in QR codes
- * @returns Data URL string of the Certbase logo
+ * Converts the Signet logo icon SVG to a Data URL for embedding in QR codes
+ * @returns Data URL string of the Signet logo
  */
-export const getCertbaseLogoDataUrl = (): string => {
+export const getSignetLogoDataUrl = (): string => {
   const svg = `
     <svg viewBox="0 0 70 90" xmlns="http://www.w3.org/2000/svg">
       <defs>

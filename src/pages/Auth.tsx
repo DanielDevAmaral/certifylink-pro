@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { CertBaseLogo } from '@/components/ui/certbase-logo';
+import { SignetLogo } from '@/components/ui/signet-logo';
 import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } from '@/lib/validations/auth';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { FormFieldError } from '@/components/ui/form-field-error';
@@ -167,7 +167,7 @@ export default function Auth() {
          
           <h1 className="text-2xl font-bold text-foreground">
              <div className="flex h-20 items-center border-b border-border px-6">
-          <CertBaseLogo variant="full" size={285} />
+          <SignetLogo variant="full" size={285} />
         </div>
           </h1>
 

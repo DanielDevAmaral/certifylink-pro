@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, ExternalLink, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getSignetLogoDataUrl } from "@/lib/utils/qrcode";
+import { getCertbaseLogoDataUrl } from "@/lib/utils/qrcode";
 
 interface QRCodeDialogProps {
   open: boolean;

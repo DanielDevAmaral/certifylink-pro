@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -135,24 +135,46 @@ export function ScreenshotUpload({ onUploadComplete, onUploadError, currentUrl, 
     [uploadFile],
   );
 
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
+  // Global paste listener
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      console.log('Global paste event detected');
       const items = e.clipboardData?.items;
-      if (!items) return;
+      if (!items) {
+        console.log('No clipboard items found');
+        return;
+      }
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
+        console.log('Clipboard item type:', item.type);
         if (item.type.indexOf("image") !== -1) {
           const file = item.getAsFile();
           if (file) {
+            console.log('Image file detected:', file.name, file.size);
+            e.preventDefault();
+            toast({
+              title: "Imagem detectada",
+              description: "Fazendo upload da imagem colada...",
+            });
             uploadFile(file);
           }
           break;
         }
       }
-    },
-    [uploadFile],
-  );
+    };
+
+    // Only add listener when no preview and not uploading
+    if (!previewUrl && !uploading) {
+      console.log('Adding global paste listener');
+      document.addEventListener('paste', handleGlobalPaste);
+    }
+
+    return () => {
+      console.log('Removing global paste listener');
+      document.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [previewUrl, uploading, uploadFile]);
 
   const removeImage = () => {
     setPreviewUrl("");
@@ -162,14 +184,6 @@ export function ScreenshotUpload({ onUploadComplete, onUploadError, currentUrl, 
   const openFileDialog = () => {
     fileInputRef.current?.click();
   };
-
-  // Enable paste functionality when component is focused
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.ctrlKey && e.key === "v") {
-      // Let the paste event handler take care of this
-      e.preventDefault();
-    }
-  }, []);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -217,9 +231,6 @@ export function ScreenshotUpload({ onUploadComplete, onUploadError, currentUrl, 
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={!uploading ? openFileDialog : undefined}
-          onPaste={handlePaste}
-          onKeyDown={handleKeyDown}
-          tabIndex={0}
         >
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             {uploading ? (

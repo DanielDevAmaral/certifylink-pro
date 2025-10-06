@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ReportGenerator } from "@/components/reports/ReportGenerator";
 import { QRCodeDialog } from "@/components/common/QRCodeDialog";
+import { ImageZoomDialog } from "@/components/common/ImageZoomDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCertificationSearchEngine, useCertificationFilterOptions, type SearchEngineFilters } from "@/hooks/useCertificationSearchEngine";
 import { useDeleteCertification, type CertificationWithProfile } from "@/hooks/useCertifications";
@@ -89,6 +90,7 @@ export default function Certifications() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [qrCode, setQrCode] = useState<{ url: string; title: string } | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; title: string } | null>(null);
 
   useRealtimeUpdates();
 
@@ -278,8 +280,15 @@ export default function Certifications() {
 
               <div className="space-y-3">
                 {/* Screenshot thumbnail if available */}
-                {certification.screenshot_url && <div className="w-full h-32 rounded-lg overflow-hidden bg-muted">
-                    <img src={certification.screenshot_url} alt={`Screenshot de ${certification.name}`} className="w-full h-full object-cover" />
+                {certification.screenshot_url && <div 
+                    className="w-full h-32 rounded-lg overflow-hidden bg-muted cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group"
+                    onClick={() => setZoomedImage({ url: certification.screenshot_url!, title: certification.name })}
+                  >
+                    <img 
+                      src={certification.screenshot_url} 
+                      alt={`Screenshot de ${certification.name}`} 
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:brightness-110" 
+                    />
                   </div>}
 
                 <div>
@@ -346,6 +355,17 @@ export default function Certifications() {
           url={qrCode.url}
           title={qrCode.title}
           description="Escaneie para acessar a certificação"
+        />
+      )}
+
+      {/* Image Zoom Dialog */}
+      {zoomedImage && (
+        <ImageZoomDialog
+          open={!!zoomedImage}
+          onOpenChange={(open) => !open && setZoomedImage(null)}
+          imageUrl={zoomedImage.url}
+          title={zoomedImage.title}
+          description="Clique em 'Abrir original' para visualizar em tela cheia"
         />
       )}
       </Layout>

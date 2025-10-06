@@ -2,10 +2,11 @@ import { Card } from "@/components/ui/card";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, AreaChart, Area, ScatterChart, Scatter, Legend
+  PieChart, Pie, Cell, AreaChart, Area, Legend
 } from 'recharts';
 import { AnalyticsData } from "@/hooks/useDashboardAnalytics";
 import { CertificationPlatformData } from "@/hooks/useCertificationsByPlatform";
+import { useCertificationsByUser } from "@/hooks/useCertificationsByUser";
 import { memo, useMemo, useCallback } from 'react';
 import { ChartTitleWithInfo } from './CustomTooltips';
 import { useDashboardFilters } from '@/contexts/DashboardFilterContext';
@@ -22,6 +23,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
   isLoading
 }: InteractiveChartsProps) {
   const { toggleFilter, filters } = useDashboardFilters();
+  const { data: userCertifications, isLoading: userCertsLoading } = useCertificationsByUser();
 
   // Chart interaction handlers - MUST be before any conditional returns
   const handleCategoryClick = useCallback((data: any) => {
@@ -88,17 +90,25 @@ const InteractiveCharts = memo(function InteractiveCharts({
     ].filter(item => item.value > 0);
   }, [analytics, filters]);
 
-  const scatterData = useMemo(() => {
-    if (!analytics) return [];
-    return analytics.categoryBreakdown.map(cat => ({
-      x: cat.count,
-      y: cat.valid + cat.expiring,
-      z: cat.expired,
-      category: cat.category,
-      compliance: cat.count > 0 ? Math.round(((cat.valid + cat.expiring) / cat.count) * 100) : 0,
-      isActive: !filters.categories?.length || filters.categories.includes(cat.category)
-    }));
-  }, [analytics, filters]);
+  // Format user certifications data for bar chart
+  const userCertificationsData = useMemo(() => {
+    if (!userCertifications) return [];
+    
+    return userCertifications.map(user => {
+      // Extract first and last name
+      const nameParts = user.fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+      const displayName = lastName ? `${firstName} ${lastName}` : firstName;
+      
+      return {
+        name: displayName,
+        fullName: user.fullName,
+        email: user.email,
+        certifications: user.certificationCount
+      };
+    });
+  }, [userCertifications]);
 
   const platformChartData = useMemo(() => {
     if (!platformData) return [];
@@ -109,7 +119,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
   }, [platformData, filters]);
 
   // Show loading state if data isn't ready yet or filters are being applied
-  if (isLoading || !analytics || !platformData) {
+  if (isLoading || userCertsLoading || !analytics || !platformData) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[...Array(6)].map((_, i) => (
@@ -282,40 +292,57 @@ const InteractiveCharts = memo(function InteractiveCharts({
         </ChartTitleWithInfo>
       </Card>
 
-      {/* Correlation Analysis */}
+      {/* Certifications by User */}
       <Card className="card-corporate">
         <ChartTitleWithInfo 
-          title="Análise de Correlação" 
-          description="Relação entre total de documentos e conformidade"
-          explanation="Gráfico de dispersão mostrando a relação entre quantidade total de documentos (eixo X) e documentos conformes (eixo Y) por categoria."
+          title="Certificações por Colaborador" 
+          description="Quantidade de certificações por colaborador"
+          explanation="Gráfico de barras mostrando o número de certificações de cada colaborador, ordenado do maior para o menor. Passe o mouse sobre as barras para ver o email do colaborador."
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+              <BarChart 
+                data={userCertificationsData} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
-                  type="number" 
-                  dataKey="x" 
-                  name="Total"
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
                   tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  fontSize={12}
+                  fontSize={10}
                 />
                 <YAxis 
-                  type="number" 
-                  dataKey="y" 
-                  name="Conformes"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }} 
                   fontSize={12}
+                  label={{ value: 'Certificações', angle: -90, position: 'insideLeft' }}
                 />
-                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                <Scatter 
-                  name="Categorias" 
-                  data={scatterData}
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+                          <p className="font-semibold text-sm">{data.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{data.email}</p>
+                          <p className="text-sm mt-1">
+                            <span className="font-medium">Certificações:</span> {data.certifications}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar 
+                  dataKey="certifications" 
                   fill="hsl(var(--primary))"
-                  onClick={handleCategoryClick}
-                  style={{ cursor: 'pointer' }}
+                  name="Certificações"
+                  radius={[4, 4, 0, 0]}
                 />
-              </ScatterChart>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartTitleWithInfo>

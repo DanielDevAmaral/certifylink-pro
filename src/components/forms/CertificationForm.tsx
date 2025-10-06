@@ -22,7 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 const certificationSchema = z.object({
   name: z.string().min(1, 'Nome da certificação é obrigatório'),
   function: z.string().min(1, 'Função é obrigatória'),
-  validity_date: z.string().min(1, 'Data de validade é obrigatória'),
+  validity_date: z.string().optional().or(z.literal('')).refine((val) => {
+    if (val && val !== '') {
+      return !isNaN(Date.parse(val));
+    }
+    return true;
+  }, 'Data inválida'),
   status: z.enum(['valid', 'expired', 'expiring', 'pending', 'deactivated']).default('valid'),
   equivalence_services: z.array(z.string()).default([]),
   approved_equivalence: z.boolean().default(false),
@@ -188,13 +193,20 @@ export function CertificationForm({
             <FormField control={form.control} name="validity_date" render={({
             field
           }) => <FormItem>
-                  <FormLabel>Data de Validade *</FormLabel>
+                  <FormLabel>Data de Validade</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input type="date" {...field} />
+                      <Input 
+                        type="date" 
+                        placeholder="Opcional - deixe em branco se não expira"
+                        {...field} 
+                      />
                       <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Deixe em branco se a certificação não possui data de validade
+                  </p>
                   <FormMessage />
                 </FormItem>} />
 

@@ -90,12 +90,15 @@ export function useCreateCertification() {
     mutationFn: async (certification: Omit<CertificationInsert, 'user_id'>): Promise<Certification> => {
       if (!user) throw new Error('User not authenticated');
 
+      const cleanedData = {
+        ...certification,
+        validity_date: certification.validity_date || null,
+        user_id: user.id,
+      };
+
       const { data, error } = await supabase
         .from('certifications')
-        .insert({
-          ...certification,
-          user_id: user.id,
-        })
+        .insert(cleanedData)
         .select()
         .single();
 

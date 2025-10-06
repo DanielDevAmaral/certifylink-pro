@@ -72,19 +72,19 @@ const InteractiveCharts = memo(function InteractiveCharts({
       { 
         name: 'Válidos', 
         value: analytics.validDocuments, 
-        color: filters.statuses?.includes('valid') ? '#0ea5e9' : '#10B981',
+        color: 'hsl(142, 76%, 36%)', // Green for valid
         isActive: !filters.statuses?.length || filters.statuses.includes('valid')
       },
       { 
         name: 'Vencendo', 
         value: analytics.expiringDocuments, 
-        color: filters.statuses?.includes('expiring') ? '#f97316' : '#F59E0B',
+        color: 'hsl(38, 92%, 50%)', // Orange for expiring
         isActive: !filters.statuses?.length || filters.statuses.includes('expiring')
       },
       { 
         name: 'Vencidos', 
         value: analytics.expiredDocuments, 
-        color: filters.statuses?.includes('expired') ? '#dc2626' : '#EF4444',
+        color: 'hsl(0, 72%, 51%)', // Red for expired
         isActive: !filters.statuses?.length || filters.statuses.includes('expired')
       },
     ].filter(item => item.value > 0);
@@ -166,7 +166,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="válidos" 
                   stackId="a" 
-                  fill="#10b981" 
+                  fill="hsl(142, 76%, 36%)" 
                   name="Válidos"
                   onClick={handleCategoryClick}
                   style={{ cursor: 'pointer' }}
@@ -174,7 +174,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="vencendo" 
                   stackId="a" 
-                  fill="#f59e0b" 
+                  fill="hsl(38, 92%, 50%)" 
                   name="Vencendo"
                   onClick={handleCategoryClick}
                   style={{ cursor: 'pointer' }}
@@ -182,7 +182,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="vencidos" 
                   stackId="a" 
-                  fill="#ef4444" 
+                  fill="hsl(0, 72%, 51%)" 
                   name="Vencidos"
                   onClick={handleCategoryClick}
                   style={{ cursor: 'pointer' }}
@@ -373,7 +373,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="valid" 
                   stackId="a" 
-                  fill="#10b981" 
+                  fill="hsl(142, 76%, 36%)" 
                   name="Válidos"
                   onClick={handlePlatformClick}
                   style={{ cursor: 'pointer' }}
@@ -381,7 +381,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="expiring" 
                   stackId="a" 
-                  fill="#f59e0b" 
+                  fill="hsl(38, 92%, 50%)" 
                   name="Vencendo"
                   onClick={handlePlatformClick}
                   style={{ cursor: 'pointer' }}
@@ -389,7 +389,7 @@ const InteractiveCharts = memo(function InteractiveCharts({
                 <Bar 
                   dataKey="expired" 
                   stackId="a" 
-                  fill="#ef4444" 
+                  fill="hsl(0, 72%, 51%)" 
                   name="Vencidos"
                   onClick={handlePlatformClick}
                   style={{ cursor: 'pointer' }}

@@ -15,7 +15,7 @@ interface QRCodeDialogProps {
 
 export function QRCodeDialog({ open, onOpenChange, url, title, description }: QRCodeDialogProps) {
   const { toast } = useToast();
-  const logoDataUrl = getSignetLogoDataUrl();
+  const logoDataUrl = getCertbaseLogoDataUrl();
 
   const handleCopyLink = async () => {
     try {

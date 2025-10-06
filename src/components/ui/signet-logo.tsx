@@ -130,8 +130,9 @@ export function SignetLogo({ variant = "full", className = "", size = 200 }: Sig
       </text>
 
       {/* Small accent dots using brand colors */}
-      <circle cx="300" cy="95" r="3" fill="#82D400" />
-      <circle cx="310" cy="95" r="3" fill="#660099" opacity="0.6" />
+      <circle cx="280" cy="95" r="3" fill="#82D400" />
+      <circle cx="290" cy="95" r="3" fill="#660099" opacity="0.6" />
+      <circle cx="300" cy="95" r="3" fill="#660099" />
     </svg>
   );
 }

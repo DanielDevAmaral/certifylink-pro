@@ -21,6 +21,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminNotifications from "./pages/AdminNotifications";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProfessionalProfile from "./pages/ProfessionalProfile";
+import SkillsLibrary from "./pages/SkillsLibrary";
+import BidRequirements from "./pages/BidRequirements";
+import BidMatching from "./pages/BidMatching";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +117,26 @@ const App = () => (
                 <AdminNotifications />
               </ProtectedRoute>
             } />
+              <Route path="/knowledge/profile" element={
+                <ProtectedRoute>
+                  <ProfessionalProfile />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/skills" element={
+                <ProtectedRoute requiredRole="admin">
+                  <SkillsLibrary />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/bids" element={
+                <ProtectedRoute requiredRole="admin">
+                  <BidRequirements />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/matching" element={
+                <ProtectedRoute requiredRole="admin">
+                  <BidMatching />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

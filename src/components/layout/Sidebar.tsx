@@ -13,6 +13,10 @@ import {
   Database,
   Shield,
   Medal,
+  User,
+  BookOpen,
+  FileText,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +61,33 @@ export function Sidebar() {
       icon: Users,
       description: "Gerenciamento de usuários",
       requiredRole: "leader",
+    },
+    {
+      name: "Meu Perfil",
+      href: "/knowledge/profile",
+      icon: User,
+      description: "Gerenciar formação e experiência",
+    },
+    {
+      name: "Biblioteca de Skills",
+      href: "/knowledge/skills",
+      icon: BookOpen,
+      description: "Competências técnicas",
+      requiredRole: "admin",
+    },
+    {
+      name: "Requisitos de Editais",
+      href: "/knowledge/bids",
+      icon: FileText,
+      description: "Gestão de requisitos",
+      requiredRole: "admin",
+    },
+    {
+      name: "Adequação a Editais",
+      href: "/knowledge/matching",
+      icon: Target,
+      description: "Motor de matching",
+      requiredRole: "admin",
     },
     {
       name: "Painel Admin",

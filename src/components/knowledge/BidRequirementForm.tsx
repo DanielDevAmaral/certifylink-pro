@@ -11,7 +11,9 @@ import { Loader2 } from "lucide-react";
 import { TagsInput } from "./TagsInput";
 import { EducationLevelMultiSelector } from "./EducationLevelMultiSelector";
 import { SkillMultiSelector } from "./SkillMultiSelector";
+import { CertificationMultiSelector } from "./CertificationMultiSelector";
 import { Separator } from "@/components/ui/separator";
+import { useEffect } from "react";
 
 const formSchema = z.object({
   bid_name: z.string().min(1, "Nome do edital é obrigatório"),
@@ -38,9 +40,9 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
   const { createRequirement, updateRequirement, isCreating, isUpdating } = useBidRequirements();
   const { user } = useAuth();
   
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
+    defaultValues: {
       quantity_needed: 1,
       required_experience_years: 0,
       required_education_levels: [],
@@ -49,6 +51,28 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
       required_certifications: [],
     },
   });
+
+  // Reset form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        ...initialData,
+        required_education_levels: initialData.required_education_levels || [],
+        required_fields_of_study: initialData.required_fields_of_study || [],
+        required_skills: initialData.required_skills || [],
+        required_certifications: initialData.required_certifications || [],
+      });
+    } else {
+      reset({
+        quantity_needed: 1,
+        required_experience_years: 0,
+        required_education_levels: [],
+        required_fields_of_study: [],
+        required_skills: [],
+        required_certifications: [],
+      });
+    }
+  }, [initialData, reset]);
 
   const educationLevels = watch("required_education_levels") || [];
   const fieldsOfStudy = watch("required_fields_of_study") || [];
@@ -77,33 +101,43 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="bid_name">Nome do Edital</Label>
+          <Label htmlFor="bid_name">
+            Nome do Edital <span className="text-destructive">*</span>
+          </Label>
           <Input id="bid_name" {...register("bid_name")} />
           {errors.bid_name && <p className="text-sm text-destructive">{errors.bid_name.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bid_code">Código do Edital</Label>
+          <Label htmlFor="bid_code">
+            Código do Edital <span className="text-destructive">*</span>
+          </Label>
           <Input id="bid_code" {...register("bid_code")} placeholder="Ex: EDITAL-2024-001" />
           {errors.bid_code && <p className="text-sm text-destructive">{errors.bid_code.message}</p>}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="requirement_code">Código do Requisito</Label>
+        <Label htmlFor="requirement_code">
+          Código do Requisito <span className="text-destructive">*</span>
+        </Label>
         <Input id="requirement_code" {...register("requirement_code")} placeholder="Ex: REQ-001" />
         {errors.requirement_code && <p className="text-sm text-destructive">{errors.requirement_code.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="role_title">Título do Perfil/Função</Label>
+        <Label htmlFor="role_title">
+          Título do Perfil/Função <span className="text-destructive">*</span>
+        </Label>
         <Input id="role_title" {...register("role_title")} placeholder="Ex: Desenvolvedor Full Stack Sênior" />
         {errors.role_title && <p className="text-sm text-destructive">{errors.role_title.message}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="required_experience_years">Anos de Experiência Requeridos</Label>
+          <Label htmlFor="required_experience_years">
+            Anos de Experiência Requeridos <span className="text-destructive">*</span>
+          </Label>
           <Input 
             id="required_experience_years" 
             type="number" 
@@ -114,7 +148,9 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="quantity_needed">Quantidade Necessária</Label>
+          <Label htmlFor="quantity_needed">
+            Quantidade Necessária <span className="text-destructive">*</span>
+          </Label>
           <Input 
             id="quantity_needed" 
             type="number" 
@@ -126,7 +162,9 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="full_description">Descrição Completa do Requisito</Label>
+        <Label htmlFor="full_description">
+          Descrição Completa do Requisito <span className="text-destructive">*</span>
+        </Label>
         <Textarea 
           id="full_description" 
           {...register("full_description")} 
@@ -175,12 +213,11 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
       <div className="space-y-2">
         <Label>Certificações Requeridas</Label>
         <p className="text-sm text-muted-foreground mb-2">
-          Ex: AWS Solutions Architect, PMP, ITIL. O sistema fará match parcial dos nomes (15 pontos)
+          Selecione as certificações cadastradas no sistema (15 pontos no matching)
         </p>
-        <TagsInput
+        <CertificationMultiSelector
           value={certifications}
-          onChange={(certs) => setValue("required_certifications", certs)}
-          placeholder="Digite o nome da certificação e pressione Enter"
+          onChange={(certIds) => setValue("required_certifications", certIds)}
         />
       </div>
 

@@ -210,8 +210,7 @@ export type Database = {
       }
       bid_requirements: {
         Row: {
-          bid_code: string
-          bid_name: string
+          bid_id: string
           created_at: string
           created_by: string
           full_description: string
@@ -228,8 +227,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          bid_code: string
-          bid_name: string
+          bid_id: string
           created_at?: string
           created_by: string
           full_description: string
@@ -246,8 +244,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          bid_code?: string
-          bid_name?: string
+          bid_id?: string
           created_at?: string
           created_by?: string
           full_description?: string
@@ -261,6 +258,44 @@ export type Database = {
           required_skills?: string[] | null
           requirement_code?: string
           role_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_requirements_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids: {
+        Row: {
+          bid_code: string
+          bid_description: string | null
+          bid_name: string
+          created_at: string
+          created_by: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          bid_code: string
+          bid_description?: string | null
+          bid_name: string
+          created_at?: string
+          created_by: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          bid_code?: string
+          bid_description?: string | null
+          bid_name?: string
+          created_at?: string
+          created_by?: string
+          id?: string
           updated_at?: string
         }
         Relationships: []

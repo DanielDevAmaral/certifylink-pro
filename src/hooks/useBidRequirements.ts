@@ -3,19 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { BidRequirement } from '@/types/knowledge';
 
-export function useBidRequirements(bidCode?: string) {
+export function useBidRequirements(bidId?: string) {
   const queryClient = useQueryClient();
 
   const { data: requirements, isLoading, error } = useQuery({
-    queryKey: ['bid-requirements', bidCode],
+    queryKey: ['bid-requirements', bidId],
     queryFn: async () => {
       let query = supabase
         .from('bid_requirements')
-        .select('*')
+        .select(`
+          *,
+          bid:bids(*)
+        `)
         .order('created_at', { ascending: false });
 
-      if (bidCode) {
-        query = query.eq('bid_code', bidCode);
+      if (bidId) {
+        query = query.eq('bid_id', bidId);
       }
 
       const { data, error } = await query;

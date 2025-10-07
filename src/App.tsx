@@ -23,7 +23,8 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProfessionalProfile from "./pages/ProfessionalProfile";
 import SkillsLibrary from "./pages/SkillsLibrary";
-import BidRequirements from "./pages/BidRequirements";
+import Bids from "./pages/Bids";
+import BidDetail from "./pages/BidDetail";
 import BidMatching from "./pages/BidMatching";
 
 const queryClient = new QueryClient({
@@ -129,7 +130,12 @@ const App = () => (
               } />
               <Route path="/knowledge/bids" element={
                 <ProtectedRoute requiredRole="admin">
-                  <BidRequirements />
+                  <Bids />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/bids/:bidId" element={
+                <ProtectedRoute requiredRole="admin">
+                  <BidDetail />
                 </ProtectedRoute>
               } />
               <Route path="/knowledge/matching" element={

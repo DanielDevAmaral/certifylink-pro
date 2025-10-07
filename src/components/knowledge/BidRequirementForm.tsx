@@ -16,8 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { useEffect } from "react";
 
 const formSchema = z.object({
-  bid_name: z.string().min(1, "Nome do edital é obrigatório"),
-  bid_code: z.string().min(1, "Código do edital é obrigatório"),
   requirement_code: z.string().min(1, "Código do requisito é obrigatório"),
   role_title: z.string().min(1, "Título do perfil é obrigatório"),
   required_experience_years: z.number().min(0, "Anos de experiência deve ser >= 0"),
@@ -32,11 +30,12 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface BidRequirementFormProps {
+  bidId: string;
   onSuccess?: () => void;
   initialData?: any;
 }
 
-export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFormProps) {
+export function BidRequirementForm({ bidId, onSuccess, initialData }: BidRequirementFormProps) {
   const { createRequirement, updateRequirement, isCreating, isUpdating } = useBidRequirements();
   const { user } = useAuth();
   
@@ -83,6 +82,7 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
     try {
       const payload = {
         ...data,
+        bid_id: bidId,
         created_by: user?.id!,
       };
 
@@ -99,24 +99,6 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="bid_name">
-            Nome do Edital <span className="text-destructive">*</span>
-          </Label>
-          <Input id="bid_name" {...register("bid_name")} />
-          {errors.bid_name && <p className="text-sm text-destructive">{errors.bid_name.message}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="bid_code">
-            Código do Edital <span className="text-destructive">*</span>
-          </Label>
-          <Input id="bid_code" {...register("bid_code")} placeholder="Ex: EDITAL-2024-001" />
-          {errors.bid_code && <p className="text-sm text-destructive">{errors.bid_code.message}</p>}
-        </div>
-      </div>
-
       <div className="space-y-2">
         <Label htmlFor="requirement_code">
           Código do Requisito <span className="text-destructive">*</span>

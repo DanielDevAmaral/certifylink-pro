@@ -98,7 +98,7 @@ export function BidMatchingEngine() {
             <SelectContent>
               {requirements?.map((req) => (
                 <SelectItem key={req.id} value={req.id}>
-                  {req.bid_name} - {req.role_title} ({req.requirement_code})
+                  {req.bid?.bid_name || 'Sem edital'} - {req.role_title} ({req.requirement_code})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -109,7 +109,7 @@ export function BidMatchingEngine() {
           <Card className="p-4 bg-accent/50">
             <h4 className="font-semibold mb-2">{selectedRequirement.role_title}</h4>
             <p className="text-sm text-muted-foreground mb-2">
-              Edital: {selectedRequirement.bid_name} ({selectedRequirement.bid_code})
+              Edital: {selectedRequirement.bid?.bid_name || 'Sem edital'} ({selectedRequirement.bid?.bid_code || 'N/A'})
             </p>
             <div className="text-sm">
               <strong>Experiência:</strong> {selectedRequirement.required_experience_years} anos • 

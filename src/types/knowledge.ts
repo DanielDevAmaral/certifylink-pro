@@ -78,10 +78,19 @@ export interface UserSkill {
   technical_skill?: TechnicalSkill;
 }
 
-export interface BidRequirement {
+export interface Bid {
   id: string;
   bid_name: string;
   bid_code: string;
+  bid_description?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BidRequirement {
+  id: string;
+  bid_id: string;
   requirement_code: string;
   role_title: string;
   required_education_levels?: string[];
@@ -95,6 +104,7 @@ export interface BidRequirement {
   created_by: string;
   created_at: string;
   updated_at: string;
+  bid?: Bid;
 }
 
 export interface ScoreBreakdown {

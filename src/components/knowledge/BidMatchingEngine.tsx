@@ -25,8 +25,9 @@ export function BidMatchingEngine() {
   const { user } = useAuth();
   const [selectedBidId, setSelectedBidId] = useState<string>("");
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [showRecalculateDialog, setShowRecalculateDialog] = useState(false);
   const { bids } = useBids();
-  const { matchesByBid, calculateMatchForBid, validateMatch, isCalculating, calculationProgress } = useBidMatchingEngine(selectedBidId);
+  const { matchesByBid, calculateMatchForBid, validateMatch, checkExistingMatches, isCalculating, calculationProgress } = useBidMatchingEngine(selectedBidId);
   const { deleteMatch, isDeleting } = useMatchDeletion();
 
   const handleCalculate = async () => {
@@ -35,8 +36,19 @@ export function BidMatchingEngine() {
       return;
     }
     
+    // Check if there are existing matches
+    const hasMatches = await checkExistingMatches(selectedBidId);
+    if (hasMatches) {
+      setShowRecalculateDialog(true);
+      return;
+    }
+    
+    performCalculation(false);
+  };
+
+  const performCalculation = async (forceRecalculate: boolean) => {
     try {
-      await calculateMatchForBid({ bidId: selectedBidId });
+      await calculateMatchForBid({ bidId: selectedBidId, forceRecalculate });
     } catch (error) {
       console.error("Error calculating match:", error);
       toast.error("Erro ao calcular matching");
@@ -155,6 +167,28 @@ export function BidMatchingEngine() {
             <AlertDialogAction onClick={handleDeleteMatch} disabled={isDeleting}>
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showRecalculateDialog} onOpenChange={setShowRecalculateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edital já possui matches</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este edital já possui análises de adequação calculadas. Analisar novamente irá desconsiderar todos os matches existentes e refazer a análise do zero. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowRecalculateDialog(false);
+                performCalculation(true);
+              }}
+            >
+              Sim, Recalcular
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

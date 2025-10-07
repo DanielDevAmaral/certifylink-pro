@@ -160,9 +160,49 @@ export function useBidMatchingEngine(bidId?: string) {
     },
   });
 
+  const checkExistingMatches = async (bidId: string): Promise<boolean> => {
+    const { data: requirements } = await supabase
+      .from('bid_requirements')
+      .select('id')
+      .eq('bid_id', bidId);
+
+    if (!requirements || requirements.length === 0) return false;
+
+    const requirementIds = requirements.map(r => r.id);
+    const { data: matches } = await supabase
+      .from('bid_requirement_matches')
+      .select('id')
+      .in('requirement_id', requirementIds)
+      .limit(1);
+
+    return (matches && matches.length > 0) || false;
+  };
+
+  const deleteExistingMatches = async (bidId: string) => {
+    const { data: requirements } = await supabase
+      .from('bid_requirements')
+      .select('id')
+      .eq('bid_id', bidId);
+
+    if (!requirements || requirements.length === 0) return;
+
+    const requirementIds = requirements.map(r => r.id);
+    const { error } = await supabase
+      .from('bid_requirement_matches')
+      .delete()
+      .in('requirement_id', requirementIds);
+
+    if (error) throw error;
+  };
+
   const calculateMatchForBid = useMutation({
-    mutationFn: async (params: { bidId: string }) => {
+    mutationFn: async (params: { bidId: string; forceRecalculate?: boolean }) => {
       setCalculationProgress(null);
+
+      // Delete existing matches if force recalculate
+      if (params.forceRecalculate) {
+        await deleteExistingMatches(params.bidId);
+      }
 
       // Get all requirements for this bid
       const { data: requirements, error: reqError } = await supabase
@@ -307,6 +347,7 @@ export function useBidMatchingEngine(bidId?: string) {
     calculateMatch: calculateMatch.mutateAsync,
     calculateMatchForBid: calculateMatchForBid.mutateAsync,
     validateMatch: validateMatch.mutateAsync,
+    checkExistingMatches,
     isCalculating: calculateMatch.isPending || calculateMatchForBid.isPending,
     isValidating: validateMatch.isPending,
     calculationProgress,

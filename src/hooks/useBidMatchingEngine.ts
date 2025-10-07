@@ -41,7 +41,7 @@ export function useBidMatchingEngine(requirementId?: string) {
   });
 
   const calculateMatch = useMutation({
-    mutationFn: async (params: { requirementId: string; userId: string }) => {
+    mutationFn: async (params: { requirementId: string }) => {
       // Get requirement details
       const { data: requirement, error: reqError } = await supabase
         .from('bid_requirements')
@@ -51,67 +51,84 @@ export function useBidMatchingEngine(requirementId?: string) {
 
       if (reqError) throw reqError;
 
-      // Get user's education
-      const { data: educations, error: eduError } = await supabase
-        .from('academic_education')
-        .select('*')
-        .eq('user_id', params.userId);
+      // Get all active users
+      const { data: users, error: usersError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('status', 'active');
 
-      if (eduError) throw eduError;
+      if (usersError) throw usersError;
+      if (!users || users.length === 0) {
+        throw new Error('Nenhum usuário ativo encontrado');
+      }
 
-      // Get user's experiences
-      const { data: experiences, error: expError } = await supabase
-        .from('professional_experiences')
-        .select('*')
-        .eq('user_id', params.userId);
+      const matchesToInsert = [];
 
-      if (expError) throw expError;
+      // Calculate match for each user
+      for (const user of users) {
+        // Get user's education
+        const { data: educations } = await supabase
+          .from('academic_education')
+          .select('*')
+          .eq('user_id', user.user_id);
 
-      // Get user's skills
-      const { data: userSkills, error: skillError } = await supabase
-        .from('user_skills')
-        .select('*, technical_skill:technical_skills(*)')
-        .eq('user_id', params.userId);
+        // Get user's experiences
+        const { data: experiences } = await supabase
+          .from('professional_experiences')
+          .select('*')
+          .eq('user_id', user.user_id);
 
-      if (skillError) throw skillError;
+        // Get user's skills
+        const { data: userSkills } = await supabase
+          .from('user_skills')
+          .select('*, technical_skill:technical_skills(*)')
+          .eq('user_id', user.user_id);
 
-      // Get user's certifications
-      const { data: certifications, error: certError } = await supabase
-        .from('certifications')
-        .select('*')
-        .eq('user_id', params.userId);
+        // Get user's certifications
+        const { data: certifications } = await supabase
+          .from('certifications')
+          .select('*')
+          .eq('user_id', user.user_id);
 
-      if (certError) throw certError;
+        // Calculate score
+        const scoreBreakdown = calculateScore(requirement, {
+          educations: educations || [],
+          experiences: experiences || [],
+          userSkills: userSkills || [],
+          certifications: certifications || [],
+        });
 
-      // Calculate score
-      const scoreBreakdown = calculateScore(requirement, {
-        educations,
-        experiences,
-        userSkills,
-        certifications,
-      });
+        const totalScore = Object.values(scoreBreakdown).reduce((sum, val) => sum + val, 0);
 
-      const totalScore = Object.values(scoreBreakdown).reduce((sum, val) => sum + val, 0);
+        // Only add matches with score > 0
+        if (totalScore > 0) {
+          matchesToInsert.push({
+            requirement_id: params.requirementId,
+            user_id: user.user_id,
+            match_score: totalScore,
+            score_breakdown: scoreBreakdown as any,
+            status: 'pending_validation' as const,
+          });
+        }
+      }
 
-      // Save or update match
-      const { data, error } = await supabase
-        .from('bid_requirement_matches')
-        .upsert({
-          requirement_id: params.requirementId,
-          user_id: params.userId,
-          match_score: totalScore,
-          score_breakdown: scoreBreakdown as any,
-          status: 'pending_validation' as const,
-        })
-        .select()
-        .single();
+      // Batch insert all matches
+      if (matchesToInsert.length > 0) {
+        const { error } = await supabase
+          .from('bid_requirement_matches')
+          .upsert(matchesToInsert);
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+      }
+
+      return { 
+        totalUsers: users.length, 
+        matchesFound: matchesToInsert.length 
+      };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
-      toast.success('Match calculado com sucesso');
+      toast.success(`${data.matchesFound} profissionais adequados encontrados de ${data.totalUsers} analisados`);
     },
     onError: (error) => {
       console.error('Error calculating match:', error);

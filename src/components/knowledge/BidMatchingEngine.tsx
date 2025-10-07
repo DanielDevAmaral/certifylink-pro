@@ -21,10 +21,10 @@ export function BidMatchingEngine() {
     }
     
     try {
-      await calculateMatch({ requirementId: selectedRequirementId, userId: "" });
-      toast.success("Matching calculado com sucesso");
+      await calculateMatch({ requirementId: selectedRequirementId });
     } catch (error) {
       console.error("Error calculating match:", error);
+      toast.error("Erro ao calcular matching");
     }
   };
 

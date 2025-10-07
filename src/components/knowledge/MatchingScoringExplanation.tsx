@@ -35,11 +35,7 @@ export function MatchingScoringExplanation() {
   ];
 
   return (
-    <Card className="p-6 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Info className="h-5 w-5 text-primary" />
-        <h3 className="text-lg font-semibold">Como Funciona o Sistema de Adequação</h3>
-      </div>
+    <div className="space-y-4">
 
       <Alert className="mb-4">
         <AlertDescription>
@@ -84,7 +80,7 @@ export function MatchingScoringExplanation() {
           </li>
         </ul>
       </div>
-    </Card>
+    </div>
   );
 }
 

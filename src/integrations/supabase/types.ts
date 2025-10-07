@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_education: {
+        Row: {
+          completion_date: string | null
+          course_name: string
+          created_at: string
+          document_url: string | null
+          education_level: Database["public"]["Enums"]["education_level"]
+          field_of_study: string
+          id: string
+          institution_name: string
+          start_date: string
+          status: Database["public"]["Enums"]["education_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completion_date?: string | null
+          course_name: string
+          created_at?: string
+          document_url?: string | null
+          education_level: Database["public"]["Enums"]["education_level"]
+          field_of_study: string
+          id?: string
+          institution_name: string
+          start_date: string
+          status?: Database["public"]["Enums"]["education_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completion_date?: string | null
+          course_name?: string
+          created_at?: string
+          document_url?: string | null
+          education_level?: Database["public"]["Enums"]["education_level"]
+          field_of_study?: string
+          id?: string
+          institution_name?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["education_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -110,6 +155,113 @@ export type Database = {
           updated_at?: string
           user_id?: string
           verification_code?: string | null
+        }
+        Relationships: []
+      }
+      bid_requirement_matches: {
+        Row: {
+          created_at: string
+          id: string
+          match_score: number
+          requirement_id: string
+          score_breakdown: Json
+          status: Database["public"]["Enums"]["match_status"]
+          updated_at: string
+          user_id: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_score: number
+          requirement_id: string
+          score_breakdown?: Json
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          user_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_score?: number
+          requirement_id?: string
+          score_breakdown?: Json
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          user_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_requirement_matches_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "bid_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_requirements: {
+        Row: {
+          bid_code: string
+          bid_name: string
+          created_at: string
+          created_by: string
+          full_description: string
+          id: string
+          keywords: string[] | null
+          quantity_needed: number | null
+          required_certifications: string[] | null
+          required_education_levels: string[] | null
+          required_experience_years: number
+          required_fields_of_study: string[] | null
+          required_skills: string[] | null
+          requirement_code: string
+          role_title: string
+          updated_at: string
+        }
+        Insert: {
+          bid_code: string
+          bid_name: string
+          created_at?: string
+          created_by: string
+          full_description: string
+          id?: string
+          keywords?: string[] | null
+          quantity_needed?: number | null
+          required_certifications?: string[] | null
+          required_education_levels?: string[] | null
+          required_experience_years?: number
+          required_fields_of_study?: string[] | null
+          required_skills?: string[] | null
+          requirement_code: string
+          role_title: string
+          updated_at?: string
+        }
+        Update: {
+          bid_code?: string
+          bid_name?: string
+          created_at?: string
+          created_by?: string
+          full_description?: string
+          id?: string
+          keywords?: string[] | null
+          quantity_needed?: number | null
+          required_certifications?: string[] | null
+          required_education_levels?: string[] | null
+          required_experience_years?: number
+          required_fields_of_study?: string[] | null
+          required_skills?: string[] | null
+          requirement_code?: string
+          role_title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -523,6 +675,54 @@ export type Database = {
           },
         ]
       }
+      professional_experiences: {
+        Row: {
+          business_verticals: string[] | null
+          company_name: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          position: string
+          skills_applied: string[] | null
+          start_date: string
+          tech_platforms_used: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_verticals?: string[] | null
+          company_name: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          position: string
+          skills_applied?: string[] | null
+          start_date: string
+          tech_platforms_used?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_verticals?: string[] | null
+          company_name?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          position?: string
+          skills_applied?: string[] | null
+          start_date?: string
+          tech_platforms_used?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -823,6 +1023,36 @@ export type Database = {
           },
         ]
       }
+      technical_skills: {
+        Row: {
+          category: Database["public"]["Enums"]["skill_category"]
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          related_certifications: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["skill_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          related_certifications?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["skill_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          related_certifications?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_by: string | null
@@ -846,6 +1076,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_skills: {
+        Row: {
+          created_at: string
+          endorsed_by: string[] | null
+          id: string
+          last_used_date: string | null
+          proficiency_level: Database["public"]["Enums"]["proficiency_level"]
+          skill_id: string
+          updated_at: string
+          user_id: string
+          years_of_experience: number | null
+        }
+        Insert: {
+          created_at?: string
+          endorsed_by?: string[] | null
+          id?: string
+          last_used_date?: string | null
+          proficiency_level?: Database["public"]["Enums"]["proficiency_level"]
+          skill_id: string
+          updated_at?: string
+          user_id: string
+          years_of_experience?: number | null
+        }
+        Update: {
+          created_at?: string
+          endorsed_by?: string[] | null
+          id?: string
+          last_used_date?: string | null
+          proficiency_level?: Database["public"]["Enums"]["proficiency_level"]
+          skill_id?: string
+          updated_at?: string
+          user_id?: string
+          years_of_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "technical_skills"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_status_history: {
         Row: {
@@ -1003,11 +1277,30 @@ export type Database = {
         | "pending"
         | "deactivated"
       duplicate_exclusion_type: "certification" | "certification_type"
+      education_level:
+        | "ensino_medio"
+        | "tecnologo"
+        | "graduacao"
+        | "pos_graduacao"
+        | "mba"
+        | "mestrado"
+        | "doutorado"
+        | "pos_doutorado"
+      education_status: "completed" | "in_progress" | "incomplete"
       legal_document_type:
         | "legal_qualification"
         | "fiscal_regularity"
         | "economic_financial"
         | "common_declarations"
+      match_status: "pending_validation" | "validated" | "rejected"
+      proficiency_level: "basic" | "intermediate" | "advanced" | "expert"
+      skill_category:
+        | "programming_language"
+        | "framework"
+        | "methodology"
+        | "tool"
+        | "soft_skill"
+        | "domain_knowledge"
       user_role: "user" | "leader" | "admin"
     }
     CompositeTypes: {
@@ -1149,11 +1442,32 @@ export const Constants = {
         "deactivated",
       ],
       duplicate_exclusion_type: ["certification", "certification_type"],
+      education_level: [
+        "ensino_medio",
+        "tecnologo",
+        "graduacao",
+        "pos_graduacao",
+        "mba",
+        "mestrado",
+        "doutorado",
+        "pos_doutorado",
+      ],
+      education_status: ["completed", "in_progress", "incomplete"],
       legal_document_type: [
         "legal_qualification",
         "fiscal_regularity",
         "economic_financial",
         "common_declarations",
+      ],
+      match_status: ["pending_validation", "validated", "rejected"],
+      proficiency_level: ["basic", "intermediate", "advanced", "expert"],
+      skill_category: [
+        "programming_language",
+        "framework",
+        "methodology",
+        "tool",
+        "soft_skill",
+        "domain_knowledge",
       ],
       user_role: ["user", "leader", "admin"],
     },

@@ -8,8 +8,10 @@ import { useBidMatchingEngine } from "@/hooks/useBidMatchingEngine";
 import { MatchScoreBreakdown } from "./MatchScoreBreakdown";
 import { User, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function BidMatchingEngine() {
+  const { user } = useAuth();
   const [selectedRequirementId, setSelectedRequirementId] = useState<string>("");
   const { requirements } = useBidRequirements();
   const { matches, calculateMatch, validateMatch, isCalculating } = useBidMatchingEngine(selectedRequirementId);
@@ -29,11 +31,17 @@ export function BidMatchingEngine() {
   };
 
   const handleValidate = async (matchId: string, status: 'validated' | 'rejected') => {
+    if (!user?.id) {
+      toast.error("Erro: usuário não autenticado");
+      return;
+    }
+    
     try {
-      await validateMatch({ matchId, status, notes: "", validatedBy: "" });
+      await validateMatch({ matchId, status, notes: "", validatedBy: user.id });
       toast.success(`Match ${status === 'validated' ? 'validado' : 'rejeitado'} com sucesso`);
     } catch (error) {
       console.error("Error validating match:", error);
+      toast.error("Erro ao validar match");
     }
   };
 

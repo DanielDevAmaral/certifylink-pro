@@ -2,6 +2,7 @@ import { Layout } from "@/components/layout/Layout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { BidMatchingEngine } from "@/components/knowledge/BidMatchingEngine";
+import { MatchingScoringExplanation } from "@/components/knowledge/MatchingScoringExplanation";
 import { Target } from "lucide-react";
 
 export default function BidMatching() {
@@ -11,6 +12,8 @@ export default function BidMatching() {
         title="Motor de Adequação a Editais" 
         description="Sistema inteligente de matching entre profissionais e requisitos de editais"
       />
+
+      <MatchingScoringExplanation />
 
       <Card className="p-6">
         <div className="flex items-center gap-3 mb-6">

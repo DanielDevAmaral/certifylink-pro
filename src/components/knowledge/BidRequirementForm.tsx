@@ -8,6 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBidRequirements } from "@/hooks/useBidRequirements";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { TagsInput } from "./TagsInput";
+import { EducationLevelMultiSelector } from "./EducationLevelMultiSelector";
+import { SkillMultiSelector } from "./SkillMultiSelector";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   bid_name: z.string().min(1, "Nome do edital é obrigatório"),
@@ -17,6 +21,10 @@ const formSchema = z.object({
   required_experience_years: z.number().min(0, "Anos de experiência deve ser >= 0"),
   quantity_needed: z.number().min(1, "Quantidade deve ser >= 1"),
   full_description: z.string().min(1, "Descrição completa é obrigatória"),
+  required_education_levels: z.array(z.string()).optional(),
+  required_fields_of_study: z.array(z.string()).optional(),
+  required_skills: z.array(z.string()).optional(),
+  required_certifications: z.array(z.string()).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -30,13 +38,22 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
   const { createRequirement, updateRequirement, isCreating, isUpdating } = useBidRequirements();
   const { user } = useAuth();
   
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {
       quantity_needed: 1,
       required_experience_years: 0,
+      required_education_levels: [],
+      required_fields_of_study: [],
+      required_skills: [],
+      required_certifications: [],
     },
   });
+
+  const educationLevels = watch("required_education_levels") || [];
+  const fieldsOfStudy = watch("required_fields_of_study") || [];
+  const skills = watch("required_skills") || [];
+  const certifications = watch("required_certifications") || [];
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -117,6 +134,54 @@ export function BidRequirementForm({ onSuccess, initialData }: BidRequirementFor
           placeholder="Cole aqui o texto completo do requisito extraído do edital..."
         />
         {errors.full_description && <p className="text-sm text-destructive">{errors.full_description.message}</p>}
+      </div>
+
+      <Separator className="my-6" />
+
+      <div className="space-y-2">
+        <Label>Níveis de Formação Aceitos</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Selecione todos os níveis de formação que atendem a este requisito (25 pontos no matching)
+        </p>
+        <EducationLevelMultiSelector
+          value={educationLevels}
+          onChange={(levels) => setValue("required_education_levels", levels)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Áreas de Estudo/Cursos Requeridos</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Ex: Ciência da Computação, Engenharia de Software, Sistemas de Informação
+        </p>
+        <TagsInput
+          value={fieldsOfStudy}
+          onChange={(fields) => setValue("required_fields_of_study", fields)}
+          placeholder="Digite o nome do curso e pressione Enter"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Competências Técnicas Exigidas</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Selecione as skills técnicas requeridas (30 pontos no matching)
+        </p>
+        <SkillMultiSelector
+          value={skills}
+          onChange={(skillIds) => setValue("required_skills", skillIds)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Certificações Requeridas</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Ex: AWS Solutions Architect, PMP, ITIL. O sistema fará match parcial dos nomes (15 pontos)
+        </p>
+        <TagsInput
+          value={certifications}
+          onChange={(certs) => setValue("required_certifications", certs)}
+          placeholder="Digite o nome da certificação e pressione Enter"
+        />
       </div>
 
       <div className="flex justify-end gap-2">

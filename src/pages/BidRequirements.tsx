@@ -3,15 +3,49 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { BidRequirementForm } from "@/components/knowledge/BidRequirementForm";
 import { BidRequirementCard } from "@/components/knowledge/BidRequirementCard";
 import { useBidRequirements } from "@/hooks/useBidRequirements";
 import { Plus, FileText } from "lucide-react";
 import { useState } from "react";
+import { BidRequirement } from "@/types/knowledge";
 
 export default function BidRequirements() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { requirements, isLoading } = useBidRequirements();
+  const [editingRequirement, setEditingRequirement] = useState<BidRequirement | null>(null);
+  const [requirementToDelete, setRequirementToDelete] = useState<string | null>(null);
+  const { requirements, isLoading, deleteRequirement, isDeleting } = useBidRequirements();
+
+  const handleEdit = (requirement: BidRequirement) => {
+    setEditingRequirement(requirement);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingRequirement(null);
+  };
+
+  const handleDelete = async () => {
+    if (!requirementToDelete) return;
+    
+    try {
+      await deleteRequirement(requirementToDelete);
+      setRequirementToDelete(null);
+    } catch (error) {
+      console.error("Error deleting requirement:", error);
+    }
+  };
 
   // Group requirements by bid_code
   const groupedRequirements = requirements?.reduce((acc, req) => {
@@ -36,7 +70,10 @@ export default function BidRequirements() {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <BidRequirementForm onSuccess={() => setDialogOpen(false)} />
+            <BidRequirementForm 
+              onSuccess={handleCloseDialog}
+              initialData={editingRequirement}
+            />
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -71,7 +108,12 @@ export default function BidRequirements() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {reqs.map((req) => (
-                  <BidRequirementCard key={req.id} requirement={req} />
+                  <BidRequirementCard 
+                    key={req.id} 
+                    requirement={req}
+                    onEdit={handleEdit}
+                    onDelete={(id) => setRequirementToDelete(id)}
+                  />
                 ))}
               </div>
             </Card>
@@ -83,6 +125,27 @@ export default function BidRequirements() {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={!!requirementToDelete} onOpenChange={() => setRequirementToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este requisito? Todos os matches relacionados também serão removidos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

@@ -3,18 +3,32 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useBidRequirements } from "@/hooks/useBidRequirements";
 import { useBidMatchingEngine } from "@/hooks/useBidMatchingEngine";
+import { useMatchDeletion } from "@/hooks/useMatchDeletion";
 import { MatchScoreBreakdown } from "./MatchScoreBreakdown";
-import { User, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { User, Loader2, CheckCircle, XCircle, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function BidMatchingEngine() {
   const { user } = useAuth();
   const [selectedRequirementId, setSelectedRequirementId] = useState<string>("");
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const { requirements } = useBidRequirements();
   const { matches, calculateMatch, validateMatch, isCalculating } = useBidMatchingEngine(selectedRequirementId);
+  const { deleteMatch, isDeleting } = useMatchDeletion();
 
   const handleCalculate = async () => {
     if (!selectedRequirementId) {
@@ -43,6 +57,31 @@ export function BidMatchingEngine() {
       console.error("Error validating match:", error);
       toast.error("Erro ao validar match");
     }
+  };
+
+  const handleDeleteMatch = async () => {
+    if (!matchToDelete) return;
+    
+    try {
+      await deleteMatch(matchToDelete);
+      setMatchToDelete(null);
+    } catch (error) {
+      console.error("Error deleting match:", error);
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600 dark:text-green-400";
+    if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
+    if (score >= 40) return "text-orange-600 dark:text-orange-400";
+    return "text-red-600 dark:text-red-400";
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 80) return "Alta";
+    if (score >= 60) return "Média";
+    if (score >= 40) return "Baixa";
+    return "Muito Baixa";
   };
 
   const selectedRequirement = requirements?.find(r => r.id === selectedRequirementId);
@@ -104,9 +143,23 @@ export function BidMatchingEngine() {
                     <p className="text-sm text-muted-foreground">{match.user_profile?.email}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-primary">{match.match_score}%</div>
-                  <p className="text-sm text-muted-foreground">Score de Adequação</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className={`text-3xl font-bold ${getScoreColor(match.match_score)}`}>
+                      {match.match_score}%
+                    </div>
+                    <Badge variant="outline" className={getScoreColor(match.match_score)}>
+                      {getScoreLabel(match.match_score)}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMatchToDelete(match.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
 
@@ -150,6 +203,24 @@ export function BidMatchingEngine() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!matchToDelete} onOpenChange={() => setMatchToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este match? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMatch} disabled={isDeleting}>
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

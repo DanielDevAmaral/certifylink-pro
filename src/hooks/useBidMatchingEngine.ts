@@ -196,13 +196,21 @@ function calculateScore(
   };
 
   // 1. Education Match (25 points)
-  const hasMatchingEducation = userData.educations.some(
-    (edu) =>
-      requirement.required_fields_of_study?.some((field) =>
-        edu.field_of_study?.toLowerCase().includes(field.toLowerCase())
-      ) &&
-      requirement.required_education_levels?.includes(edu.education_level)
-  );
+  const hasMatchingEducation = userData.educations.some((edu) => {
+    const levelMatches = requirement.required_education_levels?.includes(edu.education_level);
+    
+    // If no fields of study required, level match is enough
+    if (!requirement.required_fields_of_study || requirement.required_fields_of_study.length === 0) {
+      return levelMatches;
+    }
+    
+    // If fields of study are required, check both level and field
+    const fieldMatches = requirement.required_fields_of_study.some((field) =>
+      edu.field_of_study?.toLowerCase().includes(field.toLowerCase())
+    );
+    
+    return levelMatches && fieldMatches;
+  });
   breakdown.education_match = hasMatchingEducation ? 25 : 0;
 
   // 2. Experience Years Match (30 points)
@@ -227,9 +235,7 @@ function calculateScore(
   // 4. Certifications Match (15 points)
   if (requirement.required_certifications && requirement.required_certifications.length > 0) {
     const matchedCerts = userData.certifications.filter((cert) =>
-      requirement.required_certifications?.some((reqCert) =>
-        cert.name.toLowerCase().includes(reqCert.toLowerCase())
-      )
+      requirement.required_certifications?.includes(cert.id)
     );
     const certsPercentage = matchedCerts.length / requirement.required_certifications.length;
     breakdown.certifications_match = Math.round(certsPercentage * 15);

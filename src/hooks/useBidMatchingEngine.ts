@@ -1,43 +1,67 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { BidRequirementMatch, BidRequirement, ScoreBreakdown } from '@/types/knowledge';
 
-export function useBidMatchingEngine(requirementId?: string) {
+export function useBidMatchingEngine(bidId?: string) {
   const queryClient = useQueryClient();
+  const [calculationProgress, setCalculationProgress] = useState<{ current: number; total: number } | null>(null);
 
-  const { data: matches, isLoading, error } = useQuery({
-    queryKey: ['bid-matches', requirementId],
+  const { data: matchesByBid, isLoading, error } = useQuery({
+    queryKey: ['bid-matches-by-bid', bidId],
     queryFn: async () => {
-      let query = supabase
+      if (!bidId) return [];
+
+      // Get all requirements for this bid
+      const { data: requirements, error: reqError } = await supabase
+        .from('bid_requirements')
+        .select('*, bid:bids(*)')
+        .eq('bid_id', bidId)
+        .order('role_title');
+
+      if (reqError) throw reqError;
+      if (!requirements || requirements.length === 0) return [];
+
+      // Get matches for all requirements
+      const requirementIds = requirements.map(r => r.id);
+      const { data: matches, error: matchError } = await supabase
         .from('bid_requirement_matches')
         .select('*')
+        .in('requirement_id', requirementIds)
         .order('match_score', { ascending: false });
 
-      if (requirementId) {
-        query = query.eq('requirement_id', requirementId);
-      }
+      if (matchError) throw matchError;
 
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      // Fetch related data separately
-      const matchesWithDetails = await Promise.all((data || []).map(async (match) => {
-        const [requirement, profile] = await Promise.all([
-          supabase.from('bid_requirements').select('*').eq('id', match.requirement_id).single(),
-          supabase.from('profiles').select('full_name, email, position').eq('user_id', match.user_id).single()
-        ]);
-        
+      // Fetch user profiles for all matches
+      const userIds = [...new Set(matches?.map(m => m.user_id) || [])];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, position')
+        .in('user_id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
+      // Group matches by requirement
+      const grouped = requirements.map(req => {
+        const reqMatches = (matches || [])
+          .filter(m => m.requirement_id === req.id)
+          .map(m => ({
+            ...m,
+            score_breakdown: m.score_breakdown as unknown as ScoreBreakdown,
+            requirement: req,
+            user_profile: profileMap.get(m.user_id),
+          }));
+
         return {
-          ...match,
-          score_breakdown: match.score_breakdown as unknown as ScoreBreakdown,
-          requirement: requirement.data,
-          user_profile: profile.data,
+          requirement: req as BidRequirement,
+          matches: reqMatches as BidRequirementMatch[],
         };
-      }));
-      
-      return matchesWithDetails as BidRequirementMatch[];
+      });
+
+      return grouped;
     },
+    enabled: !!bidId,
   });
 
   const calculateMatch = useMutation({
@@ -136,6 +160,115 @@ export function useBidMatchingEngine(requirementId?: string) {
     },
   });
 
+  const calculateMatchForBid = useMutation({
+    mutationFn: async (params: { bidId: string }) => {
+      setCalculationProgress(null);
+
+      // Get all requirements for this bid
+      const { data: requirements, error: reqError } = await supabase
+        .from('bid_requirements')
+        .select('*')
+        .eq('bid_id', params.bidId);
+
+      if (reqError) throw reqError;
+      if (!requirements || requirements.length === 0) {
+        throw new Error('Nenhum requisito encontrado para este edital');
+      }
+
+      setCalculationProgress({ current: 0, total: requirements.length });
+
+      const results = [];
+      for (let i = 0; i < requirements.length; i++) {
+        const req = requirements[i];
+        setCalculationProgress({ current: i + 1, total: requirements.length });
+        
+        // Get all active users
+        const { data: users, error: usersError } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('status', 'active');
+
+        if (usersError) throw usersError;
+
+        const matchesToInsert = [];
+
+        // Calculate match for each user
+        for (const user of users || []) {
+          const { data: educations } = await supabase
+            .from('academic_education')
+            .select('*')
+            .eq('user_id', user.user_id);
+
+          const { data: experiences } = await supabase
+            .from('professional_experiences')
+            .select('*')
+            .eq('user_id', user.user_id);
+
+          const { data: userSkills } = await supabase
+            .from('user_skills')
+            .select('*, technical_skill:technical_skills(*)')
+            .eq('user_id', user.user_id);
+
+          const { data: certifications } = await supabase
+            .from('certifications')
+            .select('*')
+            .eq('user_id', user.user_id);
+
+          const scoreBreakdown = calculateScore(req, {
+            educations: educations || [],
+            experiences: experiences || [],
+            userSkills: userSkills || [],
+            certifications: certifications || [],
+          });
+
+          const totalScore = Object.values(scoreBreakdown).reduce((sum, val) => sum + val, 0);
+
+          if (totalScore > 0) {
+            matchesToInsert.push({
+              requirement_id: req.id,
+              user_id: user.user_id,
+              match_score: totalScore,
+              score_breakdown: scoreBreakdown as any,
+              status: 'pending_validation' as const,
+            });
+          }
+        }
+
+        if (matchesToInsert.length > 0) {
+          const { error } = await supabase
+            .from('bid_requirement_matches')
+            .upsert(matchesToInsert);
+
+          if (error) throw error;
+        }
+
+        results.push({
+          requirement: req,
+          matchesFound: matchesToInsert.length,
+        });
+      }
+
+      setCalculationProgress(null);
+
+      return {
+        totalRequirements: requirements.length,
+        results,
+        totalMatches: results.reduce((sum, r) => sum + r.matchesFound, 0),
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
+      toast.success(
+        `Matching calculado para ${data.totalRequirements} requisito${data.totalRequirements !== 1 ? 's' : ''}: ${data.totalMatches} profissional${data.totalMatches !== 1 ? 'is adequados' : ' adequado'} encontrado${data.totalMatches !== 1 ? 's' : ''}`
+      );
+    },
+    onError: (error) => {
+      console.error('Error calculating match for bid:', error);
+      toast.error('Erro ao calcular matching');
+      setCalculationProgress(null);
+    },
+  });
+
   const validateMatch = useMutation({
     mutationFn: async (params: { 
       matchId: string; 
@@ -159,8 +292,7 @@ export function useBidMatchingEngine(requirementId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
-      toast.success('Match validado com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
     },
     onError: (error) => {
       console.error('Error validating match:', error);
@@ -169,13 +301,15 @@ export function useBidMatchingEngine(requirementId?: string) {
   });
 
   return {
-    matches,
+    matchesByBid,
     isLoading,
     error,
     calculateMatch: calculateMatch.mutateAsync,
+    calculateMatchForBid: calculateMatchForBid.mutateAsync,
     validateMatch: validateMatch.mutateAsync,
-    isCalculating: calculateMatch.isPending,
+    isCalculating: calculateMatch.isPending || calculateMatchForBid.isPending,
     isValidating: validateMatch.isPending,
+    calculationProgress,
   };
 }
 

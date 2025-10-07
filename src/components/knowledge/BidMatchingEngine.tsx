@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,30 +13,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useBidRequirements } from "@/hooks/useBidRequirements";
+import { useBids } from "@/hooks/useBids";
 import { useBidMatchingEngine } from "@/hooks/useBidMatchingEngine";
 import { useMatchDeletion } from "@/hooks/useMatchDeletion";
-import { MatchScoreBreakdown } from "./MatchScoreBreakdown";
-import { User, Loader2, CheckCircle, XCircle, Trash } from "lucide-react";
+import { BidRequirementMatchGroup } from "./BidRequirementMatchGroup";
+import { Loader2, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function BidMatchingEngine() {
   const { user } = useAuth();
-  const [selectedRequirementId, setSelectedRequirementId] = useState<string>("");
+  const [selectedBidId, setSelectedBidId] = useState<string>("");
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
-  const { requirements } = useBidRequirements();
-  const { matches, calculateMatch, validateMatch, isCalculating } = useBidMatchingEngine(selectedRequirementId);
+  const { bids } = useBids();
+  const { matchesByBid, calculateMatchForBid, validateMatch, isCalculating, calculationProgress } = useBidMatchingEngine(selectedBidId);
   const { deleteMatch, isDeleting } = useMatchDeletion();
 
   const handleCalculate = async () => {
-    if (!selectedRequirementId) {
-      toast.error("Selecione um requisito primeiro");
+    if (!selectedBidId) {
+      toast.error("Selecione um edital primeiro");
       return;
     }
     
     try {
-      await calculateMatch({ requirementId: selectedRequirementId });
+      await calculateMatchForBid({ bidId: selectedBidId });
     } catch (error) {
       console.error("Error calculating match:", error);
       toast.error("Erro ao calcular matching");
@@ -70,136 +69,75 @@ export function BidMatchingEngine() {
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600 dark:text-green-400";
-    if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
-    if (score >= 40) return "text-orange-600 dark:text-orange-400";
-    return "text-red-600 dark:text-red-400";
-  };
-
-  const getScoreLabel = (score: number) => {
-    if (score >= 80) return "Alta";
-    if (score >= 60) return "Média";
-    if (score >= 40) return "Baixa";
-    return "Muito Baixa";
-  };
-
-  const selectedRequirement = requirements?.find(r => r.id === selectedRequirementId);
+  const selectedBid = bids?.find(b => b.id === selectedBidId);
+  const totalMatches = matchesByBid?.reduce((sum, group) => sum + group.matches.length, 0) || 0;
+  const totalRequirements = matchesByBid?.length || 0;
 
   return (
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Selecionar Requisito de Edital</Label>
-          <Select value={selectedRequirementId} onValueChange={setSelectedRequirementId}>
+          <Label>Selecionar Edital</Label>
+          <Select value={selectedBidId} onValueChange={setSelectedBidId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um requisito..." />
+              <SelectValue placeholder="Selecione um edital..." />
             </SelectTrigger>
             <SelectContent>
-              {requirements?.map((req) => (
-                <SelectItem key={req.id} value={req.id}>
-                  {req.bid?.bid_name || 'Sem edital'} - {req.role_title} ({req.requirement_code})
+              {bids?.map((bid) => (
+                <SelectItem key={bid.id} value={bid.id}>
+                  {bid.bid_name} ({bid.bid_code})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {selectedRequirement && (
+        {selectedBid && (
           <Card className="p-4 bg-accent/50">
-            <h4 className="font-semibold mb-2">{selectedRequirement.role_title}</h4>
+            <h4 className="font-semibold mb-2">{selectedBid.bid_name}</h4>
             <p className="text-sm text-muted-foreground mb-2">
-              Edital: {selectedRequirement.bid?.bid_name || 'Sem edital'} ({selectedRequirement.bid?.bid_code || 'N/A'})
+              Código: {selectedBid.bid_code}
             </p>
-            <div className="text-sm">
-              <strong>Experiência:</strong> {selectedRequirement.required_experience_years} anos • 
-              <strong> Quantidade:</strong> {selectedRequirement.quantity_needed} profissional(is)
-            </div>
+            {selectedBid.bid_description && (
+              <p className="text-sm">{selectedBid.bid_description}</p>
+            )}
           </Card>
         )}
 
         <Button 
           onClick={handleCalculate} 
-          disabled={!selectedRequirementId || isCalculating}
+          disabled={!selectedBidId || isCalculating}
           className="w-full"
         >
           {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Calcular Adequação
+          {isCalculating && calculationProgress 
+            ? `Calculando ${calculationProgress.current}/${calculationProgress.total} requisitos...`
+            : 'Calcular Adequação para Todos os Requisitos'
+          }
         </Button>
       </div>
 
-      {matches && matches.length > 0 && (
+      {matchesByBid && matchesByBid.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Profissionais Adequados</h3>
-          {matches.map((match) => (
-            <Card key={match.id} className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{match.user_profile?.full_name}</h4>
-                    <p className="text-sm text-muted-foreground">{match.user_profile?.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className={`text-3xl font-bold ${getScoreColor(match.match_score)}`}>
-                      {match.match_score}%
-                    </div>
-                    <Badge variant="outline" className={getScoreColor(match.match_score)}>
-                      {getScoreLabel(match.match_score)}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setMatchToDelete(match.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </div>
+          <Card className="p-4 bg-primary/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Resultados do Matching</h3>
+                <p className="text-sm text-muted-foreground">
+                  {totalRequirements} requisito{totalRequirements !== 1 ? 's' : ''} • {totalMatches} profissional{totalMatches !== 1 ? 'is adequados' : ' adequado'}
+                </p>
               </div>
+            </div>
+          </Card>
 
-              <MatchScoreBreakdown breakdown={match.score_breakdown} />
-
-              {match.status === 'pending_validation' && (
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    className="flex-1 gap-2"
-                    onClick={() => handleValidate(match.id, 'validated')}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Validar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 gap-2"
-                    onClick={() => handleValidate(match.id, 'rejected')}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Rejeitar
-                  </Button>
-                </div>
-              )}
-
-              {match.status === 'validated' && (
-                <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/20 rounded-lg text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Match validado
-                </div>
-              )}
-
-              {match.status === 'rejected' && (
-                <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/20 rounded-lg text-sm text-red-800 dark:text-red-200 flex items-center gap-2">
-                  <XCircle className="h-4 w-4" />
-                  Match rejeitado
-                </div>
-              )}
-            </Card>
+          {matchesByBid.map((group) => (
+            <BidRequirementMatchGroup
+              key={group.requirement.id}
+              requirement={group.requirement}
+              matches={group.matches}
+              onValidate={handleValidate}
+              onDelete={setMatchToDelete}
+            />
           ))}
         </div>
       )}

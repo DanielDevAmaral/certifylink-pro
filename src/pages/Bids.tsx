@@ -60,19 +60,19 @@ export default function Bids() {
   return (
     <Layout>
       <PageHeader 
-        title="Editais" 
-        description="Gerencie os editais públicos e seus requisitos"
+        title="Requisitos Técnicos" 
+        description="Cadastre aqui qual o cliente e necessidade, no botão Ver Detalhes você cadastra os Requisitos."
       >
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Novo Edital
+              Novo Item
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingBid ? 'Editar Edital' : 'Novo Edital'}</DialogTitle>
+              <DialogTitle>{editingBid ? 'Editar Registro' : 'Novo Cadastro'}</DialogTitle>
             </DialogHeader>
             <BidForm 
               onSuccess={handleCloseDialog}
@@ -105,7 +105,7 @@ export default function Bids() {
         ) : (
           <Card className="col-span-full p-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum edital cadastrado</p>
+            <p className="text-muted-foreground">Nenhum requisito cadastrado</p>
           </Card>
         )}
       </div>
@@ -115,7 +115,7 @@ export default function Bids() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este edital? Todos os requisitos e matches relacionados também serão removidos. Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este item? Todos os requisitos e matches relacionados também serão removidos. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

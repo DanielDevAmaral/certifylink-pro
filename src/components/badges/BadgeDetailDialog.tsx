@@ -75,9 +75,9 @@ export function BadgeDetailDialog({ badge, open, onOpenChange }: BadgeDetailDial
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            {badge.icon_url ? (
+            {badge.image_url ? (
               <img 
-                src={badge.icon_url} 
+                src={badge.image_url} 
                 alt={`${badge.name} icon`}
                 className="w-12 h-12 rounded-lg object-cover"
               />

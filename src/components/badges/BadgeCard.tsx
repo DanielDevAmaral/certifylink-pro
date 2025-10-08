@@ -2,12 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Copy, MoreVertical } from "lucide-react";
+import { Eye, Copy, MoreVertical, QrCode, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { BadgeWithProfile } from "@/hooks/useBadges";
 import { useToast } from "@/hooks/use-toast";
+import { QRCodeDialog } from "@/components/common/QRCodeDialog";
+import { useState } from "react";
 
 interface BadgeCardProps {
   badge: BadgeWithProfile;
@@ -19,6 +21,7 @@ interface BadgeCardProps {
 
 export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: BadgeCardProps) {
   const { toast } = useToast();
+  const [showQRCode, setShowQRCode] = useState(false);
 
   const handleCopyLink = async () => {
     if (badge.public_link) {
@@ -55,9 +58,9 @@ export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: 
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            {badge.icon_url ? (
+            {badge.image_url ? (
               <img 
-                src={badge.icon_url} 
+                src={badge.image_url} 
                 alt={`${badge.name} icon`}
                 className="w-10 h-10 rounded-lg object-cover"
               />
@@ -159,16 +162,46 @@ export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: 
           )}
         </div>
 
-        <Button 
-          onClick={() => onViewDetails(badge)}
-          variant="outline" 
-          size="sm" 
-          className="w-full mt-4"
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          Ver detalhes
-        </Button>
+        <div className="flex gap-2 mt-4">
+          <Button 
+            onClick={() => onViewDetails(badge)}
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Ver detalhes
+          </Button>
+          
+          {badge.public_link && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowQRCode(true)}
+            >
+              <QrCode className="h-4 w-4" />
+            </Button>
+          )}
+          
+          {onDelete && userRole === 'admin' && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => onDelete(badge.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </CardContent>
+
+      <QRCodeDialog
+        open={showQRCode}
+        onOpenChange={setShowQRCode}
+        url={badge.public_link || ''}
+        title={`QR Code - ${badge.name}`}
+        description="Escaneie este código para acessar o badge"
+      />
     </Card>
   );
 }

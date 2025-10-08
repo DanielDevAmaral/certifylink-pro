@@ -60,8 +60,8 @@ export default function Bids() {
   return (
     <Layout>
       <PageHeader 
-        title="Editais" 
-        description="Gerencie os editais públicos e seus requisitos"
+        title="Requisitos Técnicos" 
+        description="Gerencie os seus requisitos técnicos, cadastre o item principal e em Ver Detalhes registre seus requisitos."
       >
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

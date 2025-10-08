@@ -85,7 +85,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
 
       <div className="flex gap-2 justify-end">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : initialData ? "Atualizar" : "Criar Edital"}
+          {isSubmitting ? "Salvando..." : initialData ? "Atualizar" : "Criar"}
         </Button>
       </div>
     </form>

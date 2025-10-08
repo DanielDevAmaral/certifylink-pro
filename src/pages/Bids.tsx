@@ -68,22 +68,34 @@ export default function Bids({ embedded = false }: BidsProps) {
           title="Requisitos Técnicos"
           description="Gerencie os Nomes de Requisitos e suas necessidades, cadastre o Nome e em Ver Detalhes registre os requisitos."
         >
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Nome
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{editingBid ? "Editar Nome" : "Novo Nome"}</DialogTitle>
-            </DialogHeader>
-            <BidForm onSuccess={handleCloseDialog} onSubmit={handleSubmit} initialData={editingBid} />
-          </DialogContent>
-        </Dialog>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Nome
+          </Button>
         </PageHeader>
       )}
+
+      {embedded && (
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Requisitos Técnicos</h2>
+            <p className="text-muted-foreground">Gerencie os Nomes de Requisitos e suas necessidades</p>
+          </div>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Nome
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingBid ? "Editar Nome" : "Novo Nome"}</DialogTitle>
+          </DialogHeader>
+          <BidForm onSuccess={handleCloseDialog} onSubmit={handleSubmit} initialData={editingBid} />
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (

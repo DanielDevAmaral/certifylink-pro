@@ -58,7 +58,7 @@ export function Sidebar() {
     },
   { name: 'Equipes', href: '/team', icon: Users, requiredRole: 'leader' as const },
   { name: 'Meu Perfil', href: '/knowledge/profile', icon: User },
-  { name: 'Gestão de Conhecimento', href: '/knowledge', icon: UserSearch, requiredRole: 'leader' as const },
+  { name: 'Gestão de Conhecimento', href: '/knowledge', icon: UserSearch },
   { name: 'Requisitos e Adequação', href: '/knowledge/bids-management', icon: FileText },
     {
       name: "Painel Admin",

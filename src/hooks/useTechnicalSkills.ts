@@ -11,24 +11,32 @@ export function useTechnicalSkills(category?: SkillCategory) {
     queryFn: async () => {
       let query = supabase
         .from('technical_skills')
-        .select(`
-          *,
-          user_skills(count)
-        `)
+        .select('*')
         .order('name');
 
       if (category) {
         query = query.eq('category', category);
       }
 
-      const { data, error } = await query;
+      const { data: skillsData, error } = await query;
       if (error) throw error;
       
-      // Transform data to include user count
-      return (data || []).map(skill => ({
-        ...skill,
-        user_count: Array.isArray(skill.user_skills) ? skill.user_skills.length : 0
-      })) as any[];
+      // Get count for each skill separately
+      const skillsWithCount = await Promise.all(
+        (skillsData || []).map(async (skill) => {
+          const { count } = await supabase
+            .from('user_skills')
+            .select('*', { count: 'exact', head: true })
+            .eq('skill_id', skill.id);
+          
+          return {
+            ...skill,
+            user_count: count || 0
+          };
+        })
+      );
+      
+      return skillsWithCount as any[];
     },
   });
 

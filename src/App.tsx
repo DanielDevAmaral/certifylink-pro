@@ -126,11 +126,11 @@ const App = () => (
                   <ProfessionalProfile />
                 </ProtectedRoute>
               } />
-              <Route path="/knowledge" element={
-                <ProtectedRoute requiredRole="leader">
-                  <KnowledgeManagement />
-                </ProtectedRoute>
-              } />
+          <Route path="/knowledge" element={
+            <ProtectedRoute>
+              <KnowledgeManagement />
+            </ProtectedRoute>
+          } />
               <Route path="/knowledge/bids-management" element={
                 <ProtectedRoute>
                   <BidManagement />

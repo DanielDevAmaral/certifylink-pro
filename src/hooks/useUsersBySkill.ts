@@ -23,11 +23,12 @@ export function useUsersBySkill(skillId: string | null) {
           user_id,
           proficiency_level,
           years_of_experience,
-          profiles!inner(
+          profiles(
             full_name,
             email,
             position,
-            department
+            department,
+            status
           )
         `)
         .eq('skill_id', skillId)
@@ -35,15 +36,21 @@ export function useUsersBySkill(skillId: string | null) {
 
       if (error) throw error;
 
-      return (data || []).map(item => ({
-        user_id: item.user_id,
-        full_name: (item.profiles as any).full_name,
-        email: (item.profiles as any).email,
-        position: (item.profiles as any).position,
-        department: (item.profiles as any).department,
-        proficiency_level: item.proficiency_level,
-        years_of_experience: item.years_of_experience || 0,
-      })) as UserSkillDetail[];
+      // Filter out users without profiles or with inactive status
+      return (data || [])
+        .filter(item => {
+          const profile = item.profiles as any;
+          return profile && profile.full_name && profile.status === 'active';
+        })
+        .map(item => ({
+          user_id: item.user_id,
+          full_name: (item.profiles as any).full_name,
+          email: (item.profiles as any).email,
+          position: (item.profiles as any).position,
+          department: (item.profiles as any).department,
+          proficiency_level: item.proficiency_level,
+          years_of_experience: item.years_of_experience || 0,
+        })) as UserSkillDetail[];
     },
     enabled: !!skillId,
   });

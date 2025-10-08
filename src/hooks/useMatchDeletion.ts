@@ -15,7 +15,9 @@ export function useMatchDeletion() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate all match-related queries
       queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
+      queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
       toast.success('Match removido com sucesso');
     },
     onError: (error) => {

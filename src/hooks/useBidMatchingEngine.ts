@@ -151,7 +151,9 @@ export function useBidMatchingEngine(bidId?: string) {
       };
     },
     onSuccess: (data) => {
+      // Invalidate all match-related queries
       queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
+      queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
       toast.success(`${data.matchesFound} profissionais adequados encontrados de ${data.totalUsers} analisados`);
     },
     onError: (error) => {
@@ -297,6 +299,8 @@ export function useBidMatchingEngine(bidId?: string) {
       };
     },
     onSuccess: (data) => {
+      // Invalidate all match-related queries
+      queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
       queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
       toast.success(
         `Matching calculado para ${data.totalRequirements} requisito${data.totalRequirements !== 1 ? 's' : ''}: ${data.totalMatches} profissional${data.totalMatches !== 1 ? 'is adequados' : ' adequado'} encontrado${data.totalMatches !== 1 ? 's' : ''}`
@@ -332,6 +336,8 @@ export function useBidMatchingEngine(bidId?: string) {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all match-related queries
+      queryClient.invalidateQueries({ queryKey: ['bid-matches'] });
       queryClient.invalidateQueries({ queryKey: ['bid-matches-by-bid'] });
     },
     onError: (error) => {

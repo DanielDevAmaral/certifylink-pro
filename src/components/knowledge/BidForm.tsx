@@ -49,7 +49,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
       <div className="space-y-4">
         <div>
           <Label htmlFor="bid_name">
-            Nome do Edital <span className="text-destructive">*</span>
+            Nome <span className="text-destructive">*</span>
           </Label>
           <Input
             id="bid_name"
@@ -61,12 +61,12 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
 
         <div>
           <Label htmlFor="bid_code">
-            Código do Edital <span className="text-destructive">*</span>
+            ID Pipedrive <span className="text-destructive">*</span>
           </Label>
           <Input
             id="bid_code"
             {...register("bid_code", { required: "Código é obrigatório" })}
-            placeholder="Ex: Pipedrive 98765"
+            placeholder="Ex: 98765"
             disabled={!!initialData}
           />
           {errors.bid_code && <p className="text-sm text-destructive mt-1">{errors.bid_code.message}</p>}

@@ -24,8 +24,6 @@ const badgeSchema = z.object({
   public_link: z.string().optional().or(z.literal('')),
   verification_code: z.string().optional(),
   issuer_name: z.string().optional(),
-  issuer_logo_url: z.string().optional(),
-  icon_url: z.string().optional(),
   image_url: z.string().optional(),
   metadata: z.record(z.string(), z.any()).optional()
 });
@@ -73,8 +71,6 @@ export function BadgeForm({
       public_link: badge?.public_link || '',
       verification_code: badge?.verification_code || '',
       issuer_name: badge?.issuer_name || '',
-      issuer_logo_url: badge?.issuer_logo_url || '',
-      icon_url: badge?.icon_url || '',
       image_url: badge?.image_url || '',
       metadata: badge?.metadata || {}
     }
@@ -90,15 +86,13 @@ export function BadgeForm({
           name: data.name,
           description: data.description,
           category: data.category,
-          icon_url: data.icon_url,
-          image_url: data.image_url,
+          image_url: data.image_url || null,
           issued_date: data.issued_date,
           expiry_date: data.expiry_date,
           status: 'valid' as const, // Trigger will calculate the correct status based on expiry_date
           public_link: data.public_link,
           verification_code: data.verification_code,
           issuer_name: data.issuer_name,
-          issuer_logo_url: data.issuer_logo_url,
           metadata: data.metadata,
           created_at: badge.created_at,
           updated_at: new Date().toISOString()
@@ -311,74 +305,32 @@ export function BadgeForm({
             )}
           />
 
-          {/* Upload de Imagens */}
-          <div className="space-y-6">
+          {/* Upload de Imagem */}
+          <div className="space-y-4">
             <div className="border-t border-border pt-6">
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <Award className="h-4 w-4" />
-                Imagens do Badge
+                Imagem do Badge
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="icon_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <ImageUpload
-                          label="Ícone do Badge"
-                          description="Ícone pequeno representando o badge (recomendado: 64x64px)"
-                          currentUrl={field.value}
-                          onUploadComplete={(url) => field.onChange(url)}
-                          bucketName="documents"
-                          folder="badge-icons"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <ImageUpload
-                          label="Imagem do Badge"
-                          description="Imagem principal do badge (recomendado: 512x512px)"
-                          currentUrl={field.value}
-                          onUploadComplete={(url) => field.onChange(url)}
-                          bucketName="documents"
-                          folder="badge-images"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="issuer_logo_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <ImageUpload
-                          label="Logo do Emissor"
-                          description="Logo da organização que emitiu o badge"
-                          currentUrl={field.value}
-                          onUploadComplete={(url) => field.onChange(url)}
-                          bucketName="documents"
-                          folder="badge-issuer-logos"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="image_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <ImageUpload
+                        label="Imagem do Badge"
+                        description="Faça upload da imagem do badge ou cole uma imagem (Ctrl+V)"
+                        currentUrl={field.value}
+                        onUploadComplete={(url) => field.onChange(url)}
+                        bucketName="documents"
+                        folder="badge-images"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </div>
 

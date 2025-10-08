@@ -22,43 +22,51 @@ export function useUsersBySkill(skillId: string | null) {
 
       console.log('🔍 [useUsersBySkill] Fetching users for skill:', skillId);
 
-      const { data, error } = await supabase
+      // Step 1: Fetch user_skills
+      const { data: userSkills, error: skillsError } = await supabase
         .from('user_skills')
-        .select(`
-          user_id,
-          proficiency_level,
-          years_of_experience,
-          profiles(
-            full_name,
-            email,
-            position,
-            department,
-            status
-          )
-        `)
+        .select('user_id, proficiency_level, years_of_experience')
         .eq('skill_id', skillId)
         .order('years_of_experience', { ascending: false });
 
-      if (error) {
-        console.error('❌ [useUsersBySkill] Error fetching users:', error);
-        throw error;
+      if (skillsError) {
+        console.error('❌ [useUsersBySkill] Error fetching user_skills:', skillsError);
+        throw skillsError;
       }
 
-      console.log('📊 [useUsersBySkill] Raw data received:', data?.length, 'records');
+      if (!userSkills || userSkills.length === 0) {
+        console.log('ℹ️ [useUsersBySkill] No user_skills found for this skill');
+        return [];
+      }
 
-      // Filter and transform data
-      const filteredData = (data || [])
-        .map((item, index) => {
-          const profile = item.profiles as any;
+      console.log('📊 [useUsersBySkill] Found', userSkills.length, 'user_skills records');
+
+      // Step 2: Fetch profiles for these users
+      const userIds = userSkills.map(us => us.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, position, department, status')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('❌ [useUsersBySkill] Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('📊 [useUsersBySkill] Found', profiles?.length || 0, 'profiles');
+
+      // Step 3: Combine data client-side
+      const combined = userSkills
+        .map((skillData, index) => {
+          const profile = profiles?.find(p => p.user_id === skillData.user_id);
           
-          // Debug log for each record
           if (!profile) {
-            console.warn(`⚠️ [useUsersBySkill] Record ${index}: No profile found for user_id ${item.user_id}`);
+            console.warn(`⚠️ [useUsersBySkill] Record ${index}: No profile found for user_id ${skillData.user_id}`);
             return null;
           }
           
           if (!profile.full_name) {
-            console.warn(`⚠️ [useUsersBySkill] Record ${index}: Profile missing full_name for user_id ${item.user_id}`);
+            console.warn(`⚠️ [useUsersBySkill] Record ${index}: Profile missing full_name for user_id ${skillData.user_id}`);
             return null;
           }
 
@@ -68,20 +76,20 @@ export function useUsersBySkill(skillId: string | null) {
           }
 
           return {
-            user_id: item.user_id,
+            user_id: skillData.user_id,
             full_name: profile.full_name,
             email: profile.email,
             position: profile.position,
             department: profile.department,
-            proficiency_level: item.proficiency_level as string,
-            years_of_experience: item.years_of_experience || 0,
+            proficiency_level: skillData.proficiency_level as string,
+            years_of_experience: skillData.years_of_experience || 0,
           } as UserSkillDetail;
         })
         .filter((item): item is UserSkillDetail => item !== null);
 
-      console.log('✅ [useUsersBySkill] Filtered results:', filteredData.length, 'professionals');
+      console.log('✅ [useUsersBySkill] Final filtered results:', combined.length, 'active professionals');
       
-      return filteredData;
+      return combined;
     },
     enabled: !!skillId,
   });

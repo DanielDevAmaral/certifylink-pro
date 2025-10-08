@@ -8,7 +8,7 @@ import { useUsersBySkill } from "@/hooks/useUsersBySkill";
 import { useSkillProfessionalsFilter } from "@/hooks/useSkillProfessionalsFilter";
 import { FullProfileDialog } from "./FullProfileDialog";
 import { SkillProfessionalsFilter } from "./SkillProfessionalsFilter";
-import { User, Briefcase, Award, Search } from "lucide-react";
+import { User, Briefcase, Award, Search, AlertCircle, RefreshCw } from "lucide-react";
 import { PROFICIENCY_LEVEL_LABELS } from "@/types/knowledge";
 
 interface SkillProfessionalsDialogProps {
@@ -111,12 +111,30 @@ export function SkillProfessionalsDialog({
           )}
 
           {error ? (
-            <Card className="p-8 text-center border-destructive">
-              <User className="h-12 w-12 mx-auto mb-4 text-destructive" />
-              <p className="text-destructive font-semibold mb-2">Erro ao carregar profissionais</p>
-              <p className="text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : 'Erro desconhecido'}
-              </p>
+            <Card className="p-6 border-destructive">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 text-destructive">
+                  <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold mb-2">Erro ao carregar profissionais</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {error instanceof Error ? error.message : 'Ocorreu um erro desconhecido ao buscar os dados.'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Possíveis causas: problema de conexão, permissões insuficientes ou erro no servidor.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="w-full"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar Novamente
+                </Button>
+              </div>
             </Card>
           ) : isLoading ? (
             <div className="space-y-4">

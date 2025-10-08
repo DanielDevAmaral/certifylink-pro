@@ -89,9 +89,11 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
             <>
               Competências Técnicas
               <br />
-              <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-                💡 Caso necessite registrar alguma competência, solicite ao seu líder
-              </span>
+              {userRole !== "admin" && userRole !== "leader" && (
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+                  💡 Caso necessite registrar alguma competência, solicite ao seu líder
+                </span>
+              )}
             </>
           ) : (
             ""

@@ -78,7 +78,7 @@ export function useBadgeSearchEngine(filters: BadgeSearchEngineFilters = {}) {
           status,
           issued_date,
           expiry_date,
-          icon_url,
+          image_url,
           issuer_name,
           public_link,
           verification_code,

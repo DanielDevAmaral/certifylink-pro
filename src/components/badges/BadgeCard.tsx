@@ -56,23 +56,23 @@ export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: 
   return (
     <Card className="h-full hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {badge.image_url ? (
               <img 
                 src={badge.image_url} 
                 alt={`${badge.name} icon`}
-                className="w-10 h-10 rounded-lg object-cover"
+                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-semibold text-lg">
                   {badge.name.charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-semibold truncate">
+              <CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
                 {badge.name}
               </CardTitle>
               <Badge className={`text-xs mt-1 ${getCategoryColor(badge.category)}`}>
@@ -81,7 +81,7 @@ export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: 
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <StatusBadge status={badge.status} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -89,7 +89,7 @@ export function BadgeCard({ badge, onViewDetails, onEdit, onDelete, userRole }: 
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover border">
+              <DropdownMenuContent align="end" className="bg-popover border z-50">
                 <DropdownMenuItem onClick={() => onViewDetails(badge)}>
                   <Eye className="h-4 w-4 mr-2" />
                   Ver detalhes

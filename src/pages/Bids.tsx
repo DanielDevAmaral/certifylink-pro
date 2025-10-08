@@ -38,7 +38,7 @@ export default function Bids() {
     setEditingBid(null);
   };
 
-  const handleSubmit = async (data: Omit<Bid, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSubmit = async (data: Omit<Bid, "id" | "created_at" | "updated_at">) => {
     if (editingBid) {
       await updateBid({ ...data, id: editingBid.id });
     } else {
@@ -48,7 +48,7 @@ export default function Bids() {
 
   const handleDelete = async () => {
     if (!bidToDelete) return;
-    
+
     try {
       await deleteBid(bidToDelete);
       setBidToDelete(null);
@@ -59,26 +59,22 @@ export default function Bids() {
 
   return (
     <Layout>
-      <PageHeader 
-        title="Editais" 
-        description="Gerencie os editais públicos e seus requisitos"
+      <PageHeader
+        title="Requisitos Técnicos"
+        description="Gerencie os Nomes de Requisitos e suas necessidades, cadastre o Nome e em Ver Detalhes registre os requisitos."
       >
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Novo Edital
+              Novo Nome
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingBid ? 'Editar Edital' : 'Novo Edital'}</DialogTitle>
+              <DialogTitle>{editingBid ? "Editar Nome" : "Novo Nome"}</DialogTitle>
             </DialogHeader>
-            <BidForm 
-              onSuccess={handleCloseDialog}
-              onSubmit={handleSubmit}
-              initialData={editingBid}
-            />
+            <BidForm onSuccess={handleCloseDialog} onSubmit={handleSubmit} initialData={editingBid} />
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -105,7 +101,7 @@ export default function Bids() {
         ) : (
           <Card className="col-span-full p-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum edital cadastrado</p>
+            <p className="text-muted-foreground">Nenhum nome cadastrado</p>
           </Card>
         )}
       </div>
@@ -115,13 +111,14 @@ export default function Bids() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este edital? Todos os requisitos e matches relacionados também serão removidos. Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este nome? Todos os requisitos e matches relacionados também serão
+              removidos. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
+            <AlertDialogAction
+              onClick={handleDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -143,7 +140,7 @@ interface BidCardProps {
 
 function BidCard({ bid, onEdit, onDelete, onViewDetails }: BidCardProps) {
   const { requirements } = useBidRequirements(bid.id);
-  
+
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
       <div className="space-y-4">
@@ -155,36 +152,18 @@ function BidCard({ bid, onEdit, onDelete, onViewDetails }: BidCardProps) {
           </div>
         </div>
 
-        {bid.bid_description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {bid.bid_description}
-          </p>
-        )}
+        {bid.bid_description && <p className="text-sm text-muted-foreground line-clamp-2">{bid.bid_description}</p>}
 
         <div className="flex items-center justify-between pt-2 border-t">
-          <span className="text-sm font-medium">
-            {requirements?.length || 0} requisito(s)
-          </span>
+          <span className="text-sm font-medium">{requirements?.length || 0} requisito(s)</span>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(bid)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => onEdit(bid)}>
               <Edit className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(bid.id)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => onDelete(bid.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={onViewDetails}
-            >
+            <Button variant="default" size="sm" onClick={onViewDetails}>
               Ver Detalhes
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>

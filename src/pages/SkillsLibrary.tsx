@@ -52,7 +52,6 @@ export default function SkillsLibrary() {
               <Plus className="h-4 w-4" />
               Nova Competência
             </Button>
-            <label>Caso necessite registrar alguma competência, solicite ao seu lider.</label>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <SkillForm

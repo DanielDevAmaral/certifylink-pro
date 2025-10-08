@@ -26,6 +26,7 @@ import SkillsLibrary from "./pages/SkillsLibrary";
 import Bids from "./pages/Bids";
 import BidDetail from "./pages/BidDetail";
 import BidMatching from "./pages/BidMatching";
+import ProfessionalProfilesDirectory from "./pages/ProfessionalProfilesDirectory";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -141,6 +142,11 @@ const App = () => (
               <Route path="/knowledge/matching" element={
                 <ProtectedRoute requiredRole="admin">
                   <BidMatching />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/profiles" element={
+                <ProtectedRoute requiredRole="leader">
+                  <ProfessionalProfilesDirectory />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

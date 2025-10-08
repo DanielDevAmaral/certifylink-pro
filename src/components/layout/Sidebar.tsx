@@ -17,6 +17,7 @@ import {
   BookOpen,
   FileText,
   Target,
+  UserSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +68,13 @@ export function Sidebar() {
       href: "/knowledge/profile",
       icon: User,
       description: "Gerenciar formação e experiência",
+    },
+    {
+      name: "Banco de Talentos",
+      href: "/knowledge/profiles",
+      icon: UserSearch,
+      description: "Buscar perfis profissionais",
+      requiredRole: "leader",
     },
     {
       name: "Biblioteca de Skills",

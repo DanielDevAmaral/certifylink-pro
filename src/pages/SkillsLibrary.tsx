@@ -47,7 +47,7 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
     if (!searchQuery.trim()) return skills;
 
     const query = searchQuery.toLowerCase();
-    return skills.filter(skill => {
+    return skills.filter((skill) => {
       const nameMatch = skill.name.toLowerCase().includes(query);
       const descMatch = skill.description?.toLowerCase().includes(query);
       const categoryMatch = SKILL_CATEGORY_LABELS[skill.category].toLowerCase().includes(query);
@@ -85,9 +85,9 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
       {/* Header with Add Button */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">
-          {embedded ? "Competências Técnicas" : ""}
+          {embedded ? "Competências Técnicas (Caso necessite registrar alguma competência, solicite ao seu lider)" : ""}
         </h2>
-        {(userRole === 'admin' || userRole === 'leader') && (
+        {(userRole === "admin" || userRole === "leader") && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2" onClick={() => setEditingSkill(null)}>
@@ -125,7 +125,7 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
           />
           {searchQuery && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-              {filteredSkills.length} {filteredSkills.length === 1 ? 'resultado' : 'resultados'}
+              {filteredSkills.length} {filteredSkills.length === 1 ? "resultado" : "resultados"}
             </span>
           )}
         </div>
@@ -148,7 +148,7 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
                   <h3 className="font-semibold text-lg mb-1">{skill.name}</h3>
                   <p className="text-sm text-muted-foreground">{SKILL_CATEGORY_LABELS[skill.category]}</p>
                 </div>
-                {(userRole === 'admin' || userRole === 'leader') && (
+                {(userRole === "admin" || userRole === "leader") && (
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
@@ -167,7 +167,9 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
                 )}
               </div>
 
-              {skill.description && <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{skill.description}</p>}
+              {skill.description && (
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{skill.description}</p>
+              )}
 
               <button
                 onClick={() => handleShowProfessionals(skill.id, skill.name)}
@@ -183,9 +185,7 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
         ) : skills && skills.length > 0 ? (
           <Card className="col-span-full p-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground font-medium mb-2">
-              Nenhuma competência encontrada com "{searchQuery}"
-            </p>
+            <p className="text-muted-foreground font-medium mb-2">Nenhuma competência encontrada com "{searchQuery}"</p>
             <Button variant="outline" onClick={() => setSearchQuery("")} className="mt-2">
               Limpar busca
             </Button>
@@ -210,7 +210,11 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

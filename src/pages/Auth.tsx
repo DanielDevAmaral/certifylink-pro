@@ -13,6 +13,7 @@ import { loginSchema, signupSchema, type LoginFormData, type SignupFormData } fr
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { FormFieldError } from '@/components/ui/form-field-error';
 import { useToast } from '@/hooks/use-toast';
+import { AboutDialog } from '@/components/common/AboutDialog';
 export default function Auth() {
   const {
     user,
@@ -163,20 +164,18 @@ export default function Auth() {
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-         
-          <h1 className="text-2xl font-bold text-foreground">
-             <div className="flex h-20 items-center border-b border-border px-6">
-          <SignetLogo variant="full" size={285} />
-        </div>
-          </h1>
-
-          
-
+        <div className="text-center space-y-4">
+          <div className="flex h-20 items-center justify-center border-b border-border px-6">
+            <SignetLogo variant="full" size={285} />
+          </div>
           
           <p className="text-muted-foreground">
             Plataforma de Gestão de Certificações e Documentos
           </p>
+
+          <div className="flex justify-center">
+            <AboutDialog variant="outline" />
+          </div>
         </div>
 
         {/* Auth Form */}

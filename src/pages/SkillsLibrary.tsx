@@ -85,8 +85,19 @@ export default function SkillsLibrary({ embedded = false }: SkillsLibraryProps) 
       {/* Header with Add Button */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">
-          {embedded ? "Competências Técnicas (Caso necessite registrar alguma competência, solicite ao seu lider)" : ""}
+          {embedded ? (
+            <>
+              Competências Técnicas
+              <br />
+              <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+                💡 Caso necessite registrar alguma competência, solicite ao seu líder
+              </span>
+            </>
+          ) : (
+            ""
+          )}
         </h2>
+
         {(userRole === "admin" || userRole === "leader") && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>

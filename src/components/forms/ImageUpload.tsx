@@ -83,7 +83,7 @@ export function ImageUpload({
         // Create unique filename
         const timestamp = Date.now();
         const fileExt = file.name.split(".").pop();
-        const fileName = `${folder}/${user.id}_${timestamp}.${fileExt}`;
+        const fileName = `${folder}/${user.id}/${timestamp}.${fileExt}`;
 
         // Upload file to Supabase Storage
         const { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, {

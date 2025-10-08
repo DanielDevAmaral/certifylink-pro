@@ -20,6 +20,7 @@ interface User {
   created_at: string;
   updated_at: string;
   last_sign_in_at?: string;
+  avatar_url?: string;
 }
 
 export function useUserSearch({
@@ -35,7 +36,7 @@ export function useUserSearch({
       // Build the query for profiles
       let profilesQuery = supabase
         .from('profiles')
-        .select('user_id, full_name, email, status, position, department, created_at, updated_at')
+        .select('user_id, full_name, email, status, position, department, created_at, updated_at, avatar_url')
         .limit(limit);
 
       // Apply status filter

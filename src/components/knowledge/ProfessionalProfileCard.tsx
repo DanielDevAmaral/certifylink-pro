@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserCircle, Briefcase, Award, GraduationCap } from "lucide-react";
 import { EDUCATION_LEVEL_LABELS } from "@/types/knowledge";
 
@@ -16,6 +16,7 @@ interface ProfessionalProfileCardProps {
   highestEducationLevel?: string;
   maxSkillExperience?: number;
   topSkills: Array<{ skill_id: string; name: string; proficiency_level: string }>;
+  avatarUrl?: string;
   onViewProfile: (userId: string) => void;
 }
 
@@ -30,6 +31,7 @@ export function ProfessionalProfileCard({
   highestEducationLevel,
   maxSkillExperience,
   topSkills,
+  avatarUrl,
   onViewProfile,
 }: ProfessionalProfileCardProps) {
   const getInitials = (name: string) => {
@@ -53,6 +55,9 @@ export function ProfessionalProfileCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
+              {avatarUrl && (
+                <AvatarImage src={avatarUrl} alt={fullName} />
+              )}
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {getInitials(fullName)}
               </AvatarFallback>

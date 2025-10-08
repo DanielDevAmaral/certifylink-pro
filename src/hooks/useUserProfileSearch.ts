@@ -24,6 +24,7 @@ interface ProfileSearchResult {
   highest_education_level?: string;
   max_skill_experience?: number;
   top_skills: Array<{ skill_id: string; name: string; proficiency_level: string }>;
+  avatar_url?: string;
 }
 
 export function useUserProfileSearch(filters: ProfileSearchFilters) {
@@ -33,7 +34,7 @@ export function useUserProfileSearch(filters: ProfileSearchFilters) {
       // 1. Build base profiles query
       let profilesQuery = supabase
         .from('profiles')
-        .select('user_id, full_name, email, position, department, status');
+        .select('user_id, full_name, email, position, department, status, avatar_url');
 
       // Apply text search filter
       if (filters.searchTerm && filters.searchTerm.trim()) {
@@ -134,6 +135,7 @@ export function useUserProfileSearch(filters: ProfileSearchFilters) {
           highest_education_level: highestEducation,
           max_skill_experience: maxSkillExperience,
           top_skills: topSkills,
+          avatar_url: profile.avatar_url,
         };
       });
 

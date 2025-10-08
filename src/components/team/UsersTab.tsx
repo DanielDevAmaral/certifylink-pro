@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { UserStatusBadge } from "@/components/ui/user-status-badge";
@@ -107,7 +107,8 @@ export function UsersTab({
       email: user.email,
       status: user.status,
       position: user.position,
-      department: user.department
+      department: user.department,
+      avatar_url: user.avatar_url
     },
     user_roles: [{
       role: user.role
@@ -416,6 +417,9 @@ function UsersList({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
+                    {member.profiles.avatar_url && (
+                      <AvatarImage src={member.profiles.avatar_url} alt={member.profiles.full_name} />
+                    )}
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                       {getInitials(member.profiles.full_name)}
                     </AvatarFallback>

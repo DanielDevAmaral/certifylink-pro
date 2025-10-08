@@ -106,6 +106,7 @@ export default function ProfessionalProfilesDirectory({ embedded = false }: Prof
                   highestEducationLevel={profile.highest_education_level}
                   maxSkillExperience={profile.max_skill_experience}
                   topSkills={profile.top_skills}
+                  avatarUrl={profile.avatar_url}
                   onViewProfile={(userId) => handleViewProfile(userId, profile.full_name)}
                 />
               ))}

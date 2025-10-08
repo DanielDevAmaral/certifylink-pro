@@ -11,6 +11,7 @@ import { Plus, Lightbulb, Trash } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
+import { SkillSelectorCombobox } from "@/components/common/SkillSelectorCombobox";
 
 interface UserSkillsManagerProps {
   userId?: string;
@@ -71,18 +72,12 @@ export function UserSkillsManager({ userId }: UserSkillsManagerProps) {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label>Competência</Label>
-                <Select onValueChange={(value) => setValue("skill_id", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma competência" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {skills?.map((skill) => (
-                      <SelectItem key={skill.id} value={skill.id}>
-                        {skill.name} ({SKILL_CATEGORY_LABELS[skill.category]})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SkillSelectorCombobox
+                  skills={skills || []}
+                  value={selectedSkillId}
+                  onValueChange={(value) => setValue("skill_id", value)}
+                  placeholder="Selecione uma competência"
+                />
               </div>
 
               <div className="space-y-2">

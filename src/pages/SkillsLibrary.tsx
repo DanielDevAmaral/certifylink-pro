@@ -118,7 +118,7 @@ export default function SkillsLibrary() {
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
-                <span>0 profissionais</span>
+                <span>{(skill as any).user_count || 0} {(skill as any).user_count === 1 ? 'profissional' : 'profissionais'}</span>
               </div>
             </Card>
           ))

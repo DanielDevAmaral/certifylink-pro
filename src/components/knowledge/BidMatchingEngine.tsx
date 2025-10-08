@@ -27,22 +27,29 @@ export function BidMatchingEngine() {
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const [showRecalculateDialog, setShowRecalculateDialog] = useState(false);
   const { bids } = useBids();
-  const { matchesByBid, calculateMatchForBid, validateMatch, checkExistingMatches, isCalculating, calculationProgress } = useBidMatchingEngine(selectedBidId);
+  const {
+    matchesByBid,
+    calculateMatchForBid,
+    validateMatch,
+    checkExistingMatches,
+    isCalculating,
+    calculationProgress,
+  } = useBidMatchingEngine(selectedBidId);
   const { deleteMatch, isDeleting } = useMatchDeletion();
 
   const handleCalculate = async () => {
     if (!selectedBidId) {
-      toast.error("Selecione um edital primeiro");
+      toast.error("Selecione um nome primeiro");
       return;
     }
-    
+
     // Check if there are existing matches
     const hasMatches = await checkExistingMatches(selectedBidId);
     if (hasMatches) {
       setShowRecalculateDialog(true);
       return;
     }
-    
+
     performCalculation(false);
   };
 
@@ -55,15 +62,15 @@ export function BidMatchingEngine() {
     }
   };
 
-  const handleValidate = async (matchId: string, status: 'validated' | 'rejected') => {
+  const handleValidate = async (matchId: string, status: "validated" | "rejected") => {
     if (!user?.id) {
       toast.error("Erro: usuário não autenticado");
       return;
     }
-    
+
     try {
       await validateMatch({ matchId, status, notes: "", validatedBy: user.id });
-      toast.success(`Match ${status === 'validated' ? 'validado' : 'rejeitado'} com sucesso`);
+      toast.success(`Match ${status === "validated" ? "validado" : "rejeitado"} com sucesso`);
     } catch (error) {
       console.error("Error validating match:", error);
       toast.error("Erro ao validar match");
@@ -72,7 +79,7 @@ export function BidMatchingEngine() {
 
   const handleDeleteMatch = async () => {
     if (!matchToDelete) return;
-    
+
     try {
       await deleteMatch(matchToDelete);
       setMatchToDelete(null);
@@ -81,7 +88,7 @@ export function BidMatchingEngine() {
     }
   };
 
-  const selectedBid = bids?.find(b => b.id === selectedBidId);
+  const selectedBid = bids?.find((b) => b.id === selectedBidId);
   const totalMatches = matchesByBid?.reduce((sum, group) => sum + group.matches.length, 0) || 0;
   const totalRequirements = matchesByBid?.length || 0;
 
@@ -89,10 +96,10 @@ export function BidMatchingEngine() {
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Selecionar Edital</Label>
+          <Label>Selecionar Nome</Label>
           <Select value={selectedBidId} onValueChange={setSelectedBidId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um edital..." />
+              <SelectValue placeholder="Selecione um item..." />
             </SelectTrigger>
             <SelectContent>
               {bids?.map((bid) => (
@@ -107,25 +114,16 @@ export function BidMatchingEngine() {
         {selectedBid && (
           <Card className="p-4 bg-accent/50">
             <h4 className="font-semibold mb-2">{selectedBid.bid_name}</h4>
-            <p className="text-sm text-muted-foreground mb-2">
-              Código: {selectedBid.bid_code}
-            </p>
-            {selectedBid.bid_description && (
-              <p className="text-sm">{selectedBid.bid_description}</p>
-            )}
+            <p className="text-sm text-muted-foreground mb-2">Código: {selectedBid.bid_code}</p>
+            {selectedBid.bid_description && <p className="text-sm">{selectedBid.bid_description}</p>}
           </Card>
         )}
 
-        <Button 
-          onClick={handleCalculate} 
-          disabled={!selectedBidId || isCalculating}
-          className="w-full"
-        >
+        <Button onClick={handleCalculate} disabled={!selectedBidId || isCalculating} className="w-full">
           {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isCalculating && calculationProgress 
+          {isCalculating && calculationProgress
             ? `Calculando ${calculationProgress.current}/${calculationProgress.total} requisitos...`
-            : 'Calcular Adequação para Todos os Requisitos'
-          }
+            : "Calcular Adequação para Todos os Requisitos"}
         </Button>
       </div>
 
@@ -136,7 +134,8 @@ export function BidMatchingEngine() {
               <div>
                 <h3 className="text-lg font-semibold">Resultados do Matching</h3>
                 <p className="text-sm text-muted-foreground">
-                  {totalRequirements} requisito{totalRequirements !== 1 ? 's' : ''} • {totalMatches} profissional{totalMatches !== 1 ? 'is adequados' : ' adequado'}
+                  {totalRequirements} requisito{totalRequirements !== 1 ? "s" : ""} • {totalMatches} profissional
+                  {totalMatches !== 1 ? "is adequados" : " adequado"}
                 </p>
               </div>
             </div>
@@ -175,14 +174,15 @@ export function BidMatchingEngine() {
       <AlertDialog open={showRecalculateDialog} onOpenChange={setShowRecalculateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Edital já possui matches</AlertDialogTitle>
+            <AlertDialogTitle>Item já possui matches</AlertDialogTitle>
             <AlertDialogDescription>
-              Este edital já possui análises de adequação calculadas. Analisar novamente irá desconsiderar todos os matches existentes e refazer a análise do zero. Deseja continuar?
+              Este item já possui análises de adequação calculadas. Analisar novamente irá desconsiderar todos os
+              matches existentes e refazer a análise do zero. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => {
                 setShowRecalculateDialog(false);
                 performCalculation(true);

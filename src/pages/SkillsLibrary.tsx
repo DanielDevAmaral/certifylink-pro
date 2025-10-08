@@ -95,7 +95,7 @@ export default function SkillsLibrary() {
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-
+                  Caso necessite registrar alguma competência, solicite ao seu lider.
                   <Button variant="ghost" size="sm" onClick={() => setDeletingSkill(skill)}>
                     <Trash className="h-4 w-4" />
                   </Button>

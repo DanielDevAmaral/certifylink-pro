@@ -56,10 +56,7 @@ export function Sidebar() {
       icon: Medal,
       description: "Controle de badges conquistados",
     },
-  { name: 'Equipes', href: '/team', icon: Users, requiredRole: 'leader' as const },
-  { name: 'Meu Perfil', href: '/knowledge/profile', icon: User },
-  { name: 'Gestão de Conhecimento', href: '/knowledge', icon: UserSearch },
-  { name: 'Requisitos e Adequação', href: '/knowledge/bids-management', icon: FileText },
+    { name: "Equipes", href: "/team", icon: Users, requiredRole: "leader" as const },
     {
       name: "Painel Admin",
       href: "/admin",

@@ -389,13 +389,34 @@ function calculateScore(
   breakdown.education_match = hasMatchingEducation ? 25 : 0;
 
   // 2. Experience Years Match (30 points)
-  const totalYears = calculateTotalExperience(userData.experiences);
-  if (totalYears >= requirement.required_experience_years) {
-    breakdown.experience_years_match = 30;
+  // If there are required skills, calculate based on specific skill experience
+  if (requirement.required_skills && requirement.required_skills.length > 0) {
+    // Get years_of_experience for each required skill
+    const requiredSkillsExperience = requirement.required_skills.map(skillId => {
+      const userSkill = userData.userSkills.find(us => us.skill_id === skillId);
+      return userSkill?.years_of_experience || 0;
+    });
+    
+    // Use minimum experience (most rigorous approach)
+    const minExperience = Math.min(...requiredSkillsExperience);
+    
+    if (minExperience >= requirement.required_experience_years) {
+      breakdown.experience_years_match = 30;
+    } else {
+      breakdown.experience_years_match = Math.round(
+        (minExperience / requirement.required_experience_years) * 30
+      );
+    }
   } else {
-    breakdown.experience_years_match = Math.round(
-      (totalYears / requirement.required_experience_years) * 30
-    );
+    // Fallback: if no skills required, use total professional experience
+    const totalYears = calculateTotalExperience(userData.experiences);
+    if (totalYears >= requirement.required_experience_years) {
+      breakdown.experience_years_match = 30;
+    } else {
+      breakdown.experience_years_match = Math.round(
+        (totalYears / requirement.required_experience_years) * 30
+      );
+    }
   }
 
   // 3. Skills Match (30 points)

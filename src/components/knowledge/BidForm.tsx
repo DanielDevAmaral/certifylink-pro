@@ -77,7 +77,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
           <Textarea
             id="bid_description"
             {...register("bid_description")}
-            placeholder="Descreva brevemente o edital..."
+            placeholder="Descreva brevemente o item..."
             rows={4}
           />
         </div>

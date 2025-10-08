@@ -11,8 +11,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useCreateBadge, useUpdateBadge } from '@/hooks/useBadges';
 import { useCacheInvalidation } from '@/hooks/useCacheInvalidation';
 import type { Badge } from '@/hooks/useBadges';
-import { Calendar, Award, Upload } from 'lucide-react';
+import { Calendar, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ImageUpload } from './ImageUpload';
 
 const badgeSchema = z.object({
   name: z.string().min(1, 'Nome do badge é obrigatório'),
@@ -295,65 +296,90 @@ export function BadgeForm({
             />
           </div>
 
-          {/* Links e Imagens */}
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="public_link"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Link Público</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://exemplo.com/badge" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* Link Público */}
+          <FormField
+            control={form.control}
+            name="public_link"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Link Público</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://exemplo.com/badge" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="icon_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL do Ícone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://exemplo.com/icon.png" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* Upload de Imagens */}
+          <div className="space-y-6">
+            <div className="border-t border-border pt-6">
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Imagens do Badge
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <FormField
+                  control={form.control}
+                  name="icon_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ImageUpload
+                          label="Ícone do Badge"
+                          description="Ícone pequeno representando o badge (recomendado: 64x64px)"
+                          currentUrl={field.value}
+                          onUploadComplete={(url) => field.onChange(url)}
+                          bucketName="documents"
+                          folder="badge-icons"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="image_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL da Imagem</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://exemplo.com/badge-image.png" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="image_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ImageUpload
+                          label="Imagem do Badge"
+                          description="Imagem principal do badge (recomendado: 512x512px)"
+                          currentUrl={field.value}
+                          onUploadComplete={(url) => field.onChange(url)}
+                          bucketName="documents"
+                          folder="badge-images"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="issuer_logo_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ImageUpload
+                          label="Logo do Emissor"
+                          description="Logo da organização que emitiu o badge"
+                          currentUrl={field.value}
+                          onUploadComplete={(url) => field.onChange(url)}
+                          bucketName="documents"
+                          folder="badge-issuer-logos"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-
-            <FormField
-              control={form.control}
-              name="issuer_logo_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL do Logo do Emissor</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://exemplo.com/logo.png" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
 
           {/* Ações do Formulário */}

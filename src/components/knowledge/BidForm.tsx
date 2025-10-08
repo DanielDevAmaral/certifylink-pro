@@ -49,7 +49,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
       <div className="space-y-4">
         <div>
           <Label htmlFor="bid_name">
-            Nome <span className="text-destructive">*</span>
+            Nome do Edital <span className="text-destructive">*</span>
           </Label>
           <Input
             id="bid_name"
@@ -61,12 +61,12 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
 
         <div>
           <Label htmlFor="bid_code">
-            Código/Pipe <span className="text-destructive">*</span>
+            Código do Edital <span className="text-destructive">*</span>
           </Label>
           <Input
             id="bid_code"
             {...register("bid_code", { required: "Código é obrigatório" })}
-            placeholder="Ex: PE-001-2024"
+            placeholder="Ex: Pipedrive 98765"
             disabled={!!initialData}
           />
           {errors.bid_code && <p className="text-sm text-destructive mt-1">{errors.bid_code.message}</p>}
@@ -77,7 +77,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
           <Textarea
             id="bid_description"
             {...register("bid_description")}
-            placeholder="Descreva brevemente ..."
+            placeholder="Descreva brevemente o edital..."
             rows={4}
           />
         </div>
@@ -85,7 +85,7 @@ export function BidForm({ onSuccess, onSubmit, initialData }: BidFormProps) {
 
       <div className="flex gap-2 justify-end">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : initialData ? "Atualizar" : "Criar Nome"}
+          {isSubmitting ? "Salvando..." : initialData ? "Atualizar" : "Criar Edital"}
         </Button>
       </div>
     </form>

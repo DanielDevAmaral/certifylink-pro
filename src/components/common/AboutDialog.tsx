@@ -43,9 +43,9 @@ export function AboutDialog({ variant = "ghost" }: AboutDialogProps) {
               <h3 className="text-lg font-semibold text-foreground mb-3">Nossa Jornada: Da Ideia à Inovação</h3>
               <p className="leading-relaxed">
                 A essência do Signet é resultado da nossa busca constante por eficiência e credibilidade. Idealizado por{" "}
-                <b>Roger Lovato</b>, o projeto nasceu da necessidade de centralizar e modernizar a gestão de
-                certificados, documentos jurídicos, atestados técnicos, cases e badges dentro de um ecossistema seguro e
-                inteligente.
+                <b>Roger Lovato</b>, o projeto nasceu da necessidade de centralizar e modernizar a{" "}
+                <b>gestão de certificados, documentos jurídicos, atestados técnicos, competências, cases e badges</b>{" "}
+                dentro de um ecossistema seguro e inteligente.
               </p>
               <p className="leading-relaxed mt-3">
                 Com o apoio técnico de Rodrigo Bonfim, que traduziu a visão em arquitetura e desenvolvimento, o Signet

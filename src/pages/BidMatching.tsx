@@ -14,8 +14,8 @@ export default function BidMatching() {
   return (
     <Layout>
       <PageHeader 
-        title="Motor de Adequação a Editais" 
-        description="Sistema inteligente de matching entre profissionais e requisitos de editais"
+        title="Adequação Técnica" 
+        description="Sistema inteligente de matching entre profissionais e requisitos técnicos"
       />
 
       <Card className="p-6">

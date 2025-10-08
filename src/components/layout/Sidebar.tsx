@@ -76,18 +76,16 @@ export function Sidebar() {
       requiredRole: "admin",
     },
     {
-      name: "Requisitos de Editais",
+      name: "Requisitos Técnicos",
       href: "/knowledge/bids",
       icon: FileText,
-      description: "Gestão de requisitos",
-      requiredRole: "admin",
+      description: "Gestão de requisitos técnicos",
     },
     {
-      name: "Adequação a Editais",
+      name: "Adequação Técnica",
       href: "/knowledge/matching",
       icon: Target,
-      description: "Motor de matching",
-      requiredRole: "admin",
+      description: "Análise de adequação técnica",
     },
     {
       name: "Painel Admin",

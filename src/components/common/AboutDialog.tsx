@@ -34,36 +34,31 @@ export function AboutDialog({ variant = "ghost" }: AboutDialogProps) {
             <section>
               <p className="leading-relaxed">
                 O Signet nasce como uma plataforma que simboliza confiança, autenticidade e excelência. Mais do que uma
-                ferramenta de gestão de documentos, ele representa um novo capítulo na forma como a IPNET by Vivo
-                organiza, valida e reconhece o conhecimento e as conquistas de seus talentos.
+                ferramenta de gestão de documentos, ele representa um novo capítulo na forma como as organizações
+                validam e reconhecem o conhecimento e as conquistas de seus profissionais.
               </p>
             </section>
 
             <section>
               <h3 className="text-lg font-semibold text-foreground mb-3">Nossa Jornada: Da Ideia à Inovação</h3>
               <p className="leading-relaxed">
-                A essência do Signet é resultado da nossa busca constante por eficiência e credibilidade. Idealizado por{" "}
-                <b>Roger Lovato</b>, o projeto nasceu da necessidade de centralizar e modernizar a{" "}
-                <b>gestão de certificados, documentos jurídicos, atestados técnicos, competências, cases e badges</b>{" "}
-                dentro de um ecossistema seguro e inteligente.
+                A essência do Signet é resultado da busca constante por eficiência, transparência e credibilidade. O
+                projeto nasceu da necessidade de centralizar e modernizar a
+                <b> gestão de certificados, documentos jurídicos, atestados técnicos, competências, cases e badges </b>
+                dentro de um ecossistema seguro, acessível e inteligente.
               </p>
               <p className="leading-relaxed mt-3">
-                Com o apoio técnico de Rodrigo Bonfim, que traduziu a visão em arquitetura e desenvolvimento, o Signet
-                tomou forma rapidamente — unindo design limpo, usabilidade e integração total com o DNA inovador da
-                IPNET.
+                Desenvolvido com foco em usabilidade e confiabilidade, o Signet traduz tecnologia em simplicidade,
+                reunindo design limpo, desempenho e integração com as principais práticas de governança digital.
               </p>
             </section>
 
             <section>
-              <h3 className="text-lg font-semibold text-foreground mb-3">
-                A Construção Colaborativa: Testes, Validação e Excelência
-              </h3>
+              <h3 className="text-lg font-semibold text-foreground mb-3">A Construção Colaborativa</h3>
               <p className="leading-relaxed">
-                Nenhuma grande solução nasce sozinha. O time de Tech Sales foi peça-chave na validação e homologação do
-                Signet, garantindo que cada funcionalidade refletisse a realidade operacional da empresa. Destaque para
-                a contribuição especial de Denis Rosa, Mairton Melo e Rodrigo Oliveira, que participaram ativamente dos
-                testes, feedbacks e ajustes, assegurando que a plataforma atingisse o mais alto padrão de qualidade e
-                experiência.
+                Nenhuma grande solução nasce sozinha. O Signet foi desenvolvido de forma colaborativa, com testes e
+                validações contínuas para garantir que cada funcionalidade refletisse as necessidades reais de uso,
+                mantendo o foco em qualidade, segurança e experiência do usuário.
               </p>
             </section>
 
@@ -72,12 +67,11 @@ export function AboutDialog({ variant = "ghost" }: AboutDialogProps) {
               <p className="leading-relaxed">
                 O nome Signet não foi escolhido por acaso. Historicamente, "signet" representa o selo usado para
                 autenticar documentos oficiais — e é exatamente isso que a plataforma entrega: uma fonte única de
-                verdade, que dá segurança, transparência e credibilidade a cada certificado e documento corporativo.
+                verdade, que garante autenticidade, transparência e confiabilidade a cada registro digital.
               </p>
               <p className="leading-relaxed mt-3">
-                Mais do que uma aplicação, o Signet é um marco na nossa jornada de digitalização e governança. Ele
-                reforça o compromisso da IPNET com a inovação contínua e com a valorização das pessoas que constroem o
-                nosso sucesso todos os dias.
+                Mais do que uma aplicação, o Signet é um marco na transformação digital e na valorização da integridade
+                da informação, consolidando-se como um símbolo de evolução e confiança.
               </p>
             </section>
           </div>

@@ -28,7 +28,7 @@ export default function BidDetail() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRequirement, setEditingRequirement] = useState<BidRequirement | null>(null);
   const [requirementToDelete, setRequirementToDelete] = useState<string | null>(null);
-  
+
   const { data: bid, isLoading: bidLoading } = useBidDetail(bidId!);
   const { requirements, isLoading: reqLoading, deleteRequirement, isDeleting } = useBidRequirements(bidId);
 
@@ -44,7 +44,7 @@ export default function BidDetail() {
 
   const handleDelete = async () => {
     if (!requirementToDelete) return;
-    
+
     try {
       await deleteRequirement(requirementToDelete);
       setRequirementToDelete(null);
@@ -70,12 +70,8 @@ export default function BidDetail() {
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">Edital não encontrado</p>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/knowledge/bids')}
-            className="mt-4"
-          >
-            Voltar para Editais
+          <Button variant="outline" onClick={() => navigate("/knowledge/bids")} className="mt-4">
+            Voltar para Registro de Nomes
           </Button>
         </Card>
       </Layout>
@@ -85,19 +81,15 @@ export default function BidDetail() {
   return (
     <Layout>
       <div className="mb-4">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/knowledge/bids')}
-          className="gap-2"
-        >
+        <Button variant="ghost" onClick={() => navigate("/knowledge/bids")} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Voltar para Editais
+          Voltar para Registro de Nomes
         </Button>
       </div>
 
-      <PageHeader 
+      <PageHeader
         title={bid.bid_name}
-        description={`Código: ${bid.bid_code}${bid.bid_description ? ' - ' + bid.bid_description : ''}`}
+        description={`Código: ${bid.bid_code}${bid.bid_description ? " - " + bid.bid_description : ""}`}
       >
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -108,15 +100,9 @@ export default function BidDetail() {
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingRequirement ? 'Editar Requisito' : 'Novo Requisito'}
-              </DialogTitle>
+              <DialogTitle>{editingRequirement ? "Editar Requisito" : "Novo Requisito"}</DialogTitle>
             </DialogHeader>
-            <BidRequirementForm 
-              bidId={bidId!}
-              onSuccess={handleCloseDialog}
-              initialData={editingRequirement}
-            />
+            <BidRequirementForm bidId={bidId!} onSuccess={handleCloseDialog} initialData={editingRequirement} />
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -132,8 +118,8 @@ export default function BidDetail() {
           ))
         ) : requirements && requirements.length > 0 ? (
           requirements.map((req) => (
-            <BidRequirementCard 
-              key={req.id} 
+            <BidRequirementCard
+              key={req.id}
               requirement={req}
               onEdit={handleEdit}
               onDelete={(id) => setRequirementToDelete(id)}
@@ -143,11 +129,7 @@ export default function BidDetail() {
           <Card className="p-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">Nenhum requisito cadastrado para este edital</p>
-            <Button 
-              variant="outline" 
-              onClick={() => setDialogOpen(true)}
-              className="mt-4 gap-2"
-            >
+            <Button variant="outline" onClick={() => setDialogOpen(true)} className="mt-4 gap-2">
               <Plus className="h-4 w-4" />
               Adicionar Primeiro Requisito
             </Button>
@@ -160,13 +142,14 @@ export default function BidDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este requisito? Todos os matches relacionados também serão removidos. Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este requisito? Todos os matches relacionados também serão removidos. Esta
+              ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
+            <AlertDialogAction
+              onClick={handleDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

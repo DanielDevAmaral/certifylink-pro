@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useUsersBySkill } from "@/hooks/useUsersBySkill";
+import { useSkillProfessionalsFilter } from "@/hooks/useSkillProfessionalsFilter";
 import { FullProfileDialog } from "./FullProfileDialog";
-import { User, Briefcase, Award } from "lucide-react";
+import { SkillProfessionalsFilter } from "./SkillProfessionalsFilter";
+import { User, Briefcase, Award, Search } from "lucide-react";
 import { PROFICIENCY_LEVEL_LABELS } from "@/types/knowledge";
 
 interface SkillProfessionalsDialogProps {
@@ -26,11 +29,27 @@ export function SkillProfessionalsDialog({
   const [selectedUserName, setSelectedUserName] = useState<string>("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
+  const {
+    filters,
+    filteredProfessionals,
+    availableDepartments,
+    availablePositions,
+    activeFiltersCount,
+    setProficiencyLevel,
+    setExperienceRange,
+    setDepartment,
+    setPosition,
+    setSearchQuery,
+    clearFilters,
+  } = useSkillProfessionalsFilter(professionals);
+
   // Debug logging
   console.log('🎯 [SkillProfessionalsDialog] Render:', {
     skillId,
     skillName,
-    professionalsCount: professionals?.length,
+    totalProfessionals: professionals?.length,
+    filteredCount: filteredProfessionals.length,
+    activeFilters: activeFiltersCount,
     isLoading,
     hasError: !!error,
   });
@@ -44,12 +63,52 @@ export function SkillProfessionalsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
               Profissionais com competência em <span className="text-primary">{skillName}</span>
             </DialogTitle>
+            <DialogDescription>
+              {professionals && professionals.length > 0 && (
+                <span>
+                  Mostrando {filteredProfessionals.length} de {professionals.length} profissionais
+                  {activeFiltersCount > 0 && ` (${activeFiltersCount} ${activeFiltersCount === 1 ? 'filtro ativo' : 'filtros ativos'})`}
+                </span>
+              )}
+            </DialogDescription>
           </DialogHeader>
+
+          {/* Search Bar */}
+          {!isLoading && !error && professionals && professionals.length > 0 && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, email, cargo ou departamento..."
+                value={filters.searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
+
+          {/* Filters */}
+          {!isLoading && !error && professionals && professionals.length > 0 && (
+            <SkillProfessionalsFilter
+              proficiencyLevel={filters.proficiencyLevel}
+              minExperience={filters.minExperience}
+              maxExperience={filters.maxExperience}
+              department={filters.department}
+              position={filters.position}
+              onProficiencyLevelChange={setProficiencyLevel}
+              onExperienceChange={setExperienceRange}
+              onDepartmentChange={setDepartment}
+              onPositionChange={setPosition}
+              onClearFilters={clearFilters}
+              availableDepartments={availableDepartments}
+              availablePositions={availablePositions}
+              activeFiltersCount={activeFiltersCount}
+            />
+          )}
 
           {error ? (
             <Card className="p-8 text-center border-destructive">
@@ -68,9 +127,9 @@ export function SkillProfessionalsDialog({
                 </Card>
               ))}
             </div>
-          ) : professionals && professionals.length > 0 ? (
+          ) : filteredProfessionals.length > 0 ? (
             <div className="space-y-4">
-              {professionals.map((prof) => (
+              {filteredProfessionals.map((prof) => (
                 <Card key={prof.user_id} className="p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between">
                     <div className="space-y-3 flex-1">
@@ -117,6 +176,21 @@ export function SkillProfessionalsDialog({
                 </Card>
               ))}
             </div>
+          ) : professionals && professionals.length > 0 ? (
+            <Card className="p-8 text-center">
+              <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground font-medium mb-2">
+                Nenhum profissional encontrado com estes filtros
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Tente ajustar ou limpar os filtros para ver mais resultados
+              </p>
+              {activeFiltersCount > 0 && (
+                <Button variant="outline" onClick={clearFilters}>
+                  Limpar Filtros
+                </Button>
+              )}
+            </Card>
           ) : (
             <Card className="p-8 text-center">
               <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

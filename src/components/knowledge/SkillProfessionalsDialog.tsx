@@ -21,10 +21,19 @@ export function SkillProfessionalsDialog({
   skillId,
   skillName,
 }: SkillProfessionalsDialogProps) {
-  const { data: professionals, isLoading } = useUsersBySkill(skillId);
+  const { data: professionals, isLoading, error } = useUsersBySkill(skillId);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string>("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+
+  // Debug logging
+  console.log('🎯 [SkillProfessionalsDialog] Render:', {
+    skillId,
+    skillName,
+    professionalsCount: professionals?.length,
+    isLoading,
+    hasError: !!error,
+  });
 
   const handleViewProfile = (userId: string, fullName: string) => {
     setSelectedUserId(userId);
@@ -42,7 +51,15 @@ export function SkillProfessionalsDialog({
             </DialogTitle>
           </DialogHeader>
 
-          {isLoading ? (
+          {error ? (
+            <Card className="p-8 text-center border-destructive">
+              <User className="h-12 w-12 mx-auto mb-4 text-destructive" />
+              <p className="text-destructive font-semibold mb-2">Erro ao carregar profissionais</p>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : 'Erro desconhecido'}
+              </p>
+            </Card>
+          ) : isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} className="p-4 animate-pulse">
@@ -103,7 +120,12 @@ export function SkillProfessionalsDialog({
           ) : (
             <Card className="p-8 text-center">
               <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Nenhum profissional encontrado com esta competência</p>
+              <p className="text-muted-foreground font-medium mb-2">
+                Nenhum profissional ativo encontrado com esta competência
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Pode haver profissionais com status inativo ou sem perfil completo
+              </p>
             </Card>
           )}
         </DialogContent>

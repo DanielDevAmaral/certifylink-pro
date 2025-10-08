@@ -15,7 +15,12 @@ export function useUsersBySkill(skillId: string | null) {
   return useQuery({
     queryKey: ['users-by-skill', skillId],
     queryFn: async () => {
-      if (!skillId) return [];
+      if (!skillId) {
+        console.log('🔍 [useUsersBySkill] No skillId provided');
+        return [];
+      }
+
+      console.log('🔍 [useUsersBySkill] Fetching users for skill:', skillId);
 
       const { data, error } = await supabase
         .from('user_skills')
@@ -34,23 +39,49 @@ export function useUsersBySkill(skillId: string | null) {
         .eq('skill_id', skillId)
         .order('years_of_experience', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [useUsersBySkill] Error fetching users:', error);
+        throw error;
+      }
 
-      // Filter out users without profiles or with inactive status
-      return (data || [])
-        .filter(item => {
+      console.log('📊 [useUsersBySkill] Raw data received:', data?.length, 'records');
+
+      // Filter and transform data
+      const filteredData = (data || [])
+        .map((item, index) => {
           const profile = item.profiles as any;
-          return profile && profile.full_name && profile.status === 'active';
+          
+          // Debug log for each record
+          if (!profile) {
+            console.warn(`⚠️ [useUsersBySkill] Record ${index}: No profile found for user_id ${item.user_id}`);
+            return null;
+          }
+          
+          if (!profile.full_name) {
+            console.warn(`⚠️ [useUsersBySkill] Record ${index}: Profile missing full_name for user_id ${item.user_id}`);
+            return null;
+          }
+
+          if (profile.status !== 'active') {
+            console.log(`ℹ️ [useUsersBySkill] Record ${index}: User ${profile.full_name} has status: ${profile.status}`);
+            return null;
+          }
+
+          return {
+            user_id: item.user_id,
+            full_name: profile.full_name,
+            email: profile.email,
+            position: profile.position,
+            department: profile.department,
+            proficiency_level: item.proficiency_level as string,
+            years_of_experience: item.years_of_experience || 0,
+          } as UserSkillDetail;
         })
-        .map(item => ({
-          user_id: item.user_id,
-          full_name: (item.profiles as any).full_name,
-          email: (item.profiles as any).email,
-          position: (item.profiles as any).position,
-          department: (item.profiles as any).department,
-          proficiency_level: item.proficiency_level,
-          years_of_experience: item.years_of_experience || 0,
-        })) as UserSkillDetail[];
+        .filter((item): item is UserSkillDetail => item !== null);
+
+      console.log('✅ [useUsersBySkill] Filtered results:', filteredData.length, 'professionals');
+      
+      return filteredData;
     },
     enabled: !!skillId,
   });

@@ -22,11 +22,13 @@ import AdminNotifications from "./pages/AdminNotifications";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProfessionalProfile from "./pages/ProfessionalProfile";
+import ProfessionalProfilesDirectory from "./pages/ProfessionalProfilesDirectory";
 import SkillsLibrary from "./pages/SkillsLibrary";
 import Bids from "./pages/Bids";
 import BidDetail from "./pages/BidDetail";
 import BidMatching from "./pages/BidMatching";
-import ProfessionalProfilesDirectory from "./pages/ProfessionalProfilesDirectory";
+import KnowledgeManagement from "./pages/KnowledgeManagement";
+import BidManagement from "./pages/BidManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,29 +126,39 @@ const App = () => (
                   <ProfessionalProfile />
                 </ProtectedRoute>
               } />
+              <Route path="/knowledge" element={
+                <ProtectedRoute requiredRole="leader">
+                  <KnowledgeManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/bids-management" element={
+                <ProtectedRoute>
+                  <BidManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/knowledge/profiles" element={
+                <ProtectedRoute requiredRole="leader">
+                  <ProfessionalProfilesDirectory />
+                </ProtectedRoute>
+              } />
               <Route path="/knowledge/skills" element={
                 <ProtectedRoute requiredRole="admin">
                   <SkillsLibrary />
                 </ProtectedRoute>
               } />
               <Route path="/knowledge/bids" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Bids />
                 </ProtectedRoute>
               } />
               <Route path="/knowledge/bids/:bidId" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <BidDetail />
                 </ProtectedRoute>
               } />
               <Route path="/knowledge/matching" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <BidMatching />
-                </ProtectedRoute>
-              } />
-              <Route path="/knowledge/profiles" element={
-                <ProtectedRoute requiredRole="leader">
-                  <ProfessionalProfilesDirectory />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

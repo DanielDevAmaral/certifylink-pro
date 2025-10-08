@@ -8,15 +8,21 @@ import { BidMatchingEngine } from "@/components/knowledge/BidMatchingEngine";
 import { MatchingScoringExplanation } from "@/components/knowledge/MatchingScoringExplanation";
 import { Target, HelpCircle } from "lucide-react";
 
-export default function BidMatching() {
+interface BidMatchingProps {
+  embedded?: boolean;
+}
+
+export default function BidMatching({ embedded = false }: BidMatchingProps) {
   const [showExplanation, setShowExplanation] = useState(false);
 
-  return (
-    <Layout>
-      <PageHeader 
-        title="Adequação Técnica" 
-        description="Sistema inteligente de matching entre profissionais e requisitos técnicos"
-      />
+  const content = (
+    <>
+      {!embedded && (
+        <PageHeader 
+          title="Adequação Técnica" 
+          description="Sistema inteligente de matching entre profissionais e requisitos técnicos"
+        />
+      )}
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
@@ -42,6 +48,8 @@ export default function BidMatching() {
         
         <BidMatchingEngine />
       </Card>
-    </Layout>
+    </>
   );
+
+  return embedded ? content : <Layout>{content}</Layout>;
 }

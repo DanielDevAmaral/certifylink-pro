@@ -21,7 +21,11 @@ import { useState } from "react";
 import { Bid } from "@/types/knowledge";
 import { useNavigate } from "react-router-dom";
 
-export default function Bids() {
+interface BidsProps {
+  embedded?: boolean;
+}
+
+export default function Bids({ embedded = false }: BidsProps) {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBid, setEditingBid] = useState<Bid | null>(null);
@@ -57,12 +61,13 @@ export default function Bids() {
     }
   };
 
-  return (
-    <Layout>
-      <PageHeader
-        title="Requisitos Técnicos"
-        description="Gerencie os Nomes de Requisitos e suas necessidades, cadastre o Nome e em Ver Detalhes registre os requisitos."
-      >
+  const content = (
+    <>
+      {!embedded && (
+        <PageHeader
+          title="Requisitos Técnicos"
+          description="Gerencie os Nomes de Requisitos e suas necessidades, cadastre o Nome e em Ver Detalhes registre os requisitos."
+        >
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -77,7 +82,8 @@ export default function Bids() {
             <BidForm onSuccess={handleCloseDialog} onSubmit={handleSubmit} initialData={editingBid} />
           </DialogContent>
         </Dialog>
-      </PageHeader>
+        </PageHeader>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
@@ -127,8 +133,10 @@ export default function Bids() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
+
+  return embedded ? content : <Layout>{content}</Layout>;
 }
 
 interface BidCardProps {
